@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useCurrentUser } from "@/lib/auth";
 import type { DashboardData } from "@/lib/view";
 import { num, pct, grams, kg } from "@/lib/format";
 import { Button } from "@/components/ui/Button";
@@ -27,6 +28,8 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
 
 export function GrowerOverview({ data }: { data: DashboardData }) {
   const router = useRouter();
+  const { user } = useCurrentUser();
+  const firstName = user.name.split(" ")[0];
   const { site, batch, rollup, houses, feed } = data;
 
   const delivery = feed[0];
@@ -41,7 +44,7 @@ export function GrowerOverview({ data }: { data: DashboardData }) {
         <CardEyebrow>
           {site.name} · Cycle {batch.cycleNo} · {batch.breed}
         </CardEyebrow>
-        <h1 className="mt-2 text-display">Good morning, Tendai.</h1>
+        <h1 className="mt-2 text-display">Good morning, {firstName}.</h1>
         <p className="mt-2 max-w-prose text-body-l text-slate">
           Day 26–27 across {rollup.houseCount} houses. {countdownLabel(data.killCountdownDays)}.
         </p>

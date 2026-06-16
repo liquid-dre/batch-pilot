@@ -21,12 +21,15 @@ import type {
   FlockAlert,
   House,
   HouseProjection,
+  Manifest,
+  PastCycle,
   Placement,
   Site,
   Status,
   StatusLevel,
   WeightEntry,
 } from "@/lib/types";
+import type { GrowerDetailData, HouseMetrics, HouseTrend, PortfolioData } from "@/lib/view";
 import {
   BATCH,
   BENCHMARK,
@@ -35,13 +38,15 @@ import {
   CONTRACTOR,
   DAILY_ENTRIES,
   FEED_DELIVERIES,
+  MANIFEST,
+  PAST_CYCLES,
   PLACEMENTS,
   SEED_STATUS_BY_HOUSE,
   SITE,
   WEIGHT_ENTRIES,
 } from "./mock";
 import { ross308At } from "./ross308";
-import { daysBetween } from "@/lib/format";
+import { addDays, daysBetween } from "@/lib/format";
 
 /** The demo "now" — the day the Nhunge cycle-85 figures were captured against. */
 export const DEMO_TODAY = "2026-06-16";
@@ -350,5 +355,141 @@ export async function submitWeights(input: WeightsInput): Promise<WeightsResult>
     },
     targetWeightG,
     pctOfTarget,
+  });
+}
+
+// ===========================================================================
+// Contractor (Phase 2)
+// ===========================================================================
+
+export function getManifest(): Promise<Manifest> {
+  return resolve(MANIFEST);
+}
+
+export function getPastCycles(): Promise<PastCycle[]> {
+  return resolve(PAST_CYCLES);
+}
+
+/**
+ * Per-house efficiency metrics for the portfolio / flock-overview table.
+ * EPEF = (liveability% × liveweight kg) / (age days × FCR) × 100.
+ * FCR is estimated from the Ross objective and worsened in proportion to the
+ * weight shortfall (behind birds convert feed less efficiently) — explainable
+ * and data-driven until consumed-feed capture lands.
+ */
+function houseMetrics(placement: Placement): HouseMetrics | null {
+  const house = SITE.houses.find((h) => h.id === placement.houseId);
+  if (!house) return null;
+  const entries = DAILY_ENTRIES.filter((e) => e.placementId === placement.id).sort((a, b) => a.day - b.day);
+  const latest = entries[entries.length - 1];
+  const weights = WEIGHT_ENTRIES.filter((w) => w.placementId === placement.id).sort((a, b) => a.day - b.day);
+  const weight = weights[weights.length - 1];
+  const status = SEED_STATUS_BY_HOUSE[house.id];
+
+  const placed = placement.placedCount;
+  const remaining = latest?.birdsRemaining ?? placed;
+  const ageDays = placement.dayCount;
+  const livabilityPct = placed ? (remaining / placed) * 100 : 0;
+  const avgWeightG = weight?.avgWeightG ?? 0;
+  const rossW = ross308At(ageDays).weightG;
+  const rossFcr = ross308At(ageDays).fcr ?? 1.3;
+  const vsRossPct = rossW ? Math.round((avgWeightG / rossW) * 100) : 0;
+  const fcr = avgWeightG ? Number((rossFcr * (rossW / avgWeightG)).toFixed(2)) : rossFcr;
+  const epef = avgWeightG && ageDays ? Math.round((livabilityPct * (avgWeightG / 1000)) / (ageDays * fcr) * 100) : 0;
+
+  return {
+    houseId: house.id,
+    houseName: house.name,
+    day: ageDays,
+    placed,
+    remaining,
+    livabilityPct: Number(livabilityPct.toFixed(1)),
+    cumPct: latest?.cumPct ?? 0,
+    avgWeightG,
+    vsRossPct,
+    fcr,
+    epef,
+    level: status?.level ?? "green",
+    statusMetric: status?.metric ?? "Status",
+  };
+}
+
+export async function getPortfolio(today: string = DEMO_TODAY): Promise<PortfolioData> {
+  const rows = PLACEMENTS.map(houseMetrics).filter((r): r is HouseMetrics => r !== null);
+  rows.sort((a, b) => b.epef - a.epef); // rank by EPEF, best first
+
+  const projection = await getProjection(today);
+
+  // Latest date any house is projected to reach the Ross target weight.
+  let projectedReadyDate = BATCH.killDate;
+  for (const placement of PLACEMENTS) {
+    const weights = WEIGHT_ENTRIES.filter((w) => w.placementId === placement.id).sort((a, b) => a.day - b.day);
+    const weight = weights[weights.length - 1];
+    if (!weight) continue;
+    const killDay = daysBetween(placement.placingDate, BATCH.killDate);
+    const target = ross308At(killDay).weightG;
+    const daysToTarget = weight.adgG > 0 ? Math.ceil((target - weight.avgWeightG) / weight.adgG) : 0;
+    const readyDate = addDays(placement.placingDate, weight.day + Math.max(0, daysToTarget));
+    if (daysBetween(projectedReadyDate, readyDate) > 0) projectedReadyDate = readyDate;
+  }
+
+  const birdsOnSite = rows.reduce((s, r) => s + r.remaining, 0);
+  const avgMortPct = rows.length ? Number((rows.reduce((s, r) => s + r.cumPct, 0) / rows.length).toFixed(2)) : 0;
+  const avgEpef = rows.length ? Math.round(rows.reduce((s, r) => s + r.epef, 0) / rows.length) : 0;
+
+  return resolve({
+    summary: {
+      siteName: SITE.name,
+      farmCode: SITE.farmCode,
+      cycleNo: BATCH.cycleNo,
+      killDate: BATCH.killDate,
+      daysToKill: projection.daysToKill,
+      houseCount: rows.length,
+      birdsOnSite,
+      avgMortPct,
+      avgEpef,
+      projectedAvgWeightG: projection.projectedAvgWeightG,
+      targetAvgWeightG: projection.targetAvgWeightG,
+      pctOfTarget: projection.pctOfTarget,
+      level: projection.level,
+      projectedReadyDate,
+    },
+    rows,
+  });
+}
+
+/** Per-grower drill-down: per-house detail with short trend series + track record. */
+export async function getGrowerDetail(): Promise<GrowerDetailData> {
+  const rollup = await getSiteRollup();
+  const houses: HouseTrend[] = PLACEMENTS.map((placement): HouseTrend => {
+    const house = SITE.houses.find((h) => h.id === placement.houseId)!;
+    const entries = DAILY_ENTRIES.filter((e) => e.placementId === placement.id).sort((a, b) => a.day - b.day);
+    const latest = entries[entries.length - 1];
+    const weights = WEIGHT_ENTRIES.filter((w) => w.placementId === placement.id).sort((a, b) => a.day - b.day);
+    const weight = weights[weights.length - 1];
+    const rossW = weight ? ross308At(weight.day).weightG : 0;
+    return {
+      houseId: house.id,
+      houseName: house.name,
+      day: placement.dayCount,
+      status: SEED_STATUS_BY_HOUSE[house.id],
+      cumPct: latest?.cumPct ?? 0,
+      remaining: latest?.birdsRemaining ?? placement.placedCount,
+      avgWeightG: weight?.avgWeightG ?? 0,
+      vsRossPct: weight && rossW ? Math.round((weight.avgWeightG / rossW) * 100) : 0,
+      mortSeries: entries.map((e) => e.mortality),
+      cumPctSeries: entries.map((e) => e.cumPct),
+    };
+  });
+
+  return resolve({
+    siteName: SITE.name,
+    farmCode: SITE.farmCode,
+    cycleNo: BATCH.cycleNo,
+    breed: BATCH.breed,
+    killDate: BATCH.killDate,
+    rollup,
+    houses,
+    pastCycles: PAST_CYCLES,
   });
 }

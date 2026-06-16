@@ -239,6 +239,32 @@ export interface BatchProjection {
   houses: HouseProjection[];
 }
 
+// ---------------------------------------------------------------------------
+// Collection (catching) — schedule + authorised-vehicle manifest
+// ---------------------------------------------------------------------------
+
+export interface Vehicle {
+  plate: string;
+  driver: string;
+}
+
+export interface Manifest {
+  batchId: ID;
+  /** Birds held for this catching round (the gate-verification count). */
+  heldCount: number;
+  vehicles: Vehicle[];
+}
+
+/** A finished cycle on a site — the grower's track record (ROADMAP §8 Phase 2). */
+export interface PastCycle {
+  cycleNo: number;
+  killDate: ISODate;
+  finalAvgWeightG: number;
+  mortalityPct: number;
+  /** European Production Efficiency Factor for the closed cycle. */
+  epef: number;
+}
+
 /** Billing stub → Stripe later (ROADMAP §5, §9). */
 export type PlanTier = "free" | "pro" | "contractor";
 

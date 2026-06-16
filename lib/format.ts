@@ -43,3 +43,12 @@ export function daysBetween(from: string, to: string): number {
   const b = Date.UTC(ty, tm - 1, td);
   return Math.round((b - a) / 86_400_000);
 }
+
+/** ISO date `n` days after `iso` (n may be negative), returned as ISO. */
+export function addDays(iso: string, n: number): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d) + n * 86_400_000);
+  const mm = String(dt.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(dt.getUTCDate()).padStart(2, "0");
+  return `${dt.getUTCFullYear()}-${mm}-${dd}`;
+}
