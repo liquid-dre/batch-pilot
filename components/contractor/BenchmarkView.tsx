@@ -1,7 +1,9 @@
 import type { BenchmarkOverlay, BenchmarkPoint } from "@/lib/types";
+import type { WeightBandData } from "@/lib/view";
 import { pct } from "@/lib/format";
 import { Card, CardBody, CardEyebrow } from "@/components/ui/Card";
 import { PageHeader } from "@/components/shell/PageHeader";
+import { WeightBandChart } from "@/components/charts/WeightBandChart";
 import { BenchmarkChart, type ActualMarker } from "./BenchmarkChart";
 
 interface BenchmarkViewProps {
@@ -10,13 +12,14 @@ interface BenchmarkViewProps {
   overlay: BenchmarkOverlay;
   markers: ActualMarker[];
   killDay: number;
+  weightBand: WeightBandData;
 }
 
 function LegendDot({ className }: { className: string }) {
   return <span className={`inline-block size-2.5 rounded-full ${className}`} />;
 }
 
-export function BenchmarkView({ breed, curve, overlay, markers, killDay }: BenchmarkViewProps) {
+export function BenchmarkView({ breed, curve, overlay, markers, killDay, weightBand }: BenchmarkViewProps) {
   return (
     <div className="mx-auto max-w-5xl space-y-8 px-4 py-8 sm:px-6">
       <PageHeader
@@ -24,6 +27,17 @@ export function BenchmarkView({ breed, curve, overlay, markers, killDay }: Bench
         title={`${breed} objective`}
         intro="The breed weight curve with every house plotted against it, plus the contractor mortality and uniformity overlay."
       />
+
+      {/* Hero: actual weight per house vs Ross, with the green/amber/red status band */}
+      <Card>
+        <CardBody className="pt-5">
+          <CardEyebrow>Weight vs the status band</CardEyebrow>
+          <p className="mt-2 mb-4 text-label text-muted">
+            Shaded zones are the rule-based status bands (≥97% green · 90–97% amber · &lt;90% red of the Ross objective).
+          </p>
+          <WeightBandChart data={weightBand} />
+        </CardBody>
+      </Card>
 
       <Card>
         <CardBody className="pt-5">

@@ -1,15 +1,16 @@
-import { getActiveBatch, getBenchmark, getPlacements, getPortfolio } from "@/lib/data";
+import { getActiveBatch, getBenchmark, getPlacements, getPortfolio, getWeightBandData } from "@/lib/data";
 import { daysBetween } from "@/lib/format";
 import type { ActualMarker } from "@/components/contractor/BenchmarkChart";
 import { ContractorOnly } from "@/components/shell/ContractorOnly";
 import { BenchmarkView } from "@/components/contractor/BenchmarkView";
 
 export default async function BenchmarkPage() {
-  const [benchmark, batch, placements, portfolio] = await Promise.all([
+  const [benchmark, batch, placements, portfolio, weightBand] = await Promise.all([
     getBenchmark(),
     getActiveBatch(),
     getPlacements(),
     getPortfolio(),
+    getWeightBandData(),
   ]);
 
   const killDay = placements[0] ? daysBetween(placements[0].placingDate, batch.killDate) : 31;
@@ -19,7 +20,7 @@ export default async function BenchmarkPage() {
 
   return (
     <ContractorOnly>
-      <BenchmarkView breed={batch.breed} curve={benchmark.curve} overlay={benchmark.overlay} markers={markers} killDay={killDay} />
+      <BenchmarkView breed={batch.breed} curve={benchmark.curve} overlay={benchmark.overlay} markers={markers} killDay={killDay} weightBand={weightBand} />
     </ContractorOnly>
   );
 }

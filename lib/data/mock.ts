@@ -23,7 +23,6 @@ import type {
   PlannedBatch,
   Placement,
   Site,
-  Status,
   User,
   WeightEntry,
 } from "@/lib/types";
@@ -148,6 +147,8 @@ interface HouseSeed {
   rising: boolean;
   /** Peak house temperature on the final day (°C) if captured. */
   tempPeakC?: number;
+  /** Bin topped up on the last recorded day — feed added spikes above intake. */
+  refillLastDay?: boolean;
 }
 
 const HOUSE_SEEDS: HouseSeed[] = [
@@ -156,7 +157,7 @@ const HOUSE_SEEDS: HouseSeed[] = [
   { placementId: "p3", anchorDay: 26, anchorDate: "2026-06-12", anchorCumMort: 530, rising: true, tempPeakC: 25 },
   { placementId: "p4", anchorDay: 26, anchorDate: "2026-06-12", anchorCumMort: 273, rising: false },
   { placementId: "p5", anchorDay: 26, anchorDate: "2026-06-12", anchorCumMort: 355, rising: false },
-  { placementId: "p6", anchorDay: 26, anchorDate: "2026-06-12", anchorCumMort: 368, rising: true, tempPeakC: 26 },
+  { placementId: "p6", anchorDay: 26, anchorDate: "2026-06-12", anchorCumMort: 368, rising: true, tempPeakC: 26, refillLastDay: true },
 ];
 
 function placedFor(placementId: string): number {
@@ -213,7 +214,9 @@ function buildSeries(seed: HouseSeed): DailyEntry[] {
     const birdsRemaining = placed - cum;
     const cumPct = Number(((cum / placed) * 100).toFixed(2));
     const intakeG = ROSS_308_CURVE[day]?.dailyIntakeG ?? 0;
-    const feedAddedKg = Math.round((intakeG * birdsRemaining) / 1000 * 1.06);
+    // A bin refill on the last day shows feed added running well above intake.
+    const refill = seed.refillLastDay && day === N ? 1.45 : 1.06;
+    const feedAddedKg = Math.round((intakeG * birdsRemaining) / 1000 * refill);
     // Temperature on the warm houses' last 5 days, ramping toward the peak.
     let tempC: number | undefined;
     if (seed.tempPeakC && day > N - 5) {
@@ -449,55 +452,4 @@ export const CONTRACTOR_USER: User = {
   role: "contractor",
   org: "Irvine's",
   contractorId: CONTRACTOR.id,
-};
-
-// ---------------------------------------------------------------------------
-// Seed statuses — hand-written for the Phase-0 preview, in brand voice.
-// NOTE: these are illustrative seed content, NOT engine output. The rule-based
-// status engine is Phase 3 (ROADMAP §8); it will replace this map.
-// ---------------------------------------------------------------------------
-
-export const SEED_STATUS_BY_HOUSE: Record<string, Status> = {
-  h1: {
-    metric: "Weight",
-    level: "amber",
-    actualVsTarget: "13% under curve at day 28",
-    cause: "Growth is trailing the Ross 308 target.",
-    fix: "Check feed access and weigh again in 2 days.",
-  },
-  h2: {
-    metric: "Weight",
-    level: "amber",
-    actualVsTarget: "12% under curve at day 28",
-    cause: "Growth is trailing the Ross 308 target.",
-    fix: "Check feed access and weigh again in 2 days.",
-  },
-  h3: {
-    metric: "Mortality",
-    level: "red",
-    actualVsTarget: "3.28% cumulative vs 2.8% band at day 26",
-    cause: "Mortality is above the contractor band; warm house readings.",
-    fix: "Reduce house temperature and review water lines today.",
-  },
-  h4: {
-    metric: "Mortality",
-    level: "green",
-    actualVsTarget: "1.68% cumulative, inside the band",
-    cause: "On track against the benchmark.",
-    fix: "Keep the current routine.",
-  },
-  h5: {
-    metric: "Mortality",
-    level: "amber",
-    actualVsTarget: "2.19% cumulative at day 26",
-    cause: "Edging toward the upper mortality band.",
-    fix: "Watch closely; record temperature at the next round.",
-  },
-  h6: {
-    metric: "Mortality",
-    level: "red",
-    actualVsTarget: "2.27% and rising fast at day 26",
-    cause: "Daily losses climbing; house reading 26°C (target <21°C).",
-    fix: "Cool the house now and check ventilation.",
-  },
 };

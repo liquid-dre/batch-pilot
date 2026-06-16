@@ -271,6 +271,27 @@ export interface ContractorGrowers {
   maxDay: number;
 }
 
+// ---------------------------------------------------------------------------
+// Hero weight-band chart (actual per house vs Ross, shaded green/amber/red)
+// ---------------------------------------------------------------------------
+
+export interface WeightBandSeries {
+  houseId: string;
+  houseName: string;
+  /** Weigh-ins: avg weight by day of cycle. */
+  points: { day: number; weightG: number }[];
+}
+
+export interface WeightBandData {
+  ross: { day: number; weightG: number }[];
+  houses: WeightBandSeries[];
+  maxDay: number;
+  yMax: number;
+  /** Band thresholds as fractions of the Ross objective (for the shaded zones). */
+  greenFrac: number;
+  amberFrac: number;
+}
+
 export interface GrowerDetailData {
   siteName: string;
   farmCode: string;
