@@ -180,12 +180,14 @@ Ross weight curve — that under-performance is the hero story, keep it).
 ## 8. MVP feature list & status
 
 **Phase 0 — Foundation**
-- [ ] Scaffold Next.js (App Router, TS, Tailwind); install deps; load the three fonts
-- [ ] `globals.css` with full token set (§6); Tailwind wired to the CSS variables
-- [ ] Data-access seam (`lib/data/`) + `lib/types.ts` + mock data seeded from Nhunge + Ross 308
-- [ ] Auth/role stub (`useCurrentUser`, `<AuthProvider>`) + billing stub (`usePlan`)
-- [ ] UI primitives: Button, Card, StatusPill, Input, Stepper, Table, Alert/Callout, Toast
-- [ ] App shell: top bar with BatchPilot mark + **role switcher (Grower / Contractor)**, nav
+- [x] Scaffold Next.js (App Router, TS, Tailwind); install deps; load the three fonts — Next 16.2.9 + Tailwind v4 (CSS-first); fonts via `next/font/google` in `app/layout.tsx` (Plus Jakarta Sans / IBM Plex Sans / IBM Plex Mono → CSS vars)
+- [x] `globals.css` with full token set (§6); Tailwind wired to the CSS variables — raw + semantic tokens in `:root`; `@theme inline` bridges them to utilities (re-theme = edit this file only)
+- [x] Data-access seam (`lib/data/`) + `lib/types.ts` + mock data seeded from Nhunge + Ross 308 — `lib/data/index.ts` (async, Convex-shaped), `lib/data/mock.ts` (cycle-85 anchors), `lib/data/ross308.ts` (full curve from CSV)
+- [x] Auth/role stub (`useCurrentUser`, `<AuthProvider>`) + billing stub (`usePlan`) — `lib/auth.tsx` (session-scoped role) + `lib/billing.tsx`
+- [x] UI primitives: Button, Card, StatusPill, Input, Stepper, Table, Alert/Callout, Toast — in `components/ui/`; StatusPill carries colour+icon+word+shape
+- [x] App shell: top bar with BatchPilot mark + **role switcher (Grower / Contractor)**, nav — `components/shell/` (TopBar, RoleSwitcher, role-aware Dashboard); `app/page.tsx` assembles data on the server
+
+> **Phase 0 decisions.** (1) **Fonts own their CSS vars.** `next/font` self-hosts the three families and assigns `--font-display` / `--font-body` / `--font-mono`; `globals.css` references those vars rather than the literal family names shown illustratively in §6, so there are no Google network requests and no layout shift. (2) **Token→Tailwind bridge.** `@theme inline` maps raw/neutral/status tokens to utilities (`bg-surface`, `text-ink`, `text-brand-700`, `shadow-card`…). The §6 semantic aliases (`--color-primary`, `--color-bg`, `--color-text`) stay `:root`-only and are consumed via `var()`; `surface`/`border` are deliberately *not* re-aliased there to avoid colliding with the raw utility tokens. (3) **Server-fetched data.** The page is a Server Component that `await`s the `lib/data/` seam and passes a typed view-model (`lib/view.ts`) to the client shell — the exact shape the Convex swap will keep. (4) **Phase-0 home is a role-aware overview** that exercises every primitive on real seam data; the dedicated feature screens it links to are stubbed to a toast and built in Phases 1–2.
 
 **Phase 1 — Grower experience**
 - [ ] Daily update form (per house: mortality, culls, feed added kg, optional temp) → auto-computes

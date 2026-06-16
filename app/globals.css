@@ -1,26 +1,232 @@
 @import "tailwindcss";
 
+/* ============================================================================
+   BatchPilot design tokens — the theming seam (ROADMAP §5, §6).
+   Re-theming the product = editing THIS FILE only. Components never hardcode a
+   hex, font, radius or spacing; they reference the semantic tokens below.
+   Only the brand (Horizon) scale + accent are themeable per white-label client.
+   Status colours, neutrals, type, spacing, radii and motion are fixed.
+   ========================================================================== */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Brand — Horizon (themeable) */
+  --brand-900: #0b2a4a;
+  --brand-700: #14487e;
+  --brand-600: #1a5b9c;
+  --brand-500: #2474c4;
+  --brand-100: #dceaf7;
+  --brand-50: #eef5fc;
+
+  /* Neutrals — warm grey (fixed) */
+  --ink: #1b1e23;
+  --slate: #44474e;
+  --muted: #6b6f76;
+  --hint: #9499a1;
+  --border: #c9cdd3;
+  --divider: #e4e7ea;
+  --paper: #f4f2ed;
+  --surface: #ffffff;
+
+  /* Status — reserved, never used for branding */
+  --status-good: #1f7a3d;
+  --status-warn: #c77800;
+  --status-bad: #c62828;
+  --status-good-tint: #e3f2e8;
+  --status-warn-tint: #faf0dc;
+  --status-bad-tint: #fae4e4;
+
+  /* Semantic aliases — referenced directly via var() (e.g. in Button + base
+     styles). `surface` and `border` are intentionally NOT re-aliased here: they
+     are exposed to components as the Tailwind utilities bg-surface / border-border
+     (raw neutrals below), so re-aliasing them would collide with those tokens. */
+  --color-primary: var(--brand-700);
+  --color-primary-hover: var(--brand-600);
+  --color-accent: var(--brand-500);
+  --color-bg: var(--paper);
+  --color-text: var(--ink);
+  --color-text-muted: var(--muted);
+
+  /* Type — families are owned by next/font (see app/layout.tsx), which assigns
+     these variables. Fallback stacks keep text legible before fonts load. */
+  --font-display: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", monospace;
+
+  /* Type scale (mobile-first, ROADMAP §6) */
+  --text-display: 2rem;       /* 32 / 700 */
+  --text-h1: 1.625rem;        /* 26 / 700 */
+  --text-h2: 1.3125rem;       /* 21 / 600 */
+  --text-h3: 1.125rem;        /* 18 / 600 */
+  --text-body-l: 1.0625rem;   /* 17 / 400 */
+  --text-body: 0.9375rem;     /* 15 / 400 — body floor */
+  --text-label: 0.875rem;     /* 14 / 500 */
+  --text-data: 0.9375rem;     /* 15 / 500 mono, tabular */
+
+  /* Radii */
+  --radius-card: 16px;
+  --radius-control: 10px;
+  --radius-pill: 999px;
+
+  /* Spacing */
+  --space-unit: 4px;
+
+  /* Depth */
+  --shadow-card: 0 1px 2px rgba(11, 42, 74, 0.06), 0 4px 16px rgba(11, 42, 74, 0.05);
+  --shadow-raised: 0 2px 6px rgba(11, 42, 74, 0.08), 0 12px 32px rgba(11, 42, 74, 0.1);
+  --ring-focus: 0 0 0 3px var(--brand-100), 0 0 0 1.5px var(--brand-500);
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-fast: 140ms;
+  --dur: 220ms;
+
+  /* Z-index scale (semantic, never arbitrary) */
+  --z-base: 0;
+  --z-sticky: 100;
+  --z-dropdown: 200;
+  --z-overlay: 300;
+  --z-toast: 400;
 }
 
+/* ----------------------------------------------------------------------------
+   Tailwind v4 theme bridge. `inline` makes the generated utilities reference
+   the runtime CSS variables above, so a re-theme cascades without a rebuild.
+   These produce utilities like bg-surface, text-ink, border-divider,
+   text-brand-700, bg-status-good-tint, rounded-card, font-mono, shadow-card.
+   -------------------------------------------------------------------------- */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Brand scale */
+  --color-brand-900: var(--brand-900);
+  --color-brand-700: var(--brand-700);
+  --color-brand-600: var(--brand-600);
+  --color-brand-500: var(--brand-500);
+  --color-brand-100: var(--brand-100);
+  --color-brand-50: var(--brand-50);
+
+  /* Neutrals */
+  --color-ink: var(--ink);
+  --color-slate: var(--slate);
+  --color-muted: var(--muted);
+  --color-hint: var(--hint);
+  --color-border: var(--border);
+  --color-divider: var(--divider);
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+
+  /* Status + tints */
+  --color-status-good: var(--status-good);
+  --color-status-warn: var(--status-warn);
+  --color-status-bad: var(--status-bad);
+  --color-status-good-tint: var(--status-good-tint);
+  --color-status-warn-tint: var(--status-warn-tint);
+  --color-status-bad-tint: var(--status-bad-tint);
+
+  /* Fonts */
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+  --font-mono: var(--font-mono);
+
+  /* Radii */
+  --radius-card: var(--radius-card);
+  --radius-control: var(--radius-control);
+  --radius-pill: var(--radius-pill);
+
+  /* Shadows */
+  --shadow-card: var(--shadow-card);
+  --shadow-raised: var(--shadow-raised);
+
+  /* Easing */
+  --ease-out: var(--ease-out);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* ----------------------------------------------------------------------------
+   Base layer
+   -------------------------------------------------------------------------- */
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-body);
+    font-size: var(--text-body);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    color: var(--color-text);
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+
+  /* Tabular figures everywhere mono is used, so digits and 0/O never blur. */
+  .font-mono,
+  [class*="font-mono"] {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+  }
+
+  ::selection {
+    background: var(--brand-100);
+    color: var(--brand-900);
+  }
+
+  /* Visible, on-brand focus ring for keyboard users only. */
+  :focus-visible {
+    outline: none;
+    box-shadow: var(--ring-focus);
+    border-radius: var(--radius-control);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ----------------------------------------------------------------------------
+   Type-scale helpers (semantic, so components don't reach for raw text-[..]).
+   -------------------------------------------------------------------------- */
+@layer components {
+  .text-display { font-family: var(--font-display); font-size: var(--text-display); font-weight: 700; line-height: 1.1; letter-spacing: -0.025em; }
+  .text-h1 { font-family: var(--font-display); font-size: var(--text-h1); font-weight: 700; line-height: 1.15; letter-spacing: -0.02em; }
+  .text-h2 { font-family: var(--font-display); font-size: var(--text-h2); font-weight: 600; line-height: 1.2; letter-spacing: -0.015em; }
+  .text-h3 { font-family: var(--font-display); font-size: var(--text-h3); font-weight: 600; line-height: 1.3; }
+  .text-body-l { font-size: var(--text-body-l); font-weight: 400; line-height: 1.55; }
+  .text-body { font-size: var(--text-body); font-weight: 400; line-height: 1.55; }
+  .text-label { font-size: var(--text-label); font-weight: 500; line-height: 1.4; }
+  .text-data { font-family: var(--font-mono); font-size: var(--text-data); font-weight: 500; font-variant-numeric: tabular-nums; }
+}
+
+/* ----------------------------------------------------------------------------
+   Motion utilities + entrance keyframes (reduced-motion aware).
+   -------------------------------------------------------------------------- */
+@layer utilities {
+  .animate-rise {
+    animation: bp-rise var(--dur) var(--ease-out) both;
+  }
+  .animate-fade {
+    animation: bp-fade var(--dur) var(--ease-out) both;
+  }
+}
+
+@keyframes bp-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes bp-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }
