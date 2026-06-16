@@ -122,6 +122,69 @@ export interface HouseTrend {
   cumPctSeries: number[];
 }
 
+// ---------------------------------------------------------------------------
+// Batch history (day-by-day tables + charts)
+// ---------------------------------------------------------------------------
+
+export interface WeighPoint {
+  avgWeightG: number;
+  adgG: number;
+  growthRatio: number;
+  uniformityPct: number;
+  /** Weight as a % of the Ross 308 objective for the day. */
+  vsRossPct: number;
+  /** Estimated feed conversion ratio at this weigh-in. */
+  fcr: number;
+}
+
+export interface HouseDayRow {
+  day: number;
+  date: string;
+  mortality: number;
+  culls: number;
+  cumMort: number;
+  cumPct: number;
+  /** Daily mortality as a % of placed. */
+  dailyMortPct: number;
+  feedAddedKg: number;
+  tempC?: number;
+  weigh?: WeighPoint;
+}
+
+export interface HouseSeries {
+  houseId: string;
+  houseName: string;
+  placedCount: number;
+  rows: HouseDayRow[];
+}
+
+export interface BatchDayRow {
+  day: number;
+  date: string;
+  mortality: number;
+  culls: number;
+  cumMort: number;
+  cumPct: number;
+  dailyMortPct: number;
+  feedAddedKg: number;
+  placed: number;
+  remaining: number;
+  avgWeightG?: number;
+  vsRossPct?: number;
+  fcr?: number;
+}
+
+export interface BatchHistory {
+  maxDay: number;
+  placed: number;
+  houses: HouseSeries[];
+  batch: BatchDayRow[];
+  /** Ross 308 objective per day, for chart overlays. */
+  ross: { day: number; weightG: number; fcr: number | null }[];
+  /** Contractor cumulative-mortality ceiling per day, for the status band. */
+  mortalityBand: { day: number; maxCumPct: number }[];
+}
+
 export interface GrowerDetailData {
   siteName: string;
   farmCode: string;

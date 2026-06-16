@@ -30,7 +30,15 @@ import type {
   StatusLevel,
   WeightEntry,
 } from "@/lib/types";
-import type { GrowerDetailData, HouseMetrics, HouseTrend, PortfolioData } from "@/lib/view";
+import type {
+  BatchHistory,
+  GrowerDetailData,
+  HouseDayRow,
+  HouseMetrics,
+  HouseSeries,
+  HouseTrend,
+  PortfolioData,
+} from "@/lib/view";
 import {
   BATCH,
   BENCHMARK,
@@ -48,7 +56,7 @@ import {
   SITE,
   WEIGHT_ENTRIES,
 } from "./mock";
-import { ross308At } from "./ross308";
+import { ROSS_308_CURVE, ROSS_308_OVERLAY, ross308At } from "./ross308";
 import { addDays, daysBetween } from "@/lib/format";
 
 /** The demo "now" — the day the Nhunge cycle-85 figures were captured against. */
@@ -596,4 +604,198 @@ export async function confirmAllocation(
         return { houseId: a.houseId, houseName: house?.name ?? a.houseId, count: a.count, dayCount };
       }),
   );
+}
+
+// ===========================================================================
+// Batch history — full day-by-day per-house series + batch rollup (charts/tables)
+// ===========================================================================
+
+/**
+ * Assembles the whole current batch's history: each house's day-by-day rows
+ * (daily mort %, cumulative %, feed, temperature, and weigh-day weight/ADG/
+ * uniformity with vs-Ross and an estimated FCR), the batch-level rollup per day
+ * (carry-forward so staggered houses still aggregate cleanly), plus the Ross 308
+ * objective and the contractor mortality band for chart overlays.
+ */
+export async function getBatchHistory(): Promise<BatchHistory> {
+  const maxDay = Math.max(
+    ...PLACEMENTS.map((p) => p.dayCount),
+    ...WEIGHT_ENTRIES.map((w) => w.day),
+  );
+  const placedTotal = PLACEMENTS.reduce((s, p) => s + p.placedCount, 0);
+
+  // Per-house as-of arrays (index by day) so the batch rollup can carry forward.
+  interface Prepared {
+    placement: Placement;
+    houseName: string;
+    asOfCum: number[];
+    asOfRem: number[];
+    cumFeedAsOf: number[];
+    exactMort: number[];
+    exactCulls: number[];
+    exactFeed: number[];
+    hasDay: boolean[];
+    weighByDay: Map<number, HouseDayRow["weigh"]>;
+    series: HouseSeries;
+  }
+
+  const prepared: Prepared[] = PLACEMENTS.map((p) => {
+    const house = SITE.houses.find((h) => h.id === p.houseId);
+    const houseName = house?.name ?? p.houseId;
+    const entries = DAILY_ENTRIES.filter((e) => e.placementId === p.id);
+    const entriesByDay = new Map(entries.map((e) => [e.day, e]));
+    const weights = WEIGHT_ENTRIES.filter((w) => w.placementId === p.id).sort((a, b) => a.day - b.day);
+
+    const asOfCum: number[] = [];
+    const asOfRem: number[] = [];
+    const cumFeedAsOf: number[] = [];
+    const exactMort: number[] = [];
+    const exactCulls: number[] = [];
+    const exactFeed: number[] = [];
+    const hasDay: boolean[] = [];
+
+    let lastCum = 0;
+    let lastRem = p.placedCount;
+    let runFeed = 0;
+    let lastDate = dateForDay(p, 0);
+    const dateByDay = new Map<number, string>();
+    for (let d = 1; d <= maxDay; d++) {
+      const e = entriesByDay.get(d);
+      if (e) {
+        lastCum = e.cumMort;
+        lastRem = e.birdsRemaining;
+        runFeed += e.feedAddedKg;
+        lastDate = e.date;
+        exactMort[d] = e.mortality;
+        exactCulls[d] = e.culls;
+        exactFeed[d] = e.feedAddedKg;
+        hasDay[d] = true;
+      } else {
+        exactMort[d] = 0;
+        exactCulls[d] = 0;
+        exactFeed[d] = 0;
+        hasDay[d] = false;
+      }
+      asOfCum[d] = lastCum;
+      asOfRem[d] = lastRem;
+      cumFeedAsOf[d] = runFeed;
+      dateByDay.set(d, e ? e.date : addDays(lastDate, d - (entries.length ? entries[entries.length - 1].day : 0)));
+    }
+
+    // Weigh points with vs-Ross and FCR.
+    const weighByDay = new Map<number, HouseDayRow["weigh"]>();
+    for (const w of weights) {
+      const rossW = ROSS_308_CURVE[w.day]?.weightG ?? 0;
+      const rem = asOfRem[w.day] ?? lastRem;
+      const cumFeed = cumFeedAsOf[w.day] ?? runFeed;
+      const liveKg = (w.avgWeightG / 1000) * rem;
+      weighByDay.set(w.day, {
+        avgWeightG: w.avgWeightG,
+        adgG: w.adgG,
+        growthRatio: w.growthRatio,
+        uniformityPct: w.uniformityPct,
+        vsRossPct: rossW ? Math.round((w.avgWeightG / rossW) * 100) : 0,
+        fcr: liveKg ? Number((cumFeed / liveKg).toFixed(2)) : 0,
+      });
+    }
+
+    // House rows: every day that has a daily entry or a weigh-in.
+    const dayset = new Set<number>([...entries.map((e) => e.day), ...weights.map((w) => w.day)]);
+    const rows: HouseDayRow[] = [...dayset]
+      .sort((a, b) => a - b)
+      .map((d) => ({
+        day: d,
+        date: dateByDay.get(d) ?? "",
+        mortality: exactMort[d] ?? 0,
+        culls: exactCulls[d] ?? 0,
+        cumMort: asOfCum[d] ?? 0,
+        cumPct: Number(((asOfCum[d] / p.placedCount) * 100).toFixed(2)),
+        dailyMortPct: Number((((exactMort[d] ?? 0) / p.placedCount) * 100).toFixed(3)),
+        feedAddedKg: exactFeed[d] ?? 0,
+        tempC: entriesByDay.get(d)?.tempC,
+        weigh: weighByDay.get(d),
+      }));
+
+    return {
+      placement: p,
+      houseName,
+      asOfCum,
+      asOfRem,
+      cumFeedAsOf,
+      exactMort,
+      exactCulls,
+      exactFeed,
+      hasDay,
+      weighByDay,
+      series: { houseId: p.houseId, houseName, placedCount: p.placedCount, rows },
+    };
+  });
+
+  // Batch rollup per day.
+  const batch = [];
+  for (let d = 1; d <= maxDay; d++) {
+    let mortality = 0;
+    let culls = 0;
+    let cumMort = 0;
+    let feedAddedKg = 0;
+    let remaining = 0;
+    let wWeight = 0;
+    let wRem = 0;
+    let cumFeedSum = 0;
+    let liveKgSum = 0;
+    let hasWeigh = false;
+    for (const ph of prepared) {
+      cumMort += ph.asOfCum[d] ?? 0;
+      remaining += ph.asOfRem[d] ?? 0;
+      mortality += ph.exactMort[d] ?? 0;
+      culls += ph.exactCulls[d] ?? 0;
+      feedAddedKg += ph.exactFeed[d] ?? 0;
+      const wp = ph.weighByDay.get(d);
+      if (wp) {
+        hasWeigh = true;
+        const rem = ph.asOfRem[d] ?? 0;
+        wWeight += wp.avgWeightG * rem;
+        wRem += rem;
+        cumFeedSum += ph.cumFeedAsOf[d] ?? 0;
+        liveKgSum += (wp.avgWeightG / 1000) * rem;
+      }
+    }
+    const avgWeightG = hasWeigh && wRem ? Math.round(wWeight / wRem) : undefined;
+    const rossW = ROSS_308_CURVE[d]?.weightG ?? 0;
+    batch.push({
+      day: d,
+      date: prepared[0]?.series.rows.find((r) => r.day === d)?.date ?? "",
+      mortality,
+      culls,
+      cumMort,
+      cumPct: Number(((cumMort / placedTotal) * 100).toFixed(2)),
+      dailyMortPct: Number(((mortality / placedTotal) * 100).toFixed(3)),
+      feedAddedKg,
+      placed: placedTotal,
+      remaining,
+      avgWeightG,
+      vsRossPct: avgWeightG && rossW ? Math.round((avgWeightG / rossW) * 100) : undefined,
+      fcr: hasWeigh && liveKgSum ? Number((cumFeedSum / liveKgSum).toFixed(2)) : undefined,
+    });
+  }
+
+  const ross = Array.from({ length: maxDay }, (_, i) => {
+    const day = i + 1;
+    const pt = ROSS_308_CURVE[day];
+    return { day, weightG: pt?.weightG ?? 0, fcr: pt?.fcr ?? null };
+  });
+
+  return resolve({
+    maxDay,
+    placed: placedTotal,
+    houses: prepared.map((ph) => ph.series),
+    batch,
+    ross,
+    mortalityBand: ROSS_308_OVERLAY.mortalityBand,
+  });
+}
+
+/** ISO date for a placement's day-of-cycle (placing date = day 0). */
+function dateForDay(p: Placement, day: number): string {
+  return addDays(p.placingDate, day);
 }

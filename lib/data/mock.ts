@@ -123,32 +123,33 @@ export const PLACEMENTS: Placement[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// Daily entries.
-// Anchors (mortality, culls, feed, cumMort, day) come verbatim from BRD §7.2
-// for the latest day (date 12/06/26). The 8-day window before each anchor is
-// synthesised so the cumulative arrives EXACTLY at the BRD cumMort, giving
-// charts real shape without inventing the documented numbers.
+// Daily entries — FULL day-1..current series per house.
+// The cumulative mortality lands EXACTLY on the documented BRD §7.2 figure at
+// each house's latest day (296/298/530/273/355/368). Mortality is front-loaded
+// (brooding losses) with a late rise on the two problem houses (3 & 6), so the
+// cum-% curve crosses the contractor band — the red-house story. Feed follows
+// the Ross intake curve scaled to the live birds; temperature is captured on
+// the warm houses' last few days (a candidate cause for the high mortality).
 // ---------------------------------------------------------------------------
 
-interface DailyAnchor {
+interface HouseSeed {
   placementId: string;
   anchorDay: number;
   anchorDate: string;
   anchorCumMort: number;
-  anchorFeedKg: number;
-  /** Per-day mortality across the window; last element = the BRD anchor day. */
-  morts: number[];
-  /** Optional per-house temperature on the anchor day (diagnostic only). */
-  anchorTempC?: number;
+  /** Problem houses whose daily losses climb toward the end. */
+  rising: boolean;
+  /** Peak house temperature on the final day (°C) if captured. */
+  tempPeakC?: number;
 }
 
-const DAILY_ANCHORS: DailyAnchor[] = [
-  { placementId: "p1", anchorDay: 27, anchorDate: "2026-06-12", anchorCumMort: 296, anchorFeedKg: 2350, morts: [9, 11, 8, 12, 10, 13, 15, 17] },
-  { placementId: "p2", anchorDay: 27, anchorDate: "2026-06-12", anchorCumMort: 298, anchorFeedKg: 2600, morts: [10, 9, 12, 8, 11, 13, 14, 16] },
-  { placementId: "p3", anchorDay: 26, anchorDate: "2026-06-12", anchorCumMort: 530, anchorFeedKg: 2350, morts: [14, 16, 13, 19, 17, 21, 16, 18], anchorTempC: 24.5 },
-  { placementId: "p4", anchorDay: 26, anchorDate: "2026-06-12", anchorCumMort: 273, anchorFeedKg: 2350, morts: [6, 7, 5, 9, 6, 8, 7, 8] },
-  { placementId: "p5", anchorDay: 26, anchorDate: "2026-06-12", anchorCumMort: 355, anchorFeedKg: 2450, morts: [11, 13, 10, 15, 12, 17, 14, 19] },
-  { placementId: "p6", anchorDay: 26, anchorDate: "2026-06-12", anchorCumMort: 368, anchorFeedKg: 3000, morts: [13, 16, 14, 20, 18, 22, 25, 30], anchorTempC: 26.2 },
+const HOUSE_SEEDS: HouseSeed[] = [
+  { placementId: "p1", anchorDay: 27, anchorDate: "2026-06-12", anchorCumMort: 296, rising: false },
+  { placementId: "p2", anchorDay: 27, anchorDate: "2026-06-12", anchorCumMort: 298, rising: false },
+  { placementId: "p3", anchorDay: 26, anchorDate: "2026-06-12", anchorCumMort: 530, rising: true, tempPeakC: 25 },
+  { placementId: "p4", anchorDay: 26, anchorDate: "2026-06-12", anchorCumMort: 273, rising: false },
+  { placementId: "p5", anchorDay: 26, anchorDate: "2026-06-12", anchorCumMort: 355, rising: false },
+  { placementId: "p6", anchorDay: 26, anchorDate: "2026-06-12", anchorCumMort: 368, rising: true, tempPeakC: 26 },
 ];
 
 function placedFor(placementId: string): number {
@@ -166,32 +167,62 @@ function dateMinusDays(iso: string, days: number): string {
   return `${dt.getUTCFullYear()}-${mm}-${dd}`;
 }
 
-function buildSeries(a: DailyAnchor): DailyEntry[] {
-  const placed = placedFor(a.placementId);
-  const windowSum = a.morts.reduce((s, n) => s + n, 0);
-  // cumMort at the first window day so the series lands exactly on anchorCumMort.
-  let cum = a.anchorCumMort - windowSum + a.morts[0];
-  const n = a.morts.length;
+function buildSeries(seed: HouseSeed): DailyEntry[] {
+  const placed = placedFor(seed.placementId);
+  const N = seed.anchorDay;
 
-  return a.morts.map((mort, i) => {
-    if (i > 0) cum += mort;
-    const day = a.anchorDay - (n - 1 - i);
-    const cullAndMort = mort; // culls are 0 in this block (BRD §7.2)
+  // Raw daily-mortality shape: brooding spike + baseline + late rise on problem
+  // houses. Normalised so the integer series sums to the documented cumMort.
+  const raw: number[] = [];
+  for (let d = 1; d <= N; d++) {
+    const brood = 3.2 * Math.exp(-(d - 1) / 2.6);
+    const baseline = 0.45;
+    const tail = seed.rising ? 0.18 * Math.max(0, d - (N - 6)) : 0;
+    raw.push(brood + baseline + tail);
+  }
+  const sumRaw = raw.reduce((s, r) => s + r, 0);
+  const morts = raw.map((r) => Math.max(0, Math.round((r / sumRaw) * seed.anchorCumMort)));
+
+  // Reconcile rounding so the cumulative is exact, nudging the highest days.
+  const byRawDesc = raw.map((_, i) => i).sort((a, b) => raw[b] - raw[a]);
+  let diff = seed.anchorCumMort - morts.reduce((s, m) => s + m, 0);
+  let k = 0;
+  while (diff !== 0 && k < byRawDesc.length * 4) {
+    const i = byRawDesc[k % byRawDesc.length];
+    if (diff > 0) {
+      morts[i] += 1;
+      diff -= 1;
+    } else if (morts[i] > 0) {
+      morts[i] -= 1;
+      diff += 1;
+    }
+    k += 1;
+  }
+
+  let cum = 0;
+  return morts.map((mort, idx) => {
+    const day = idx + 1;
+    cum += mort;
     const birdsRemaining = placed - cum;
     const cumPct = Number(((cum / placed) * 100).toFixed(2));
-    // Feed ramps with age toward the BRD anchor figure on the last day.
-    const feedAddedKg = Math.round(a.anchorFeedKg * (0.9 + (0.1 * i) / (n - 1)));
-    const isAnchor = i === n - 1;
+    const intakeG = ROSS_308_CURVE[day]?.dailyIntakeG ?? 0;
+    const feedAddedKg = Math.round((intakeG * birdsRemaining) / 1000 * 1.06);
+    // Temperature on the warm houses' last 5 days, ramping toward the peak.
+    let tempC: number | undefined;
+    if (seed.tempPeakC && day > N - 5) {
+      const t = (day - (N - 5)) / 5;
+      tempC = Number((21 + (seed.tempPeakC - 21) * t).toFixed(1));
+    }
     return {
-      id: `${a.placementId}-d${day}`,
-      placementId: a.placementId,
-      date: isAnchor ? a.anchorDate : dateMinusDays(a.anchorDate, n - 1 - i),
+      id: `${seed.placementId}-d${day}`,
+      placementId: seed.placementId,
+      date: dateMinusDays(seed.anchorDate, N - day),
       day,
       mortality: mort,
       culls: 0,
-      feedAddedKg: isAnchor ? a.anchorFeedKg : feedAddedKg,
-      tempC: isAnchor ? a.anchorTempC : undefined,
-      cullAndMort,
+      feedAddedKg,
+      tempC,
+      cullAndMort: mort,
       cumMort: cum,
       cumPct,
       birdsRemaining,
@@ -199,22 +230,60 @@ function buildSeries(a: DailyAnchor): DailyEntry[] {
   });
 }
 
-export const DAILY_ENTRIES: DailyEntry[] = DAILY_ANCHORS.flatMap(buildSeries);
+export const DAILY_ENTRIES: DailyEntry[] = HOUSE_SEEDS.flatMap(buildSeries);
 
 // ---------------------------------------------------------------------------
-// Weights (BRD §7.4 — day 28, Houses 1–2 verbatim).
-// Houses 3–6 are synthesised ~13–18% under the Ross curve for their day,
-// consistent with the documented Houses 1–2 under-performance (the hero story).
+// Weights — multiple weigh-days per house. The latest weigh-in is the
+// documented BRD §7.4 figure (Houses 1–2 verbatim, 3–6 synthesised); earlier
+// weigh-days interpolate up toward it from ~96% of the Ross curve, so the gap
+// to the breed objective WIDENS with age (the ~13%-under hero story).
 // ---------------------------------------------------------------------------
 
-export const WEIGHT_ENTRIES: WeightEntry[] = [
-  { id: "w1", placementId: "p1", day: 28, avgWeightG: 1401, adgG: 98, growthRatio: 1.2, uniformityPct: 73 }, // BRD
-  { id: "w2", placementId: "p2", day: 28, avgWeightG: 1417, adgG: 89, growthRatio: 1.2, uniformityPct: 70 }, // BRD
-  { id: "w3", placementId: "p3", day: 26, avgWeightG: 1180, adgG: 79, growthRatio: 1.1, uniformityPct: 68 }, // synthesised
-  { id: "w4", placementId: "p4", day: 26, avgWeightG: 1305, adgG: 88, growthRatio: 1.2, uniformityPct: 74 }, // synthesised
-  { id: "w5", placementId: "p5", day: 26, avgWeightG: 1255, adgG: 84, growthRatio: 1.2, uniformityPct: 71 }, // synthesised
-  { id: "w6", placementId: "p6", day: 26, avgWeightG: 1210, adgG: 80, growthRatio: 1.1, uniformityPct: 67 }, // synthesised
+interface WeighSeed {
+  placementId: string;
+  finalDay: number;
+  finalWeightG: number;
+  finalAdgG: number;
+  finalGrowthRatio: number;
+  finalUniformityPct: number;
+}
+
+const WEIGH_SEEDS: WeighSeed[] = [
+  { placementId: "p1", finalDay: 28, finalWeightG: 1401, finalAdgG: 98, finalGrowthRatio: 1.2, finalUniformityPct: 73 }, // BRD
+  { placementId: "p2", finalDay: 28, finalWeightG: 1417, finalAdgG: 89, finalGrowthRatio: 1.2, finalUniformityPct: 70 }, // BRD
+  { placementId: "p3", finalDay: 26, finalWeightG: 1180, finalAdgG: 79, finalGrowthRatio: 1.1, finalUniformityPct: 68 },
+  { placementId: "p4", finalDay: 26, finalWeightG: 1305, finalAdgG: 88, finalGrowthRatio: 1.2, finalUniformityPct: 74 },
+  { placementId: "p5", finalDay: 26, finalWeightG: 1255, finalAdgG: 84, finalGrowthRatio: 1.2, finalUniformityPct: 71 },
+  { placementId: "p6", finalDay: 26, finalWeightG: 1210, finalAdgG: 80, finalGrowthRatio: 1.1, finalUniformityPct: 67 },
 ];
+
+function buildWeights(seed: WeighSeed): WeightEntry[] {
+  const finalFactor = seed.finalWeightG / (ROSS_308_CURVE[seed.finalDay]?.weightG ?? seed.finalWeightG);
+  const days = [7, 14, 21, seed.finalDay];
+  let prevWeight = ROSS_308_CURVE[0].weightG; // ~44 g at placing
+  let prevDay = 0;
+  return days.map((day, i) => {
+    const isFinal = i === days.length - 1;
+    const frac = (day - 7) / (seed.finalDay - 7);
+    const factor = 0.96 + (finalFactor - 0.96) * frac;
+    const avgWeightG = isFinal ? seed.finalWeightG : Math.round((ROSS_308_CURVE[day]?.weightG ?? 0) * factor);
+    const adgG = isFinal ? seed.finalAdgG : Math.round((avgWeightG - prevWeight) / (day - prevDay));
+    const uniformityPct = isFinal ? seed.finalUniformityPct : Math.round(80 + (seed.finalUniformityPct - 80) * frac);
+    prevWeight = avgWeightG;
+    prevDay = day;
+    return {
+      id: `${seed.placementId}-w${day}`,
+      placementId: seed.placementId,
+      day,
+      avgWeightG,
+      adgG,
+      growthRatio: seed.finalGrowthRatio,
+      uniformityPct,
+    };
+  });
+}
+
+export const WEIGHT_ENTRIES: WeightEntry[] = WEIGH_SEEDS.flatMap(buildWeights);
 
 // ---------------------------------------------------------------------------
 // Feed delivery (BRD §7.3) — 300 × 50 = 15,000kg nominal vs 14,820kg net.

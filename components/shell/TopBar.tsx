@@ -25,6 +25,7 @@ const NAV: Record<Role, NavItem[]> = {
     { key: "houses", label: "Houses", href: "/app/houses" },
     { key: "feed", label: "Feed", href: "/app/feed" },
     { key: "weights", label: "Weights", href: "/app/weights" },
+    { key: "history", label: "History", href: "/app/history" },
   ],
   contractor: [
     { key: "overview", label: "Overview", href: "/app" },
