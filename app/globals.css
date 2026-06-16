@@ -34,6 +34,15 @@
   --status-warn-tint: #faf0dc;
   --status-bad-tint: #fae4e4;
 
+  /* Categorical chart series — distinct cool hues, deliberately clear of the
+     green/amber/red status colours. For multi-series comparison charts only. */
+  --chart-1: #14487e;
+  --chart-2: #2474c4;
+  --chart-3: #0e8c8b;
+  --chart-4: #5b6cce;
+  --chart-5: #8a6fb0;
+  --chart-6: #6b7280;
+
   /* Semantic aliases — referenced directly via var() (e.g. in Button + base
      styles). `surface` and `border` are intentionally NOT re-aliased here: they
      are exposed to components as the Tailwind utilities bg-surface / border-border

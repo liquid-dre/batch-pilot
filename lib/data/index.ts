@@ -32,6 +32,9 @@ import type {
 } from "@/lib/types";
 import type {
   BatchHistory,
+  ComparableBatch,
+  CompareData,
+  ComparePoint,
   GrowerDetailData,
   HouseDayRow,
   HouseMetrics,
@@ -47,6 +50,7 @@ import {
   CONTRACTOR,
   DAILY_ENTRIES,
   FEED_DELIVERIES,
+  HISTORICAL_BATCHES,
   MANIFEST,
   nextHouseId,
   PAST_CYCLES,
@@ -798,4 +802,128 @@ export async function getBatchHistory(): Promise<BatchHistory> {
 /** ISO date for a placement's day-of-cycle (placing date = day 0). */
 function dateForDay(p: Placement, day: number): string {
   return addDays(p.placingDate, day);
+}
+
+// ===========================================================================
+// Batch comparison — overlay trends across batches, aligned by day of cycle
+// ===========================================================================
+
+const rossOf = (d: number) => ROSS_308_CURVE[Math.max(0, Math.min(d, ROSS_308_CURVE.length - 1))];
+
+/** First day (or projected day) a batch reaches the target weight. */
+function projectDaysToTarget(series: ComparePoint[], target: number, finalDay: number): number {
+  for (const p of series) {
+    if (p.avgWeightG != null && p.avgWeightG >= target) return p.day;
+  }
+  const weighed = series.filter((p) => p.avgWeightG != null);
+  if (weighed.length < 2) return finalDay;
+  const last = weighed[weighed.length - 1];
+  const prev = weighed[weighed.length - 2];
+  const gain = (last.avgWeightG! - prev.avgWeightG!) / (last.day - prev.day) || 1;
+  return last.day + Math.ceil((target - last.avgWeightG!) / Math.max(gain, 1));
+}
+
+/** Build a closed batch's day-of-cycle curve toward its documented final result. */
+function genComparable(seed: (typeof HISTORICAL_BATCHES)[number]): ComparableBatch {
+  const killDay = daysBetween(seed.placingDate, seed.killDate);
+  const finalRossW = rossOf(seed.finalDay).weightG || seed.finalWeightG;
+  const finalFactor = seed.finalWeightG / finalRossW;
+  const k = 2.4;
+  const denom = 1 - Math.exp(-k);
+
+  const series: ComparePoint[] = [];
+  let prevCum = 0;
+  for (let d = 1; d <= seed.finalDay; d++) {
+    const cumPct = Number(((seed.finalCumMortPct * (1 - Math.exp((-k * d) / seed.finalDay))) / denom).toFixed(3));
+    const dailyMortPct = Number(Math.max(0, cumPct - prevCum).toFixed(3));
+    prevCum = cumPct;
+    const factor = 0.97 + (finalFactor - 0.97) * ((d - 1) / (seed.finalDay - 1));
+    const rossW = rossOf(d).weightG;
+    const avgWeightG = Math.round(rossW * factor);
+    const rossFcr = rossOf(d).fcr ?? seed.finalFcr;
+    const fcr = avgWeightG ? Number((rossFcr * (rossW / avgWeightG)).toFixed(2)) : seed.finalFcr;
+    series.push({ day: d, dailyMortPct, cumPct, avgWeightG, vsRossPct: rossW ? Math.round((avgWeightG / rossW) * 100) : 0, fcr });
+  }
+
+  // Pin the final point to the documented result (keeps summary == track record).
+  const last = series[series.length - 1];
+  last.avgWeightG = seed.finalWeightG;
+  last.vsRossPct = Math.round((seed.finalWeightG / finalRossW) * 100);
+  last.cumPct = seed.finalCumMortPct;
+  last.fcr = seed.finalFcr;
+
+  const targetWeightG = rossOf(killDay).weightG;
+  const daysToTarget = projectDaysToTarget(series, targetWeightG, seed.finalDay);
+
+  return {
+    id: `batch_c${seed.cycleNo}`,
+    cycleNo: seed.cycleNo,
+    label: `Cycle ${seed.cycleNo}`,
+    status: "closed",
+    placingDate: seed.placingDate,
+    killDate: seed.killDate,
+    killDay,
+    finalDay: seed.finalDay,
+    series,
+    weightG: seed.finalWeightG,
+    vsRossPct: last.vsRossPct ?? 0,
+    cumMortPct: seed.finalCumMortPct,
+    fcr: seed.finalFcr,
+    targetWeightG,
+    daysToTarget,
+    readyVsKillDays: daysToTarget - killDay,
+  };
+}
+
+/**
+ * Comparable batches for the grower's trend view: the current batch (from real
+ * day-by-day history) plus the closed historical batches (generated curves),
+ * each aligned by day of cycle, with a summary of key results.
+ */
+export async function getComparableBatches(): Promise<CompareData> {
+  const history = await getBatchHistory();
+  const placing = PLACEMENTS.reduce((min, p) => (p.placingDate < min ? p.placingDate : min), PLACEMENTS[0].placingDate);
+  const killDay = daysBetween(placing, BATCH.killDate);
+
+  const series: ComparePoint[] = history.batch.map((r) => ({
+    day: r.day,
+    dailyMortPct: r.dailyMortPct,
+    cumPct: r.cumPct,
+    avgWeightG: r.avgWeightG,
+    vsRossPct: r.vsRossPct,
+    fcr: r.fcr,
+  }));
+  const lastWeighed = [...history.batch].reverse().find((r) => r.avgWeightG != null);
+  const lastRow = history.batch[history.batch.length - 1];
+  const targetWeightG = rossOf(killDay).weightG;
+  const daysToTarget = projectDaysToTarget(series, targetWeightG, history.maxDay);
+
+  const current: ComparableBatch = {
+    id: BATCH.id,
+    cycleNo: BATCH.cycleNo,
+    label: `Cycle ${BATCH.cycleNo}`,
+    status: "current",
+    placingDate: placing,
+    killDate: BATCH.killDate,
+    killDay,
+    finalDay: history.maxDay,
+    series,
+    weightG: lastWeighed?.avgWeightG ?? 0,
+    vsRossPct: lastWeighed?.vsRossPct ?? 0,
+    cumMortPct: Number((lastRow?.cumPct ?? 0).toFixed(2)),
+    fcr: lastWeighed?.fcr ?? 0,
+    targetWeightG,
+    daysToTarget,
+    readyVsKillDays: daysToTarget - killDay,
+  };
+
+  const batches = [current, ...HISTORICAL_BATCHES.map(genComparable)].sort((a, b) => b.cycleNo - a.cycleNo);
+  const maxDay = Math.max(...batches.map((b) => Math.max(b.finalDay, b.killDay)));
+  const ross = Array.from({ length: maxDay }, (_, i) => {
+    const day = i + 1;
+    const pt = rossOf(day);
+    return { day, weightG: pt.weightG, fcr: pt.fcr };
+  });
+
+  return resolve({ batches, ross, maxDay });
 }

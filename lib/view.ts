@@ -185,6 +185,49 @@ export interface BatchHistory {
   mortalityBand: { day: number; maxCumPct: number }[];
 }
 
+// ---------------------------------------------------------------------------
+// Batch comparison (trends across batches, aligned by day of cycle)
+// ---------------------------------------------------------------------------
+
+export interface ComparePoint {
+  day: number;
+  dailyMortPct: number;
+  cumPct: number;
+  /** Dense for closed batches; sparse (weigh-days) for the ongoing one. */
+  avgWeightG?: number;
+  vsRossPct?: number;
+  fcr?: number;
+}
+
+export interface ComparableBatch {
+  id: string;
+  cycleNo: number;
+  label: string;
+  status: "current" | "closed";
+  placingDate: string;
+  killDate: string;
+  killDay: number;
+  /** Last day with data: grow-out length (closed) or current age (ongoing). */
+  finalDay: number;
+  series: ComparePoint[];
+  // Summary (latest/final values)
+  weightG: number;
+  vsRossPct: number;
+  cumMortPct: number;
+  fcr: number;
+  targetWeightG: number;
+  /** Day of cycle the batch reaches (or is projected to reach) target weight. */
+  daysToTarget: number;
+  /** daysToTarget − killDay: negative = ahead of the kill date, positive = behind. */
+  readyVsKillDays: number;
+}
+
+export interface CompareData {
+  batches: ComparableBatch[];
+  ross: { day: number; weightG: number; fcr: number | null }[];
+  maxDay: number;
+}
+
 export interface GrowerDetailData {
   siteName: string;
   farmCode: string;
