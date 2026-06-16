@@ -228,6 +228,49 @@ export interface CompareData {
   maxDay: number;
 }
 
+// ---------------------------------------------------------------------------
+// Contractor grower-level performance (ranked overview + position-across-days)
+// ---------------------------------------------------------------------------
+
+export interface GrowerTrendPoint {
+  day: number;
+  cumPct: number;
+  dailyMortPct: number;
+  vsRossPct: number;
+  fcr: number;
+}
+
+export interface GrowerPerf {
+  siteId: string;
+  name: string;
+  farmCode: string;
+  cycleNo: number;
+  status: "active" | "completed";
+  /** Current age (active) or grow-out length (completed). */
+  day: number;
+  killDay: number;
+  placed: number;
+  remaining: number;
+  // Headline metrics
+  epef: number;
+  fcr: number;
+  cumMortPct: number;
+  weightG: number;
+  vsRossPct: number;
+  /** daysToTarget − killDay: negative = ahead of the kill date, positive = behind. */
+  readyVsKillDays: number;
+  level: StatusLevel;
+  /** Day-of-cycle trend for the position-across-days chart. */
+  trend: GrowerTrendPoint[];
+}
+
+export interface ContractorGrowers {
+  contractorName: string;
+  growers: GrowerPerf[];
+  ross: { day: number; weightG: number; fcr: number | null }[];
+  maxDay: number;
+}
+
 export interface GrowerDetailData {
   siteName: string;
   farmCode: string;

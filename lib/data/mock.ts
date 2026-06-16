@@ -38,6 +38,13 @@ export const CONTRACTOR: Contractor = {
   name: "Irvine's",
 };
 
+/** A second contractor — only here to prove tenant isolation (its grower must
+ *  never appear in Irvine's views). */
+export const OTHER_CONTRACTOR: Contractor = {
+  id: "ct_drummonds",
+  name: "Drummonds",
+};
+
 export const SITE: Site = {
   id: "site_nhunge",
   name: "Murray Downs",
@@ -371,6 +378,45 @@ export const PAST_CYCLES: PastCycle[] = HISTORICAL_BATCHES.map((b) => ({
   mortalityPct: b.finalCumMortPct,
   epef: b.epef,
 }));
+
+// ---------------------------------------------------------------------------
+// Other growers (sites) supplying a contractor. Murray Downs (above) is the
+// rich, real grower; these are seeded with varied performance and their
+// day-by-day / per-house data is GENERATED on demand by the seam (so the
+// single-site screens stay untouched). `contractorId` is the tenant boundary:
+// the Coorong grower belongs to Drummonds and must never surface for Irvine's.
+// ---------------------------------------------------------------------------
+
+export interface GrowerProfile {
+  siteId: string;
+  name: string;
+  farmCode: string;
+  contractorId: string;
+  houseCount: number;
+  placedPerHouse: number;
+  cycleNo: number;
+  status: "active" | "completed";
+  /** Current age in days (active) or grow-out length (completed). */
+  age: number;
+  /** Grow-out length to the kill date. */
+  growOut: number;
+  /** Cumulative mortality % at `age`. */
+  cumMortPct: number;
+  /** Average weight as a fraction of the Ross objective at `age`. */
+  weightFactor: number;
+  fcr: number;
+  uniformityPct: number;
+}
+
+export const GROWER_PROFILES: GrowerProfile[] = [
+  { siteId: "site_wattle", name: "Wattle Creek", farmCode: "AUWC", contractorId: CONTRACTOR.id, houseCount: 6, placedPerHouse: 16000, cycleNo: 41, status: "active", age: 30, growOut: 35, cumMortPct: 2.6, weightFactor: 1.01, fcr: 1.5, uniformityPct: 78 },
+  { siteId: "site_yarra", name: "Yarra Glen", farmCode: "AUYG", contractorId: CONTRACTOR.id, houseCount: 6, placedPerHouse: 16000, cycleNo: 52, status: "active", age: 17, growOut: 35, cumMortPct: 2.1, weightFactor: 0.99, fcr: 1.53, uniformityPct: 79 },
+  { siteId: "site_brind", name: "Brindabella", farmCode: "AUBR", contractorId: CONTRACTOR.id, houseCount: 8, placedPerHouse: 15000, cycleNo: 63, status: "active", age: 24, growOut: 35, cumMortPct: 3.1, weightFactor: 0.95, fcr: 1.58, uniformityPct: 73 },
+  { siteId: "site_tarc", name: "Tarcoola", farmCode: "AUTC", contractorId: CONTRACTOR.id, houseCount: 4, placedPerHouse: 16500, cycleNo: 28, status: "active", age: 21, growOut: 35, cumMortPct: 5.4, weightFactor: 0.87, fcr: 1.72, uniformityPct: 66 },
+  { siteId: "site_kanga", name: "Kanga Flat", farmCode: "AUKF", contractorId: CONTRACTOR.id, houseCount: 6, placedPerHouse: 16000, cycleNo: 70, status: "completed", age: 35, growOut: 35, cumMortPct: 3.6, weightFactor: 0.98, fcr: 1.59, uniformityPct: 74 },
+  // Drummonds' grower — tenant-isolation control (excluded from Irvine's views).
+  { siteId: "site_coorong", name: "Coorong", farmCode: "AUCG", contractorId: OTHER_CONTRACTOR.id, houseCount: 6, placedPerHouse: 16000, cycleNo: 12, status: "active", age: 26, growOut: 35, cumMortPct: 3.0, weightFactor: 0.96, fcr: 1.56, uniformityPct: 72 },
+];
 
 // ---------------------------------------------------------------------------
 // Benchmark set — Ross 308 as-hatched curve + contractor overlay.

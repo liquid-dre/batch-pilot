@@ -35,7 +35,10 @@ import type {
   ComparableBatch,
   CompareData,
   ComparePoint,
+  ContractorGrowers,
   GrowerDetailData,
+  GrowerPerf,
+  GrowerTrendPoint,
   HouseDayRow,
   HouseMetrics,
   HouseSeries,
@@ -50,9 +53,12 @@ import {
   CONTRACTOR,
   DAILY_ENTRIES,
   FEED_DELIVERIES,
+  GROWER_PROFILES,
+  type GrowerProfile,
   HISTORICAL_BATCHES,
   MANIFEST,
   nextHouseId,
+  OTHER_CONTRACTOR,
   PAST_CYCLES,
   PLACEMENTS,
   PLANNED_BATCH,
@@ -926,4 +932,209 @@ export async function getComparableBatches(): Promise<CompareData> {
   });
 
   return resolve({ batches, ross, maxDay });
+}
+
+// ===========================================================================
+// Contractor grower-level performance (ranked overview + drill-down)
+// Tenant isolation lives here: getContractorGrowers(contractorId) only ever
+// returns that contractor's growers. (Becomes a Convex query scoped to the
+// authed contractor.)
+// ===========================================================================
+
+const growerLevel = (vsRossPct: number): StatusLevel => (vsRossPct >= 98 ? "green" : vsRossPct >= 90 ? "amber" : "red");
+
+/** Front-loaded daily mortality for one generated house, summing to a target cum %. */
+function genHouseDaily(placed: number, day: number, cumPctTarget: number) {
+  const target = Math.round((placed * cumPctTarget) / 100);
+  const raw = Array.from({ length: day }, (_, i) => 3.0 * Math.exp(-i / 2.6) + 0.45);
+  const sum = raw.reduce((s, r) => s + r, 0) || 1;
+  const morts = raw.map((r) => Math.max(0, Math.round((r / sum) * target)));
+  const order = raw.map((_, i) => i).sort((a, b) => raw[b] - raw[a]);
+  let diff = target - morts.reduce((s, m) => s + m, 0);
+  let k = 0;
+  while (diff !== 0 && k < order.length * 4) {
+    const i = order[k % order.length];
+    if (diff > 0) { morts[i] += 1; diff -= 1; } else if (morts[i] > 0) { morts[i] -= 1; diff += 1; }
+    k += 1;
+  }
+  let cum = 0;
+  const cumPctSeries = morts.map((m) => {
+    cum += m;
+    return Number(((cum / placed) * 100).toFixed(2));
+  });
+  return { mortSeries: morts, cumPctSeries, remaining: placed - target };
+}
+
+/** Per-day trend toward a profile's current/final state, aligned by day of cycle. */
+function genGrowerTrend(profile: GrowerProfile): GrowerTrendPoint[] {
+  const k = 2.4;
+  const denom = 1 - Math.exp(-k);
+  const out: GrowerTrendPoint[] = [];
+  let prevCum = 0;
+  for (let d = 1; d <= profile.age; d++) {
+    const cumPct = Number(((profile.cumMortPct * (1 - Math.exp((-k * d) / profile.age))) / denom).toFixed(3));
+    const dailyMortPct = Number(Math.max(0, cumPct - prevCum).toFixed(3));
+    prevCum = cumPct;
+    const factor = 0.97 + (profile.weightFactor - 0.97) * ((d - 1) / Math.max(1, profile.age - 1));
+    const rossW = rossOf(d).weightG;
+    const avgW = rossW * factor;
+    const fcr = avgW ? Number(((rossOf(d).fcr ?? profile.fcr) * (rossW / avgW)).toFixed(2)) : profile.fcr;
+    out.push({ day: d, cumPct, dailyMortPct, vsRossPct: Math.round(factor * 100), fcr });
+  }
+  return out;
+}
+
+function genGrowerPerf(profile: GrowerProfile): GrowerPerf {
+  const placed = profile.houseCount * profile.placedPerHouse;
+  const remaining = Math.round(placed * (1 - profile.cumMortPct / 100));
+  const livability = placed ? (remaining / placed) * 100 : 0;
+  const weightG = Math.round(rossOf(profile.age).weightG * profile.weightFactor);
+  const vsRossPct = Math.round(profile.weightFactor * 100);
+  const epef = profile.age ? Math.round((livability * (weightG / 1000)) / (profile.age * profile.fcr) * 100) : 0;
+  const target = rossOf(profile.growOut).weightG;
+  const recentGain = (rossOf(profile.age).dailyGainG ?? 90) * profile.weightFactor;
+  const daysToTarget = weightG >= target ? profile.age : profile.age + Math.ceil((target - weightG) / Math.max(recentGain, 1));
+  return {
+    siteId: profile.siteId,
+    name: profile.name,
+    farmCode: profile.farmCode,
+    cycleNo: profile.cycleNo,
+    status: profile.status,
+    day: profile.age,
+    killDay: profile.growOut,
+    placed,
+    remaining,
+    epef,
+    fcr: profile.fcr,
+    cumMortPct: profile.cumMortPct,
+    weightG,
+    vsRossPct,
+    readyVsKillDays: daysToTarget - profile.growOut,
+    level: growerLevel(vsRossPct),
+    trend: genGrowerTrend(profile),
+  };
+}
+
+/** Murray Downs (the real, rich grower) as a performance row. */
+async function murrayPerf(): Promise<GrowerPerf> {
+  const [compare, rollup] = await Promise.all([getComparableBatches(), getSiteRollup()]);
+  const cb = compare.batches.find((b) => b.status === "current")!;
+  const livability = rollup.placed ? (rollup.remaining / rollup.placed) * 100 : 0;
+  const epef = cb.finalDay && cb.fcr ? Math.round((livability * (cb.weightG / 1000)) / (cb.finalDay * cb.fcr) * 100) : 0;
+  return {
+    siteId: SITE.id,
+    name: SITE.name,
+    farmCode: SITE.farmCode,
+    cycleNo: BATCH.cycleNo,
+    status: "active",
+    day: cb.finalDay,
+    killDay: cb.killDay,
+    placed: rollup.placed,
+    remaining: rollup.remaining,
+    epef,
+    fcr: cb.fcr,
+    cumMortPct: cb.cumMortPct,
+    weightG: cb.weightG,
+    vsRossPct: cb.vsRossPct,
+    readyVsKillDays: cb.readyVsKillDays,
+    level: growerLevel(cb.vsRossPct),
+    trend: cb.series.map((p) => ({
+      day: p.day,
+      cumPct: p.cumPct,
+      dailyMortPct: p.dailyMortPct,
+      vsRossPct: p.vsRossPct ?? 0,
+      fcr: p.fcr ?? 0,
+    })),
+  };
+}
+
+export async function getContractorGrowers(contractorId: string = CONTRACTOR.id): Promise<ContractorGrowers> {
+  const growers: GrowerPerf[] = [];
+  if (CONTRACTOR.id === contractorId) growers.push(await murrayPerf());
+  for (const profile of GROWER_PROFILES.filter((p) => p.contractorId === contractorId)) {
+    growers.push(genGrowerPerf(profile));
+  }
+  const contractorName = contractorId === OTHER_CONTRACTOR.id ? OTHER_CONTRACTOR.name : CONTRACTOR.name;
+  const maxDay = Math.max(...growers.map((g) => g.day), 1);
+  const ross = Array.from({ length: maxDay }, (_, i) => {
+    const day = i + 1;
+    const pt = rossOf(day);
+    return { day, weightG: pt.weightG, fcr: pt.fcr };
+  });
+  return resolve({ contractorName, growers, ross, maxDay });
+}
+
+function genGrowerPastCycles(profile: GrowerProfile, today: string) {
+  return [1, 2].map((n) => {
+    const cycleNo = profile.cycleNo - n;
+    const factor = Math.min(1.02, profile.weightFactor + 0.02 * n);
+    const finalAvgWeightG = Math.round(rossOf(35).weightG * factor);
+    const mortalityPct = Number((profile.cumMortPct * (0.95 + 0.05 * n)).toFixed(1));
+    const liv = 100 - mortalityPct;
+    const epef = Math.round((liv * (finalAvgWeightG / 1000)) / (35 * profile.fcr) * 100);
+    return { cycleNo, killDate: addDays(today, -45 * n), finalAvgWeightG, mortalityPct, epef };
+  });
+}
+
+/** Drill-down detail for any grower. Murray Downs uses the real data; the
+ *  others are generated per-house from their profile (conforming to the types). */
+export async function getGrowerDetailById(siteId: string): Promise<GrowerDetailData> {
+  if (siteId === SITE.id) return getGrowerDetail();
+
+  const profile = GROWER_PROFILES.find((p) => p.siteId === siteId);
+  if (!profile) return getGrowerDetail();
+
+  const today = DEMO_TODAY;
+  const houses: HouseTrend[] = Array.from({ length: profile.houseCount }, (_, i) => {
+    const frac = (i * 0.618) % 1; // deterministic jitter
+    const hCum = Number((profile.cumMortPct * (0.8 + 0.4 * frac)).toFixed(2));
+    const hFactor = profile.weightFactor + (i - (profile.houseCount - 1) / 2) * 0.008;
+    const placed = profile.placedPerHouse;
+    const daily = genHouseDaily(placed, profile.age, hCum);
+    const avgWeightG = Math.round(rossOf(profile.age).weightG * hFactor);
+    const vsRossPct = Math.round(hFactor * 100);
+    const level = growerLevel(vsRossPct);
+    return {
+      houseId: `${siteId}-h${i + 1}`,
+      houseName: `House ${i + 1}`,
+      day: profile.age,
+      status: {
+        metric: "Weight",
+        level,
+        actualVsTarget: `${vsRossPct}% of Ross weight, ${pctFix(daily.cumPctSeries.at(-1) ?? hCum)} cumulative mortality`,
+      },
+      cumPct: daily.cumPctSeries.at(-1) ?? hCum,
+      remaining: daily.remaining,
+      avgWeightG,
+      vsRossPct,
+      mortSeries: daily.mortSeries,
+      cumPctSeries: daily.cumPctSeries,
+    };
+  });
+
+  const placedTotal = houses.length * profile.placedPerHouse;
+  const remainingTotal = houses.reduce((s, h) => s + h.remaining, 0);
+  const cumMortTotal = placedTotal - remainingTotal;
+  const placing = addDays(today, -profile.age);
+
+  return resolve({
+    siteName: profile.name,
+    farmCode: profile.farmCode,
+    cycleNo: profile.cycleNo,
+    breed: "Ross 308",
+    killDate: addDays(placing, profile.growOut),
+    rollup: {
+      placed: placedTotal,
+      remaining: remainingTotal,
+      cumMort: cumMortTotal,
+      mortPct: placedTotal ? Number(((cumMortTotal / placedTotal) * 100).toFixed(2)) : 0,
+      houseCount: houses.length,
+    },
+    houses,
+    pastCycles: genGrowerPastCycles(profile, today),
+  });
+}
+
+function pctFix(n: number): string {
+  return `${n.toFixed(2)}%`;
 }
