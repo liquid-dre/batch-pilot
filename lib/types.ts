@@ -79,6 +79,25 @@ export interface Batch {
   contractId: ID;
 }
 
+/**
+ * A cycle that has a total chick count from the contractor's planning message
+ * but no per-house allocation yet (ROADMAP §8 Phase 1 — allocation step). Once
+ * the grower confirms an allocation it becomes Placements.
+ */
+export interface PlannedBatch {
+  id: ID;
+  siteId: ID;
+  contractorId: ID;
+  cycleNo: number;
+  breed: Breed;
+  placingDate: ISODate;
+  killDate: ISODate;
+  focPct: number;
+  /** Total birds to place across the site, not yet split per house. */
+  totalPlaced: number;
+  allocated: boolean;
+}
+
 /** Per-house placement: its own placed count, placing date and day-count. */
 export interface Placement {
   id: ID;

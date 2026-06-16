@@ -23,6 +23,7 @@ import type {
   HouseProjection,
   Manifest,
   PastCycle,
+  PlannedBatch,
   Placement,
   Site,
   Status,
@@ -39,8 +40,10 @@ import {
   DAILY_ENTRIES,
   FEED_DELIVERIES,
   MANIFEST,
+  nextHouseId,
   PAST_CYCLES,
   PLACEMENTS,
+  PLANNED_BATCH,
   SEED_STATUS_BY_HOUSE,
   SITE,
   WEIGHT_ENTRIES,
@@ -461,8 +464,9 @@ export async function getPortfolio(today: string = DEMO_TODAY): Promise<Portfoli
 /** Per-grower drill-down: per-house detail with short trend series + track record. */
 export async function getGrowerDetail(): Promise<GrowerDetailData> {
   const rollup = await getSiteRollup();
-  const houses: HouseTrend[] = PLACEMENTS.map((placement): HouseTrend => {
-    const house = SITE.houses.find((h) => h.id === placement.houseId)!;
+  const houses: HouseTrend[] = PLACEMENTS.map((placement): HouseTrend | null => {
+    const house = SITE.houses.find((h) => h.id === placement.houseId);
+    if (!house) return null;
     const entries = DAILY_ENTRIES.filter((e) => e.placementId === placement.id).sort((a, b) => a.day - b.day);
     const latest = entries[entries.length - 1];
     const weights = WEIGHT_ENTRIES.filter((w) => w.placementId === placement.id).sort((a, b) => a.day - b.day);
@@ -480,7 +484,7 @@ export async function getGrowerDetail(): Promise<GrowerDetailData> {
       mortSeries: entries.map((e) => e.mortality),
       cumPctSeries: entries.map((e) => e.cumPct),
     };
-  });
+  }).filter((h): h is HouseTrend => h !== null);
 
   return resolve({
     siteName: SITE.name,
@@ -492,4 +496,104 @@ export async function getGrowerDetail(): Promise<GrowerDetailData> {
     houses,
     pastCycles: PAST_CYCLES,
   });
+}
+
+// ===========================================================================
+// House setup + allocation (grower; ROADMAP §8 Phase 1)
+// ===========================================================================
+
+export interface HouseInput {
+  /** Existing house id, or undefined for a newly added house. */
+  id?: string;
+  name: string;
+  capacity: number;
+}
+
+/**
+ * Persists the site's house list (mock: replaces SITE.houses in module memory).
+ * New rows get a fresh id; capacities are coerced to positive integers. Becomes
+ * a Convex mutation later behind the same signature.
+ */
+export async function saveHouses(inputs: HouseInput[]): Promise<House[]> {
+  const houses: House[] = inputs
+    .filter((h) => h.name.trim() !== "" && Number.isFinite(h.capacity) && h.capacity > 0)
+    .map((h) => ({
+      id: h.id ?? nextHouseId(),
+      siteId: SITE.id,
+      name: h.name.trim(),
+      capacity: Math.round(h.capacity),
+    }));
+  SITE.houses = houses;
+  return resolve(houses);
+}
+
+export function getSiteCapacity(): Promise<number> {
+  return resolve(SITE.houses.reduce((s, h) => s + h.capacity, 0));
+}
+
+// --- Allocation recommendation --------------------------------------------
+
+export interface Allocation {
+  houseId: string;
+  houseName: string;
+  capacity: number;
+  count: number;
+}
+
+export function getPlannedBatch(): Promise<PlannedBatch> {
+  return resolve(PLANNED_BATCH);
+}
+
+/**
+ * Recommends how to split `total` birds across houses: proportional to each
+ * house's capacity (floored), capped at capacity, with the remainder given to
+ * the largest house(s) by descending capacity. Pure and explainable.
+ */
+export function recommendAllocation(total: number, houses: House[] = SITE.houses): Allocation[] {
+  const sumCap = houses.reduce((s, h) => s + h.capacity, 0) || 1;
+  const alloc: Allocation[] = houses.map((h) => ({
+    houseId: h.id,
+    houseName: h.name,
+    capacity: h.capacity,
+    count: Math.min(h.capacity, Math.floor((total * h.capacity) / sumCap)),
+  }));
+  let remainder = total - alloc.reduce((s, a) => s + a.count, 0);
+  // Hand the leftover to the largest house first, cascading if it fills up.
+  const byCapDesc = [...alloc].sort((a, b) => b.capacity - a.capacity);
+  for (const a of byCapDesc) {
+    if (remainder <= 0) break;
+    const room = a.capacity - a.count;
+    const add = Math.min(room, remainder);
+    a.count += add;
+    remainder -= add;
+  }
+  return alloc;
+}
+
+export interface AllocatedHouse {
+  houseId: string;
+  houseName: string;
+  count: number;
+  /** House age on `placingDate` relative to today (0 = placed today). */
+  dayCount: number;
+}
+
+/**
+ * Confirms an allocation for the planned batch (mock: flips `allocated` and
+ * records the split). Returns each house's placed count and resulting day-count.
+ */
+export async function confirmAllocation(
+  allocations: { houseId: string; count: number }[],
+  today: string = DEMO_TODAY,
+): Promise<AllocatedHouse[]> {
+  const dayCount = Math.max(0, daysBetween(PLANNED_BATCH.placingDate, today));
+  PLANNED_BATCH.allocated = true;
+  return resolve(
+    allocations
+      .filter((a) => a.count > 0)
+      .map((a) => {
+        const house = SITE.houses.find((h) => h.id === a.houseId);
+        return { houseId: a.houseId, houseName: house?.name ?? a.houseId, count: a.count, dayCount };
+      }),
+  );
 }

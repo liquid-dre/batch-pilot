@@ -20,6 +20,7 @@ import type {
   FeedDelivery,
   Manifest,
   PastCycle,
+  PlannedBatch,
   Placement,
   Site,
   Status,
@@ -43,15 +44,25 @@ export const SITE: Site = {
   farmCode: "AUMD",
   location: { lat: -31.09, lng: 150.93 }, // near Tamworth, NSW
   contractorIds: [CONTRACTOR.id],
+  // Capacities vary by house so the allocation recommendation (proportional to
+  // capacity, remainder to the largest house) is meaningful. All stay above the
+  // cycle-85 placed counts (~16,150).
   houses: [
-    { id: "h1", siteId: "site_nhunge", name: "House 1", capacity: 16000 },
-    { id: "h2", siteId: "site_nhunge", name: "House 2", capacity: 16000 },
-    { id: "h3", siteId: "site_nhunge", name: "House 3", capacity: 16000 },
-    { id: "h4", siteId: "site_nhunge", name: "House 4", capacity: 16000 },
-    { id: "h5", siteId: "site_nhunge", name: "House 5", capacity: 16000 },
-    { id: "h6", siteId: "site_nhunge", name: "House 6", capacity: 16000 },
+    { id: "h1", siteId: "site_nhunge", name: "House 1", capacity: 18000 },
+    { id: "h2", siteId: "site_nhunge", name: "House 2", capacity: 18000 },
+    { id: "h3", siteId: "site_nhunge", name: "House 3", capacity: 16500 },
+    { id: "h4", siteId: "site_nhunge", name: "House 4", capacity: 16500 },
+    { id: "h5", siteId: "site_nhunge", name: "House 5", capacity: 16500 },
+    { id: "h6", siteId: "site_nhunge", name: "House 6", capacity: 16500 },
   ],
 };
+
+/** Monotonic id source for houses the grower adds in the setup screen. */
+let houseSeq = SITE.houses.length;
+export function nextHouseId(): string {
+  houseSeq += 1;
+  return `h${houseSeq}`;
+}
 
 // ---------------------------------------------------------------------------
 // Contract + batch (cycle 85)
@@ -76,6 +87,25 @@ export const BATCH: Batch = {
   killDate: "2026-06-16",
   focPct: 1,
   contractId: CONTRACT.id,
+};
+
+// ---------------------------------------------------------------------------
+// Planned (next) batch — a total chick count with no per-house allocation yet.
+// Drives the allocation-recommendation flow (mutable: `allocated` flips on
+// confirm). Placing date is "today" in the demo, so confirmed houses are day 0.
+// ---------------------------------------------------------------------------
+
+export const PLANNED_BATCH: PlannedBatch = {
+  id: "batch_aumd_086",
+  siteId: SITE.id,
+  contractorId: CONTRACTOR.id,
+  cycleNo: 86,
+  breed: "Ross 308",
+  placingDate: "2026-06-16",
+  killDate: "2026-07-17",
+  focPct: 1,
+  totalPlaced: 95000,
+  allocated: false,
 };
 
 // ---------------------------------------------------------------------------
