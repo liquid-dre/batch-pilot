@@ -44,6 +44,7 @@ import type {
   HouseSeries,
   HouseTrend,
   PortfolioData,
+  WeightBandData,
 } from "@/lib/view";
 import {
   BATCH,
@@ -62,12 +63,54 @@ import {
   PAST_CYCLES,
   PLACEMENTS,
   PLANNED_BATCH,
-  SEED_STATUS_BY_HOUSE,
   SITE,
   WEIGHT_ENTRIES,
 } from "./mock";
 import { ROSS_308_CURVE, ROSS_308_OVERLAY, ross308At } from "./ross308";
 import { addDays, daysBetween } from "@/lib/format";
+import { DEFAULT_THRESHOLDS, evaluatePlacement, type EngineContext, type MetricStatus, type PlacementMetrics } from "@/lib/engine";
+
+/** Benchmark context the status engine scores against (Ross 308 + overlay). */
+const ENGINE_CTX: EngineContext = { curve: ROSS_308_CURVE, overlay: ROSS_308_OVERLAY };
+
+/** Build the engine's metric inputs for a placement from its latest figures. */
+function metricInputFor(placementId: string): PlacementMetrics | null {
+  const placement = PLACEMENTS.find((p) => p.id === placementId);
+  if (!placement) return null;
+  const daily = DAILY_ENTRIES.filter((e) => e.placementId === placementId).sort((a, b) => a.day - b.day);
+  const latest = daily[daily.length - 1];
+  const weights = WEIGHT_ENTRIES.filter((w) => w.placementId === placementId).sort((a, b) => a.day - b.day);
+  const weight = weights[weights.length - 1];
+
+  let fcr: number | undefined;
+  if (weight) {
+    const cumFeed = daily.filter((e) => e.day <= weight.day).reduce((s, e) => s + e.feedAddedKg, 0);
+    const remaining = (daily.find((e) => e.day === weight.day) ?? latest)?.birdsRemaining ?? placement.placedCount;
+    const liveKg = (weight.avgWeightG / 1000) * remaining;
+    if (liveKg) fcr = Number((cumFeed / liveKg).toFixed(2));
+  }
+
+  return {
+    day: placement.dayCount,
+    weightG: weight?.avgWeightG,
+    weightDay: weight?.day,
+    fcr,
+    cumMortPct: latest?.cumPct,
+    feedAddedPerBirdG: latest && latest.birdsRemaining ? (latest.feedAddedKg * 1000) / latest.birdsRemaining : undefined,
+  };
+}
+
+/** Engine-scored status breakdown for one house (sync core). */
+function houseDiagnostics(houseId: string): { overall: Status; metrics: MetricStatus[] } {
+  const placement = PLACEMENTS.find((p) => p.houseId === houseId);
+  const input = placement ? metricInputFor(placement.id) : null;
+  if (!input) return { overall: { metric: "Status", level: "green", actualVsTarget: "No data yet" }, metrics: [] };
+  return evaluatePlacement(input, ENGINE_CTX);
+}
+
+function houseStatusSync(houseId: string): Status {
+  return houseDiagnostics(houseId).overall;
+}
 
 /** The demo "now" — the day the Nhunge cycle-85 figures were captured against. */
 export const DEMO_TODAY = "2026-06-16";
@@ -160,23 +203,28 @@ export function getBenchmark(): Promise<BenchmarkSet> {
   return resolve(BENCHMARK);
 }
 
-// --- Status (seed; engine arrives in Phase 3) ------------------------------
+// --- Status (rule-based engine vs Ross 308 + overlay; ROADMAP §8 Phase 3) ---
 
 export function getHouseStatus(houseId: string): Promise<Status | undefined> {
-  return resolve(SEED_STATUS_BY_HOUSE[houseId]);
+  return resolve(houseStatusSync(houseId));
 }
 
 /** Every house's current status, in house order. */
 export function getHouseStatuses(): Promise<{ houseId: string; status: Status }[]> {
-  return resolve(SITE.houses.map((h) => ({ houseId: h.id, status: SEED_STATUS_BY_HOUSE[h.id] })).filter((x) => x.status));
+  return resolve(SITE.houses.map((h) => ({ houseId: h.id, status: houseStatusSync(h.id) })));
+}
+
+/** Full per-metric breakdown for a house (weight, mortality, FCR, feed). */
+export function getHouseDiagnostics(houseId: string): Promise<{ overall: Status; metrics: MetricStatus[] }> {
+  return resolve(houseDiagnostics(houseId));
 }
 
 /** Houses needing attention (amber/red), red first — the grower alerts list. */
 export async function getAlerts(): Promise<FlockAlert[]> {
   const order: Record<StatusLevel, number> = { red: 0, amber: 1, green: 2 };
   const alerts = SITE.houses
-    .map((h) => ({ houseId: h.id, houseName: h.name, status: SEED_STATUS_BY_HOUSE[h.id] }))
-    .filter((a) => a.status && a.status.level !== "green");
+    .map((h) => ({ houseId: h.id, houseName: h.name, status: houseStatusSync(h.id) }))
+    .filter((a) => a.status.level !== "green");
   alerts.sort((a, b) => order[a.status.level] - order[b.status.level]);
   return resolve(alerts);
 }
@@ -405,7 +453,7 @@ function houseMetrics(placement: Placement): HouseMetrics | null {
   const latest = entries[entries.length - 1];
   const weights = WEIGHT_ENTRIES.filter((w) => w.placementId === placement.id).sort((a, b) => a.day - b.day);
   const weight = weights[weights.length - 1];
-  const status = SEED_STATUS_BY_HOUSE[house.id];
+  const status = houseStatusSync(house.id);
 
   const placed = placement.placedCount;
   const remaining = latest?.birdsRemaining ?? placed;
@@ -494,7 +542,7 @@ export async function getGrowerDetail(): Promise<GrowerDetailData> {
       houseId: house.id,
       houseName: house.name,
       day: placement.dayCount,
-      status: SEED_STATUS_BY_HOUSE[house.id],
+      status: houseStatusSync(house.id),
       cumPct: latest?.cumPct ?? 0,
       remaining: latest?.birdsRemaining ?? placement.placedCount,
       avgWeightG: weight?.avgWeightG ?? 0,
@@ -1137,4 +1185,34 @@ export async function getGrowerDetailById(siteId: string): Promise<GrowerDetailD
 
 function pctFix(n: number): string {
   return `${n.toFixed(2)}%`;
+}
+
+// --- Hero weight-band chart data -------------------------------------------
+
+/**
+ * Actual avg weight per house plus the Ross objective, for the hero chart with
+ * its shaded green/amber/red bands. Band fractions come from the engine
+ * thresholds so the chart and the status engine stay in lockstep.
+ */
+export async function getWeightBandData(): Promise<WeightBandData> {
+  const maxDay = 35;
+  const houses: WeightBandData["houses"] = PLACEMENTS.map((p) => {
+    const house = SITE.houses.find((h) => h.id === p.houseId);
+    const points = WEIGHT_ENTRIES.filter((w) => w.placementId === p.id)
+      .sort((a, b) => a.day - b.day)
+      .map((w) => ({ day: w.day, weightG: w.avgWeightG }));
+    return { houseId: p.houseId, houseName: house?.name ?? p.houseId, points };
+  });
+  const ross = Array.from({ length: maxDay }, (_, i) => {
+    const day = i + 1;
+    return { day, weightG: ROSS_308_CURVE[day]?.weightG ?? 0 };
+  });
+  return resolve({
+    ross,
+    houses,
+    maxDay,
+    yMax: 2400,
+    greenFrac: DEFAULT_THRESHOLDS.weight.green,
+    amberFrac: DEFAULT_THRESHOLDS.weight.amber,
+  });
 }
