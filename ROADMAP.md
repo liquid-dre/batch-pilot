@@ -221,11 +221,16 @@ Ross weight curve — that under-performance is the hero story, keep it).
 - [ ] Responsive + true mobile pass (grower flow on a phone)
 - [ ] Accessibility pass (AA, focus rings, 48px targets, status never colour-only)
 
+**Shell — public site & app boundary**
+- [x] Marketing landing at `/` (Horizon-blue hero, value props, two-register section, "Get started" / "Log in" CTAs, tasteful motion) + the grower/contractor experience moved under `/app` (role switcher retained) — `components/marketing/Landing.tsx`; `app/app/layout.tsx` owns the `AppFrame`/TopBar so only `/app/*` gets the shell
+
+> **Shell decision (the Clerk seam).** No real auth: the landing CTAs call the `AuthProvider` stub — "Get started" / "Log in" set a demo session (role = grower) and `router.push('/app')`; the secondary "for contractors" link sets the contractor role. `app/app/layout.tsx` is the authenticated boundary: when **Clerk** lands (ROADMAP §9), these stub calls become real sign-in / sign-up and `/app/*` sits behind the auth middleware. Everything still flows through `lib/data/` and `useCurrentUser()`, so no UI changes are needed for the swap.
+
 ---
 
 ## 9. Explicitly deferred (post-MVP) — and the seam each will use
 
-- **Auth → Clerk** — seam: `<AuthProvider>` / `useCurrentUser()`
+- **Auth → Clerk** — seam: `<AuthProvider>` / `useCurrentUser()`; the boundary is `app/app/layout.tsx` and the landing CTAs (`components/marketing/Landing.tsx`) become real sign-in / sign-up
 - **Database + realtime → Convex** — seam: `lib/data/*`
 - **Payments → Stripe** — seam: `usePlan()`
 - **WhatsApp ingestion → Twilio** — 1:1 messaging to a BatchPilot number, tolerant parser + echo-back

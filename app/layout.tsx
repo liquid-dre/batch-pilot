@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans, IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
-import { AppFrame } from "@/components/shell/AppFrame";
 
 /* Plus Jakarta Sans is a variable font — no explicit weights needed.
    The two IBM Plex families are static, so their weights are declared.
@@ -50,9 +49,7 @@ export default function RootLayout({
       className={`${display.variable} ${body.variable} ${mono.variable} h-full`}
     >
       <body className="min-h-full">
-        <Providers>
-          <AppFrame>{children}</AppFrame>
-        </Providers>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

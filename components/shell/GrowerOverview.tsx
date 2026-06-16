@@ -57,7 +57,7 @@ export function GrowerOverview({ data }: { data: DashboardData }) {
                 Mortality, culls and feed per house. We do the cumulative maths for you.
               </p>
             </div>
-            <Button size="lg" block className="sm:w-auto" onClick={() => router.push("/daily")}>
+            <Button size="lg" block className="sm:w-auto" onClick={() => router.push("/app/daily")}>
               Add today&apos;s numbers
             </Button>
           </CardBody>
@@ -86,7 +86,7 @@ export function GrowerOverview({ data }: { data: DashboardData }) {
             tone="warning"
             title={`Feed delivery is ${pct(shortfallPct, 1)} short`}
             action={
-              <Button size="sm" variant="secondary" onClick={() => router.push("/feed")}>
+              <Button size="sm" variant="secondary" onClick={() => router.push("/app/feed")}>
                 Review
               </Button>
             }
@@ -109,7 +109,7 @@ export function GrowerOverview({ data }: { data: DashboardData }) {
               <button
                 type="button"
                 className="block w-full rounded-[var(--radius-card)] p-5 text-left"
-                onClick={() => router.push("/houses")}
+                onClick={() => router.push("/app/houses")}
               >
                 <div className="flex items-center justify-between">
                   <CardEyebrow>

@@ -136,7 +136,7 @@ export function PortfolioDashboard({ data, siteId }: { data: PortfolioData; site
           </THead>
           <TBody>
             {sorted.map((r) => (
-              <TR key={r.houseId} className="cursor-pointer" onClick={() => router.push(`/growers/${siteId}`)}>
+              <TR key={r.houseId} className="cursor-pointer" onClick={() => router.push(`/app/growers/${siteId}`)}>
                 <TD num className="text-muted">{rankByHouse[r.houseId]}</TD>
                 <TD className="font-medium text-ink">{r.houseName}</TD>
                 {COLUMNS.map((col) => (

@@ -43,7 +43,7 @@ export function ContractorOverview({ data }: { data: DashboardData }) {
             <CardEyebrow>{contractor.name} · Portfolio</CardEyebrow>
             <h1 className="mt-2 text-h1">Active flocks</h1>
           </div>
-          <Button variant="secondary" onClick={() => router.push("/portfolio")}>
+          <Button variant="secondary" onClick={() => router.push("/app/portfolio")}>
             Open portfolio
           </Button>
         </div>
@@ -64,7 +64,7 @@ export function ContractorOverview({ data }: { data: DashboardData }) {
           <h2 className="text-h3">{site.name} · Cycle {data.batch.cycleNo}</h2>
           <button
             type="button"
-            onClick={() => router.push(`/growers/${site.id}`)}
+            onClick={() => router.push(`/app/growers/${site.id}`)}
             className="text-label font-medium text-brand-600 hover:text-brand-700"
           >
             Open grower detail →
@@ -89,7 +89,7 @@ export function ContractorOverview({ data }: { data: DashboardData }) {
               <TR
                 key={house.id}
                 className="cursor-pointer"
-                onClick={() => router.push(`/growers/${site.id}`)}
+                onClick={() => router.push(`/app/growers/${site.id}`)}
               >
                 <TD className="font-medium text-ink">{house.name}</TD>
                 <TD num>{latest?.day ?? "—"}</TD>
@@ -114,7 +114,7 @@ export function ContractorOverview({ data }: { data: DashboardData }) {
               <CardEyebrow>Catching schedule</CardEyebrow>
               <button
                 type="button"
-                onClick={() => router.push("/schedule")}
+                onClick={() => router.push("/app/schedule")}
                 className="text-label font-medium text-brand-600 hover:text-brand-700"
               >
                 Manifest →
@@ -141,7 +141,7 @@ export function ContractorOverview({ data }: { data: DashboardData }) {
             tone="info"
             title="Benchmark overlay ready"
             action={
-              <Button size="sm" variant="secondary" onClick={() => router.push("/benchmark")}>
+              <Button size="sm" variant="secondary" onClick={() => router.push("/app/benchmark")}>
                 Open
               </Button>
             }
