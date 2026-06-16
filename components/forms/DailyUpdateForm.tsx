@@ -101,7 +101,7 @@ export function DailyUpdateForm({ data }: { data: DailyFormData }) {
       />
 
       {allSaved ? (
-        <Alert tone="success" title="All houses recorded for today" action={<Button size="sm" variant="secondary" onClick={() => router.push("/houses")}>See status</Button>}>
+        <Alert tone="success" title="All houses recorded for today" action={<Button size="sm" variant="secondary" onClick={() => router.push("/app/houses")}>See status</Button>}>
           Every house has today&apos;s numbers in. Nice work.
         </Alert>
       ) : null}

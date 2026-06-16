@@ -18,7 +18,7 @@ export default async function GrowersPage() {
           title="Your growers"
           intro="Sites supplying this contractor. Open a grower for per-house detail, trends and track record."
         />
-        <Link href={`/growers/${site.id}`} className="block rounded-[var(--radius-card)]">
+        <Link href={`/app/growers/${site.id}`} className="block rounded-[var(--radius-card)]">
           <Card interactive>
             <CardBody className="flex items-center justify-between gap-4 pt-5">
               <div>

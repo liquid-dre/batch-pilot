@@ -20,18 +20,18 @@ interface NavItem {
 
 const NAV: Record<Role, NavItem[]> = {
   grower: [
-    { key: "overview", label: "Overview", href: "/" },
-    { key: "daily", label: "Daily update", href: "/daily" },
-    { key: "houses", label: "Houses", href: "/houses" },
-    { key: "feed", label: "Feed", href: "/feed" },
-    { key: "weights", label: "Weights", href: "/weights" },
+    { key: "overview", label: "Overview", href: "/app" },
+    { key: "daily", label: "Daily update", href: "/app/daily" },
+    { key: "houses", label: "Houses", href: "/app/houses" },
+    { key: "feed", label: "Feed", href: "/app/feed" },
+    { key: "weights", label: "Weights", href: "/app/weights" },
   ],
   contractor: [
-    { key: "overview", label: "Overview", href: "/" },
-    { key: "portfolio", label: "Portfolio", href: "/portfolio" },
-    { key: "growers", label: "Growers", href: "/growers" },
-    { key: "schedule", label: "Schedule", href: "/schedule" },
-    { key: "benchmark", label: "Benchmark", href: "/benchmark" },
+    { key: "overview", label: "Overview", href: "/app" },
+    { key: "portfolio", label: "Portfolio", href: "/app/portfolio" },
+    { key: "growers", label: "Growers", href: "/app/growers" },
+    { key: "schedule", label: "Schedule", href: "/app/schedule" },
+    { key: "benchmark", label: "Benchmark", href: "/app/benchmark" },
   ],
 };
 
@@ -59,7 +59,7 @@ export function TopBar() {
   return (
     <header className="sticky top-0 z-[var(--z-sticky)] border-b border-divider bg-surface/85 backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-        <Link href="/" aria-label="BatchPilot home" className="rounded-[var(--radius-control)]">
+        <Link href="/app" aria-label="BatchPilot home" className="rounded-[var(--radius-control)]">
           <Logo />
         </Link>
         <div className="flex items-center gap-3 sm:gap-4">
@@ -80,7 +80,7 @@ export function TopBar() {
         <ul className="flex items-center gap-1 overflow-x-auto pb-px [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {NAV[role].map((item) => {
             if (item.href) {
-              const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+              const active = item.href === "/app" ? pathname === "/app" : pathname.startsWith(item.href);
               return (
                 <li key={item.key}>
                   <Link
