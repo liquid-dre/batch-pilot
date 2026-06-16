@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import type { DashboardData } from "@/lib/view";
 import { num, pct, grams, kg } from "@/lib/format";
 import { Card, CardBody, CardEyebrow } from "@/components/ui/Card";
@@ -7,7 +8,6 @@ import { StatusPill } from "@/components/ui/StatusPill";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/Table";
-import { useToast } from "@/components/ui/Toast";
 
 function SummaryStat({ label, value }: { label: string; value: string }) {
   return (
@@ -26,7 +26,7 @@ function countdownLabel(days: number): string {
 }
 
 export function ContractorOverview({ data }: { data: DashboardData }) {
-  const { toast } = useToast();
+  const router = useRouter();
   const { site, contractor, rollup, houses, feed, catching } = data;
 
   const delivery = feed[0];
@@ -38,8 +38,15 @@ export function ContractorOverview({ data }: { data: DashboardData }) {
     <div className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6">
       {/* Header + dense summary strip */}
       <section className="animate-rise">
-        <CardEyebrow>{contractor.name} · Portfolio</CardEyebrow>
-        <h1 className="mt-2 text-h1">Active flocks</h1>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <CardEyebrow>{contractor.name} · Portfolio</CardEyebrow>
+            <h1 className="mt-2 text-h1">Active flocks</h1>
+          </div>
+          <Button variant="secondary" onClick={() => router.push("/portfolio")}>
+            Open portfolio
+          </Button>
+        </div>
         <Card className="mt-4">
           <CardBody className="grid grid-cols-2 gap-5 pt-5 sm:grid-cols-3 lg:grid-cols-5">
             <SummaryStat label="Active batches" value="1" />
@@ -55,7 +62,13 @@ export function ContractorOverview({ data }: { data: DashboardData }) {
       <section className="space-y-3">
         <div className="flex items-baseline justify-between">
           <h2 className="text-h3">{site.name} · Cycle {data.batch.cycleNo}</h2>
-          <span className="text-label text-muted">Ranking &amp; drill-down in Phase 2</span>
+          <button
+            type="button"
+            onClick={() => router.push(`/growers/${site.id}`)}
+            className="text-label font-medium text-brand-600 hover:text-brand-700"
+          >
+            Open grower detail →
+          </button>
         </div>
         <Table>
           <THead>
@@ -73,7 +86,11 @@ export function ContractorOverview({ data }: { data: DashboardData }) {
           </THead>
           <TBody>
             {houses.map(({ house, placement, latest, weight, status, vsRossPct }) => (
-              <TR key={house.id}>
+              <TR
+                key={house.id}
+                className="cursor-pointer"
+                onClick={() => router.push(`/growers/${site.id}`)}
+              >
                 <TD className="font-medium text-ink">{house.name}</TD>
                 <TD num>{latest?.day ?? "—"}</TD>
                 <TD num>{num(placement.placedCount)}</TD>
@@ -93,7 +110,16 @@ export function ContractorOverview({ data }: { data: DashboardData }) {
       <section className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardBody className="pt-5">
-            <CardEyebrow>Catching schedule</CardEyebrow>
+            <div className="flex items-center justify-between">
+              <CardEyebrow>Catching schedule</CardEyebrow>
+              <button
+                type="button"
+                onClick={() => router.push("/schedule")}
+                className="text-label font-medium text-brand-600 hover:text-brand-700"
+              >
+                Manifest →
+              </button>
+            </div>
             <ul className="mt-3 divide-y divide-divider">
               {catching.map((c) => (
                 <li key={c.id} className="flex items-center justify-between py-2.5">
@@ -107,21 +133,20 @@ export function ContractorOverview({ data }: { data: DashboardData }) {
 
         <div className="space-y-4">
           {delivery ? (
-            <Alert
-              tone="warning"
-              title={`Feed delivery ${pct(shortfallPct, 1)} under nominal`}
-              action={
-                <Button size="sm" variant="secondary" onClick={() => toast("Feed reconciliation in Phase 2", { tone: "info" })}>
-                  Details
-                </Button>
-              }
-            >
+            <Alert tone="warning" title={`Feed delivery ${pct(shortfallPct, 1)} under nominal`}>
               {delivery.feedType}: {kg(nominalKg)} expected vs {kg(delivery.netWeightKg)} weighed ({kg(shortfallKg)} short).
             </Alert>
           ) : null}
-          <Alert tone="info" title="Benchmark overlay ready">
-            Ross 308 as-hatched curve plus the contractor band is wired through the data seam. The
-            comparison chart arrives in Phase 2.
+          <Alert
+            tone="info"
+            title="Benchmark overlay ready"
+            action={
+              <Button size="sm" variant="secondary" onClick={() => router.push("/benchmark")}>
+                Open
+              </Button>
+            }
+          >
+            Ross 308 as-hatched curve plus the contractor band, with every house plotted against the objective.
           </Alert>
         </div>
       </section>

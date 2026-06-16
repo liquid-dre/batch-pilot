@@ -28,10 +28,10 @@ const NAV: Record<Role, NavItem[]> = {
   ],
   contractor: [
     { key: "overview", label: "Overview", href: "/" },
-    { key: "portfolio", label: "Portfolio", phase: 2 },
-    { key: "growers", label: "Growers", phase: 2 },
-    { key: "schedule", label: "Schedule", phase: 2 },
-    { key: "benchmark", label: "Benchmark", phase: 2 },
+    { key: "portfolio", label: "Portfolio", href: "/portfolio" },
+    { key: "growers", label: "Growers", href: "/growers" },
+    { key: "schedule", label: "Schedule", href: "/schedule" },
+    { key: "benchmark", label: "Benchmark", href: "/benchmark" },
   ],
 };
 
@@ -80,7 +80,7 @@ export function TopBar() {
         <ul className="flex items-center gap-1 overflow-x-auto pb-px [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {NAV[role].map((item) => {
             if (item.href) {
-              const active = pathname === item.href;
+              const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
               return (
                 <li key={item.key}>
                   <Link

@@ -18,6 +18,8 @@ import type {
   Contractor,
   DailyEntry,
   FeedDelivery,
+  Manifest,
+  PastCycle,
   Placement,
   Site,
   Status,
@@ -37,9 +39,9 @@ export const CONTRACTOR: Contractor = {
 
 export const SITE: Site = {
   id: "site_nhunge",
-  name: "Nhunge",
-  farmCode: "ZBNH",
-  location: { lat: -17.78, lng: 31.05 },
+  name: "Murray Downs",
+  farmCode: "AUMD",
+  location: { lat: -31.09, lng: 150.93 }, // near Tamworth, NSW
   contractorIds: [CONTRACTOR.id],
   houses: [
     { id: "h1", siteId: "site_nhunge", name: "House 1", capacity: 16000 },
@@ -211,6 +213,39 @@ export const CATCHING_EVENTS: CatchingEvent[] = [
 ];
 
 // ---------------------------------------------------------------------------
+// Collection manifest (BRD §7.6) — authorised vehicles + drivers, held count.
+// ---------------------------------------------------------------------------
+
+export const MANIFEST: Manifest = {
+  batchId: BATCH.id,
+  heldCount: 47248,
+  vehicles: [
+    { plate: "588 AHE 1586", driver: "Mukudzeyi" },
+    { plate: "588 ACZ 4465", driver: "Joel" },
+    { plate: "588 ACZ 4462", driver: "Francis" },
+    { plate: "558 AHE 1585", driver: "Bazil" },
+    { plate: "539 AFJ 9166", driver: "Life" },
+    { plate: "519 AEZ 8839", driver: "Lloyd" },
+    { plate: "594 AAS 2375", driver: "Gilbert" },
+    { plate: "588 AGJ 0828", driver: "Banda" },
+    { plate: "600 AEG 4578", driver: "Mkanjari" },
+    { plate: "270 ABP 7648", driver: "Moses" },
+    { plate: "474 AGY 9861", driver: "Tanatswa" },
+  ],
+};
+
+// ---------------------------------------------------------------------------
+// Track record — closed cycles on this site (seed for the contractor view).
+// Illustrative prior cycles; real history accrues as cycles complete.
+// ---------------------------------------------------------------------------
+
+export const PAST_CYCLES: PastCycle[] = [
+  { cycleNo: 84, killDate: "2026-04-28", finalAvgWeightG: 2210, mortalityPct: 4.1, epef: 352 },
+  { cycleNo: 83, killDate: "2026-03-10", finalAvgWeightG: 2305, mortalityPct: 3.4, epef: 389 },
+  { cycleNo: 82, killDate: "2026-01-22", finalAvgWeightG: 2160, mortalityPct: 4.8, epef: 331 },
+];
+
+// ---------------------------------------------------------------------------
 // Benchmark set — Ross 308 as-hatched curve + contractor overlay.
 // ---------------------------------------------------------------------------
 
@@ -229,15 +264,15 @@ export const BENCHMARK: BenchmarkSet = {
 
 export const GROWER_USER: User = {
   id: "u_grower",
-  name: "Tendai Moyo",
+  name: "John",
   role: "grower",
-  org: "Nhunge",
+  org: "Murray Downs",
   siteId: SITE.id,
 };
 
 export const CONTRACTOR_USER: User = {
   id: "u_contractor",
-  name: "Rumbi Chikwava",
+  name: "Andy",
   role: "contractor",
   org: "Irvine's",
   contractorId: CONTRACTOR.id,
