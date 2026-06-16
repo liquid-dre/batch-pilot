@@ -338,11 +338,39 @@ export const MANIFEST: Manifest = {
 // Illustrative prior cycles; real history accrues as cycles complete.
 // ---------------------------------------------------------------------------
 
-export const PAST_CYCLES: PastCycle[] = [
-  { cycleNo: 84, killDate: "2026-04-28", finalAvgWeightG: 2210, mortalityPct: 4.1, epef: 352 },
-  { cycleNo: 83, killDate: "2026-03-10", finalAvgWeightG: 2305, mortalityPct: 3.4, epef: 389 },
-  { cycleNo: 82, killDate: "2026-01-22", finalAvgWeightG: 2160, mortalityPct: 4.8, epef: 331 },
+/**
+ * Closed batches on this site, the single source for both the contractor track
+ * record (`PAST_CYCLES`, below) and the grower batch-comparison view. Each is a
+ * realistic result the comparison's generator draws a day-of-cycle curve toward:
+ * cycle 82 was a strong, short grow-out; 85 (current) is the under-Ross laggard.
+ */
+export interface HistoricalBatchSeed {
+  cycleNo: number;
+  placingDate: string;
+  killDate: string;
+  /** Grow-out length in days. */
+  finalDay: number;
+  finalCumMortPct: number;
+  finalWeightG: number;
+  finalFcr: number;
+  epef: number;
+}
+
+export const HISTORICAL_BATCHES: HistoricalBatchSeed[] = [
+  { cycleNo: 84, placingDate: "2026-03-24", killDate: "2026-04-28", finalDay: 35, finalCumMortPct: 4.1, finalWeightG: 2210, finalFcr: 1.62, epef: 352 },
+  { cycleNo: 83, placingDate: "2026-02-03", killDate: "2026-03-10", finalDay: 35, finalCumMortPct: 3.4, finalWeightG: 2305, finalFcr: 1.55, epef: 389 },
+  { cycleNo: 82, placingDate: "2025-12-20", killDate: "2026-01-22", finalDay: 33, finalCumMortPct: 4.8, finalWeightG: 2160, finalFcr: 1.66, epef: 331 },
+  { cycleNo: 81, placingDate: "2025-10-25", killDate: "2025-12-02", finalDay: 38, finalCumMortPct: 3.9, finalWeightG: 2480, finalFcr: 1.6, epef: 365 },
 ];
+
+// Contractor track-record rows are derived from the historical seed (one source).
+export const PAST_CYCLES: PastCycle[] = HISTORICAL_BATCHES.map((b) => ({
+  cycleNo: b.cycleNo,
+  killDate: b.killDate,
+  finalAvgWeightG: b.finalWeightG,
+  mortalityPct: b.finalCumMortPct,
+  epef: b.epef,
+}));
 
 // ---------------------------------------------------------------------------
 // Benchmark set — Ross 308 as-hatched curve + contractor overlay.
