@@ -27,6 +27,26 @@ export interface HouseView {
   vsRossPct?: number;
 }
 
+/** Lean per-house context the daily-update form needs (keeps the client bundle small). */
+export interface FormHouse {
+  id: string;
+  name: string;
+  placedCount: number;
+  /** The day this entry records (latest recorded day + 1). */
+  nextDay: number;
+  /** Cumulative mortality before today (to add today's losses onto). */
+  priorCumMort: number;
+  /** Yesterday's feed, used as the stepper's starting value. */
+  lastFeedKg: number;
+}
+
+export interface DailyFormData {
+  houses: FormHouse[];
+  sitePlaced: number;
+  siteCumMort: number;
+  today: string;
+}
+
 export interface DashboardData {
   site: Site;
   contractor: Contractor;
