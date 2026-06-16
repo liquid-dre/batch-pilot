@@ -1,12 +1,12 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import type { DashboardData } from "@/lib/view";
 import { num, pct, grams, kg } from "@/lib/format";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardEyebrow } from "@/components/ui/Card";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { Alert } from "@/components/ui/Alert";
-import { useToast } from "@/components/ui/Toast";
 
 function countdownLabel(days: number): string {
   if (days > 1) return `Collection in ${days} days`;
@@ -26,7 +26,7 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
 }
 
 export function GrowerOverview({ data }: { data: DashboardData }) {
-  const { toast } = useToast();
+  const router = useRouter();
   const { site, batch, rollup, houses, feed } = data;
 
   const delivery = feed[0];
@@ -54,17 +54,7 @@ export function GrowerOverview({ data }: { data: DashboardData }) {
                 Mortality, culls and feed per house. We do the cumulative maths for you.
               </p>
             </div>
-            <Button
-              size="lg"
-              block
-              className="sm:w-auto"
-              onClick={() =>
-                toast("Daily update opens in Phase 1", {
-                  tone: "info",
-                  description: "The per-house form with echo-back confirmation is next.",
-                })
-              }
-            >
+            <Button size="lg" block className="sm:w-auto" onClick={() => router.push("/daily")}>
               Add today&apos;s numbers
             </Button>
           </CardBody>
@@ -93,11 +83,7 @@ export function GrowerOverview({ data }: { data: DashboardData }) {
             tone="warning"
             title={`Feed delivery is ${pct(shortfallPct, 1)} short`}
             action={
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => toast("Feed log opens in Phase 1", { tone: "info" })}
-              >
+              <Button size="sm" variant="secondary" onClick={() => router.push("/feed")}>
                 Review
               </Button>
             }
@@ -120,7 +106,7 @@ export function GrowerOverview({ data }: { data: DashboardData }) {
               <button
                 type="button"
                 className="block w-full rounded-[var(--radius-card)] p-5 text-left"
-                onClick={() => toast(`${house.name} detail opens in Phase 1`, { tone: "info" })}
+                onClick={() => router.push("/houses")}
               >
                 <div className="flex items-center justify-between">
                   <CardEyebrow>

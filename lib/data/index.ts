@@ -10,6 +10,7 @@
  * `await` them directly; client components call them inside effects/actions.
  */
 import type {
+  BatchProjection,
   BenchmarkSet,
   Batch,
   CatchingEvent,
@@ -17,10 +18,13 @@ import type {
   Contractor,
   DailyEntry,
   FeedDelivery,
+  FlockAlert,
   House,
+  HouseProjection,
   Placement,
   Site,
   Status,
+  StatusLevel,
   WeightEntry,
 } from "@/lib/types";
 import {
@@ -36,6 +40,11 @@ import {
   SITE,
   WEIGHT_ENTRIES,
 } from "./mock";
+import { ross308At } from "./ross308";
+import { daysBetween } from "@/lib/format";
+
+/** The demo "now" — the day the Nhunge cycle-85 figures were captured against. */
+export const DEMO_TODAY = "2026-06-16";
 
 /** Local async wrapper — one place to add latency/loading simulation later. */
 function resolve<T>(value: T): Promise<T> {
@@ -131,6 +140,82 @@ export function getHouseStatus(houseId: string): Promise<Status | undefined> {
   return resolve(SEED_STATUS_BY_HOUSE[houseId]);
 }
 
+/** Every house's current status, in house order. */
+export function getHouseStatuses(): Promise<{ houseId: string; status: Status }[]> {
+  return resolve(SITE.houses.map((h) => ({ houseId: h.id, status: SEED_STATUS_BY_HOUSE[h.id] })).filter((x) => x.status));
+}
+
+/** Houses needing attention (amber/red), red first — the grower alerts list. */
+export async function getAlerts(): Promise<FlockAlert[]> {
+  const order: Record<StatusLevel, number> = { red: 0, amber: 1, green: 2 };
+  const alerts = SITE.houses
+    .map((h) => ({ houseId: h.id, houseName: h.name, status: SEED_STATUS_BY_HOUSE[h.id] }))
+    .filter((a) => a.status && a.status.level !== "green");
+  alerts.sort((a, b) => order[a.status.level] - order[b.status.level]);
+  return resolve(alerts);
+}
+
+// --- Projection (formula-based; ROADMAP §9 — ML deferred) ------------------
+
+/**
+ * Projects each house's weight to the contractor kill date from its latest
+ * weigh-in and daily gain, compared to the Ross 308 objective at that age.
+ * Deliberately simple and explainable: current weight + dailyGain × days left.
+ */
+export async function getProjection(today: string = DEMO_TODAY): Promise<BatchProjection> {
+  const levelFor = (pct: number): StatusLevel => (pct >= 98 ? "green" : pct >= 90 ? "amber" : "red");
+
+  const houses: HouseProjection[] = [];
+  for (const placement of PLACEMENTS) {
+    const house = SITE.houses.find((h) => h.id === placement.houseId);
+    const weights = WEIGHT_ENTRIES.filter((w) => w.placementId === placement.id).sort((a, b) => a.day - b.day);
+    const weight = weights[weights.length - 1];
+    if (!house || !weight) continue;
+    const killDay = daysBetween(placement.placingDate, BATCH.killDate);
+    const daysLeft = Math.max(0, killDay - weight.day);
+    const projectedWeightG = Math.round(weight.avgWeightG + weight.adgG * daysLeft);
+    const targetWeightG = ross308At(killDay).weightG;
+    const pctOfTarget = Math.round((projectedWeightG / targetWeightG) * 100);
+    houses.push({
+      houseId: house.id,
+      houseName: house.name,
+      weightDay: weight.day,
+      currentWeightG: weight.avgWeightG,
+      dailyGainG: weight.adgG,
+      killDay,
+      projectedWeightG,
+      targetWeightG,
+      pctOfTarget,
+      level: levelFor(pctOfTarget),
+    });
+  }
+
+  const projectedAvgWeightG = houses.length
+    ? Math.round(houses.reduce((s, h) => s + h.projectedWeightG, 0) / houses.length)
+    : 0;
+  const targetAvgWeightG = houses.length
+    ? Math.round(houses.reduce((s, h) => s + h.targetWeightG, 0) / houses.length)
+    : 0;
+  const pctOfTarget = targetAvgWeightG ? Math.round((projectedAvgWeightG / targetAvgWeightG) * 100) : 0;
+  const level = levelFor(pctOfTarget);
+  const under = 100 - pctOfTarget;
+  const verdict =
+    level === "green"
+      ? "On track to meet the target weight by the kill date."
+      : `Projected about ${under}% under target weight by the kill date. Lift feed intake to close the gap.`;
+
+  return resolve({
+    killDate: BATCH.killDate,
+    daysToKill: daysBetween(today, BATCH.killDate),
+    projectedAvgWeightG,
+    targetAvgWeightG,
+    pctOfTarget,
+    level,
+    verdict,
+    houses,
+  });
+}
+
 // --- Rollups ---------------------------------------------------------------
 
 export interface SiteRollup {
@@ -199,5 +284,71 @@ export async function submitDailyUpdate(input: DailyUpdateInput): Promise<DailyE
     cumMort,
     cumPct,
     birdsRemaining,
+  });
+}
+
+export interface FeedDeliveryInput {
+  date: string;
+  feedType: string;
+  bagSizeKg: number;
+  bagCount: number;
+  netWeightKg: number;
+}
+
+export interface FeedReconciliation {
+  nominalKg: number;
+  netWeightKg: number;
+  diffKg: number;
+  diffPct: number;
+  /** True when the weighed net differs from nominal beyond tolerance. */
+  flagged: boolean;
+}
+
+/** Reconciles a feed delivery (nominal bags × size vs weighed net). Not persisted yet. */
+export async function submitFeedDelivery(input: FeedDeliveryInput): Promise<FeedReconciliation> {
+  const nominalKg = input.bagSizeKg * input.bagCount;
+  const diffKg = nominalKg - input.netWeightKg;
+  const diffPct = nominalKg ? Number(((diffKg / nominalKg) * 100).toFixed(1)) : 0;
+  return resolve({
+    nominalKg,
+    netWeightKg: input.netWeightKg,
+    diffKg,
+    diffPct,
+    flagged: Math.abs(diffPct) >= 1,
+  });
+}
+
+export interface WeightsInput {
+  houseId: string;
+  day: number;
+  avgWeightG: number;
+  adgG: number;
+  growthRatio: number;
+  uniformityPct: number;
+}
+
+export interface WeightsResult {
+  entry: WeightEntry;
+  targetWeightG: number;
+  pctOfTarget: number;
+}
+
+/** Records a weigh-in and compares it to the Ross 308 objective for the day. Not persisted yet. */
+export async function submitWeights(input: WeightsInput): Promise<WeightsResult> {
+  const placement = PLACEMENTS.find((p) => p.houseId === input.houseId);
+  const targetWeightG = ross308At(input.day).weightG;
+  const pctOfTarget = targetWeightG ? Math.round((input.avgWeightG / targetWeightG) * 100) : 0;
+  return resolve({
+    entry: {
+      id: `${placement?.id ?? input.houseId}-w${input.day}`,
+      placementId: placement?.id ?? input.houseId,
+      day: input.day,
+      avgWeightG: input.avgWeightG,
+      adgG: input.adgG,
+      growthRatio: input.growthRatio,
+      uniformityPct: input.uniformityPct,
+    },
+    targetWeightG,
+    pctOfTarget,
   });
 }

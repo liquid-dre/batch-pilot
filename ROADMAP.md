@@ -190,13 +190,15 @@ Ross weight curve — that under-performance is the hero story, keep it).
 > **Phase 0 decisions.** (1) **Fonts own their CSS vars.** `next/font` self-hosts the three families and assigns `--font-display` / `--font-body` / `--font-mono`; `globals.css` references those vars rather than the literal family names shown illustratively in §6, so there are no Google network requests and no layout shift. (2) **Token→Tailwind bridge.** `@theme inline` maps raw/neutral/status tokens to utilities (`bg-surface`, `text-ink`, `text-brand-700`, `shadow-card`…). The §6 semantic aliases (`--color-primary`, `--color-bg`, `--color-text`) stay `:root`-only and are consumed via `var()`; `surface`/`border` are deliberately *not* re-aliased there to avoid colliding with the raw utility tokens. (3) **Server-fetched data.** The page is a Server Component that `await`s the `lib/data/` seam and passes a typed view-model (`lib/view.ts`) to the client shell — the exact shape the Convex swap will keep. (4) **Phase-0 home is a role-aware overview** that exercises every primitive on real seam data; the dedicated feature screens it links to are stubbed to a toast and built in Phases 1–2.
 
 **Phase 1 — Grower experience**
-- [ ] Daily update form (per house: mortality, culls, feed added kg, optional temp) → auto-computes
-      cull&mort, cum mort, cum %, birds remaining, site average; **echo-back confirmation** before save
-- [ ] Feed delivery form (type, bag size, bag count, weighed net) + nominal-vs-net reconciliation flag
-- [ ] Weights form (avg g, ADG, growth ratio, uniformity)
-- [ ] House status cards (green/amber/red, with icon+word+shape) + site rollup
-- [ ] Projection card: countdown + verdict vs the contractor **kill date**
-- [ ] Alerts list with cause & fix
+- [x] Daily update form (per house: mortality, culls, feed added kg, optional temp) → auto-computes
+      cull&mort, cum mort, cum %, birds remaining, site average; **echo-back confirmation** before save — `/daily` (`components/forms/DailyUpdateForm.tsx`); house-by-house round with saved chips; echo-back recomputes via `submitDailyUpdate` seam + live site average
+- [x] Feed delivery form (type, bag size, bag count, weighed net) + nominal-vs-net reconciliation flag — `/feed` (`FeedDeliveryForm.tsx`); live reconciliation via `submitFeedDelivery`, flags ≥1% off, recent-deliveries list
+- [x] Weights form (avg g, ADG, growth ratio, uniformity) — `/weights` (`WeightsForm.tsx`); live vs-Ross-target comparison + StatusPill via `submitWeights`
+- [x] House status cards (green/amber/red, with icon+word+shape) + site rollup — `/houses` (`components/flock/HouseStatusCard.tsx` + `SiteRollupCard.tsx`)
+- [x] Projection card: countdown + verdict vs the contractor **kill date** — `ProjectionCard.tsx`; `getProjection()` formula = current weight + dailyGain × days-left vs Ross objective at kill day
+- [x] Alerts list with cause & fix — `AlertsList.tsx`; `getAlerts()` returns amber/red houses (red first) with plain-language cause + fix
+
+> **Phase 1 decisions.** (1) **Persistent shell.** TopBar moved into the root layout via `AppFrame`; grower nav items are real `next/link` routes (`/daily`, `/houses`, `/feed`, `/weights`), contractor items stay Phase-2 stubs. (2) **Grower routes are role-gated** by the `GrowerOnly` client guard (a calm "switch to Grower" prompt for the contractor role) — Clerk will replace this with session-based access. (3) **Stepper upgraded** with press-and-hold acceleration + full keyboard (spinbutton), so large values (feed kg) take seconds not dozens of taps, honouring the "stepper not keyboard" rule. (4) **Forms call the `lib/data/` write-stubs** (`submitDailyUpdate` / `submitFeedDelivery` / `submitWeights`) which compute derived figures and return them for echo-back/feedback but do **not** persist yet — Phase-later wires Convex mutations behind the same signatures. (5) **Projections are formula-based and explainable** (ML deferred, §9); the rigorous configurable status engine is still Phase 3 — Phase 1 reuses the seeded statuses for cards/alerts.
 
 **Phase 2 — Contractor experience**
 - [ ] Portfolio dashboard: all active batches, status, projected-ready vs kill date, ranking (EPEF)

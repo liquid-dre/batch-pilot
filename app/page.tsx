@@ -10,14 +10,12 @@ import {
   getPlacementForHouse,
   getSite,
   getSiteRollup,
+  DEMO_TODAY,
 } from "@/lib/data";
 import { ross308At } from "@/lib/data/ross308";
 import { daysBetween } from "@/lib/format";
 import type { DashboardData, HouseView } from "@/lib/view";
 import { Dashboard } from "@/components/shell/Dashboard";
-
-/** The demo "now" — the day the Nhunge cycle-85 figures were captured against. */
-const TODAY = "2026-06-16";
 
 export default async function Page() {
   // Assemble everything through the data seam (these become Convex queries).
@@ -54,7 +52,7 @@ export default async function Page() {
     houses: houseViews,
     feed,
     catching,
-    killCountdownDays: daysBetween(TODAY, batch.killDate),
+    killCountdownDays: daysBetween(DEMO_TODAY, batch.killDate),
   };
 
   return <Dashboard data={data} />;

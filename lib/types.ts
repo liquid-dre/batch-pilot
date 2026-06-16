@@ -198,6 +198,47 @@ export interface Status {
   fix?: string;
 }
 
+/** A house whose status needs attention — the grower alerts list (cause & fix). */
+export interface FlockAlert {
+  houseId: ID;
+  houseName: string;
+  status: Status;
+}
+
+// ---------------------------------------------------------------------------
+// Projections (formula-based & explainable; ML deferred — ROADMAP §9)
+// ---------------------------------------------------------------------------
+
+export interface HouseProjection {
+  houseId: ID;
+  houseName: string;
+  /** Day of the latest weigh-in. */
+  weightDay: number;
+  currentWeightG: number;
+  /** Daily gain used to project forward (g/day). */
+  dailyGainG: number;
+  /** House age on the kill date. */
+  killDay: number;
+  projectedWeightG: number;
+  /** Ross 308 objective weight at the kill day (the target to beat). */
+  targetWeightG: number;
+  pctOfTarget: number;
+  level: StatusLevel;
+}
+
+export interface BatchProjection {
+  killDate: ISODate;
+  /** Whole days from "today" to the kill date (0 = today). */
+  daysToKill: number;
+  projectedAvgWeightG: number;
+  targetAvgWeightG: number;
+  pctOfTarget: number;
+  level: StatusLevel;
+  /** Plain-language verdict for the grower. */
+  verdict: string;
+  houses: HouseProjection[];
+}
+
 /** Billing stub → Stripe later (ROADMAP §5, §9). */
 export type PlanTier = "free" | "pro" | "contractor";
 
