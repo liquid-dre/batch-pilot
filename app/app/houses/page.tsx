@@ -5,6 +5,7 @@ import {
   getLatestDailyEntry,
   getLatestWeight,
   getPlacementForHouse,
+  getPlannedBatch,
   getProjection,
   getSiteRollup,
 } from "@/lib/data";
@@ -14,11 +15,12 @@ import { GrowerOnly } from "@/components/shell/GrowerOnly";
 import { FlockStatus } from "@/components/flock/FlockStatus";
 
 export default async function HousesPage() {
-  const [houses, rollup, projection, alerts] = await Promise.all([
+  const [houses, rollup, projection, alerts, plannedBatch] = await Promise.all([
     getHouses(),
     getSiteRollup(),
     getProjection(),
     getAlerts(),
+    getPlannedBatch(),
   ]);
 
   const houseViews: HouseView[] = await Promise.all(
@@ -38,7 +40,7 @@ export default async function HousesPage() {
 
   return (
     <GrowerOnly>
-      <FlockStatus rollup={rollup} projection={projection} alerts={alerts} houses={houseViews} />
+      <FlockStatus rollup={rollup} projection={projection} alerts={alerts} houses={houseViews} plannedBatch={plannedBatch} />
     </GrowerOnly>
   );
 }
