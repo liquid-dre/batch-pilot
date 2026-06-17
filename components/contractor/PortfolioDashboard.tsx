@@ -9,6 +9,7 @@ import { StatusPill } from "@/components/ui/StatusPill";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/Table";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { cn } from "@/lib/cn";
+import { rowActivation } from "@/lib/a11y";
 
 type SortKey = "epef" | "day" | "remaining" | "livabilityPct" | "cumPct" | "avgWeightG" | "vsRossPct" | "fcr";
 
@@ -136,7 +137,7 @@ export function PortfolioDashboard({ data, siteId }: { data: PortfolioData; site
           </THead>
           <TBody>
             {sorted.map((r) => (
-              <TR key={r.houseId} className="cursor-pointer" onClick={() => router.push(`/app/growers/${siteId}`)}>
+              <TR key={r.houseId} className="cursor-pointer" {...rowActivation(() => router.push(`/app/growers/${siteId}`))}>
                 <TD num className="text-muted">{rankByHouse[r.houseId]}</TD>
                 <TD className="font-medium text-ink">{r.houseName}</TD>
                 {COLUMNS.map((col) => (

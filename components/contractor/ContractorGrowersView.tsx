@@ -9,6 +9,7 @@ import { StatusPill } from "@/components/ui/StatusPill";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/Table";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { cn } from "@/lib/cn";
+import { rowActivation } from "@/lib/a11y";
 import { CompareChart, type CompareSeries } from "@/components/compare/CompareChart";
 
 type MetricKey = "epef" | "fcr" | "cumMortPct" | "vsRossPct" | "readyVsKillDays";
@@ -138,7 +139,7 @@ export function ContractorGrowersView({ data }: { data: ContractorGrowers }) {
           </THead>
           <TBody>
             {ranked.map((g, i) => (
-              <TR key={g.siteId} className="cursor-pointer" onClick={() => router.push(`/app/growers/${g.siteId}`)}>
+              <TR key={g.siteId} className="cursor-pointer" {...rowActivation(() => router.push(`/app/growers/${g.siteId}`))}>
                 <TD num className="text-muted">{i + 1}</TD>
                 <TD className="font-medium text-ink">
                   <span className="flex items-center gap-2">

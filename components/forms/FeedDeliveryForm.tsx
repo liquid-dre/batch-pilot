@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardBody } from "@/components/ui/Card";
 import { Stepper } from "@/components/ui/Stepper";
 import { Alert } from "@/components/ui/Alert";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { cn } from "@/lib/cn";
@@ -126,9 +127,11 @@ export function FeedDeliveryForm({ deliveries, today }: { deliveries: FeedDelive
         </CardBody>
       </Card>
 
-      {log.length ? (
-        <section className="space-y-3">
-          <h2 className="text-h3">Recent deliveries</h2>
+      <section className="space-y-3">
+        <h2 className="text-h3">Recent deliveries</h2>
+        {log.length === 0 ? (
+          <EmptyState title="No deliveries logged yet" body="Weigh the next load on arrival and save it here to track feed against intake." />
+        ) : (
           <div className="space-y-2">
             {log.map((d) => {
               const nom = d.bagSizeKg * d.bagCount;
@@ -153,8 +156,8 @@ export function FeedDeliveryForm({ deliveries, today }: { deliveries: FeedDelive
               );
             })}
           </div>
-        </section>
-      ) : null}
+        )}
+      </section>
     </div>
   );
 }

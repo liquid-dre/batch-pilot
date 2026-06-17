@@ -221,11 +221,36 @@
   .animate-float {
     animation: bp-float 8s cubic-bezier(0.45, 0, 0.55, 1) infinite;
   }
+  /* Route-change entrance: content rises a touch as the new page settles. */
+  .animate-page {
+    animation: bp-rise var(--dur) var(--ease-out) both;
+  }
+  /* Subtle status-pill entrance — draws the eye to status on load. */
+  .animate-pop {
+    animation: bp-pop var(--dur-fast) var(--ease-out) both;
+  }
+  /* Skeleton shimmer for loading states. */
+  .skeleton {
+    background: linear-gradient(90deg, var(--divider) 25%, var(--paper) 38%, var(--divider) 55%);
+    background-size: 400% 100%;
+    animation: bp-shimmer 1.4s ease-in-out infinite;
+    border-radius: var(--radius-control);
+  }
 }
 
 @keyframes bp-float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-12px); }
+}
+
+@keyframes bp-pop {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes bp-shimmer {
+  from { background-position: 100% 0; }
+  to { background-position: 0 0; }
 }
 
 @keyframes bp-rise {
