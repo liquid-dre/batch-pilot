@@ -68,6 +68,7 @@ import {
 } from "./mock";
 import { ROSS_308_CURVE, ROSS_308_OVERLAY, ross308At } from "./ross308";
 import { addDays, daysBetween } from "@/lib/format";
+import { dailyTotals } from "@/lib/calc";
 import { DEFAULT_THRESHOLDS, evaluatePlacement, type EngineContext, type MetricStatus, type PlacementMetrics } from "@/lib/engine";
 
 /** Benchmark context the status engine scores against (Ross 308 + overlay). */
@@ -341,10 +342,12 @@ export async function submitDailyUpdate(input: DailyUpdateInput): Promise<DailyE
     ? DAILY_ENTRIES.filter((e) => e.placementId === placement.id).sort((a, b) => a.day - b.day).slice(-1)[0]
     : undefined;
   const placed = placement?.placedCount ?? 0;
-  const cullAndMort = input.mortality + input.culls;
-  const cumMort = (prior?.cumMort ?? 0) + cullAndMort;
-  const birdsRemaining = placed - cumMort;
-  const cumPct = placed ? Number(((cumMort / placed) * 100).toFixed(2)) : 0;
+  const { cullAndMort, cumMort, birdsRemaining, cumPct } = dailyTotals({
+    placed,
+    priorCumMort: prior?.cumMort ?? 0,
+    mortality: input.mortality,
+    culls: input.culls,
+  });
   return resolve({
     id: `${placement?.id ?? input.houseId}-d${input.day}`,
     placementId: placement?.id ?? input.houseId,
