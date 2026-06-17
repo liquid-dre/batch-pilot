@@ -6,6 +6,7 @@ import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/Table";
 import { EstTag, EstFootnote } from "@/components/ui/Estimated";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { SiteRollupCard } from "@/components/flock/SiteRollupCard";
+import { GrowerTrends } from "./GrowerTrends";
 import { Sparkline } from "./Sparkline";
 
 function Metric({ label, value, sub }: { label: string; value: string; sub?: string }) {
@@ -59,6 +60,12 @@ export function GrowerDetail({ data }: { data: GrowerDetailData }) {
             </Card>
           ))}
         </div>
+      </section>
+
+      {/* Per-day trends across the houses (same depth for every grower) */}
+      <section className="space-y-3">
+        <h2 className="text-h2">Trends</h2>
+        <GrowerTrends houses={data.houses} />
       </section>
 
       {/* Track record — closed cycles on this site */}
