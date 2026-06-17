@@ -1,6 +1,7 @@
 import type { MetricStatus } from "@/lib/engine";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/Table";
 import { StatusPill } from "@/components/ui/StatusPill";
+import { EstTag, ESTIMATED_NOTE } from "@/components/ui/Estimated";
 
 export interface HouseEfficiency {
   houseId: string;
@@ -18,7 +19,7 @@ export function EfficiencyPanel({ houses }: { houses: HouseEfficiency[] }) {
         <THead>
           <TR className="bg-transparent hover:bg-transparent">
             <TH>House</TH>
-            <TH>FCR</TH>
+            <TH>FCR<EstTag /></TH>
             <TH>vs target</TH>
             <TH>Feed added vs consumed</TH>
           </TR>
@@ -52,6 +53,7 @@ export function EfficiencyPanel({ houses }: { houses: HouseEfficiency[] }) {
           A &ldquo;bin refill&rdquo; flag means feed <em>added</em> ran well above expected intake that day — log it as a delivery so FCR stays accurate.
         </p>
       ) : null}
+      <p className="text-label text-muted">{ESTIMATED_NOTE}</p>
     </div>
   );
 }

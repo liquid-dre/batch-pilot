@@ -39,6 +39,8 @@ export {
   Check as IconCheck,
   ArrowRight as IconArrowRight,
   Inbox01 as IconEmpty,
+  Eye as IconView,
+  SwitchHorizontal01 as IconSwitch,
 } from "@untitledui/icons";
 
 import type { FC, SVGProps } from "react";

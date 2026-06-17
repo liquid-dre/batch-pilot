@@ -3,7 +3,8 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { House, PlannedBatch } from "@/lib/types";
-import { confirmAllocation, type Allocation, type AllocatedHouse } from "@/lib/data";
+import { confirmAllocation, type Allocation } from "@/lib/data";
+import { useConfirmedAllocation } from "@/lib/allocationStore";
 import { num, shortDate } from "@/lib/format";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardEyebrow } from "@/components/ui/Card";
@@ -11,6 +12,7 @@ import { Stepper } from "@/components/ui/Stepper";
 import { Alert } from "@/components/ui/Alert";
 import { useToast } from "@/components/ui/Toast";
 import { PageHeader } from "@/components/shell/PageHeader";
+import { IconStatusGood } from "@/components/icons";
 import { cn } from "@/lib/cn";
 
 interface AllocationFormProps {
@@ -35,7 +37,8 @@ export function AllocationForm({ planned, houses, recommended }: AllocationFormP
 
   const recMap = useMemo(() => Object.fromEntries(recommended.map((r) => [r.houseId, r.count])), [recommended]);
   const [counts, setCounts] = useState<Record<string, number>>(recMap);
-  const [confirmed, setConfirmed] = useState<AllocatedHouse[] | null>(null);
+  // Persisted client-side so the locked-in done-state survives navigation/refresh.
+  const [confirmed, setConfirmed] = useConfirmedAllocation(planned.id);
 
   const sumCap = houses.reduce((s, h) => s + h.capacity, 0);
   const total = houses.reduce((s, h) => s + (counts[h.id] ?? 0), 0);
@@ -51,15 +54,26 @@ export function AllocationForm({ planned, houses, recommended }: AllocationFormP
   }
 
   if (confirmed) {
+    const confirmedTotal = confirmed.reduce((s, h) => s + h.count, 0);
     return (
       <div className="mx-auto max-w-2xl space-y-6 px-4 py-8 sm:px-6 sm:py-10">
-        <PageHeader eyebrow={`Cycle ${planned.cycleNo}`} title="Allocation confirmed" />
-        <Alert tone="success" title={`${num(total)} birds placed across ${confirmed.length} houses`}>
-          Placed {shortDate(planned.placingDate)}. Each house now has its own day-count and is ready for daily updates.
+        <PageHeader
+          back={{ href: "/app", label: "Dashboard" }}
+          eyebrow={`Cycle ${planned.cycleNo} · ${planned.breed}`}
+          title="Cycle allocated"
+        />
+        <Alert tone="success" title={`${num(confirmedTotal)} birds placed across ${confirmed.length} houses`}>
+          Placed {shortDate(planned.placingDate)}. Each house has its own day-count and is ready for daily updates. This step is done.
         </Alert>
         <Card>
           <CardBody className="pt-5">
-            <CardEyebrow>Per-house allocation</CardEyebrow>
+            <div className="flex items-center justify-between">
+              <CardEyebrow>Locked-in split</CardEyebrow>
+              <span className="inline-flex items-center gap-1.5 rounded-[var(--radius-pill)] bg-status-good-tint px-2.5 py-1 text-label font-medium text-status-good">
+                <IconStatusGood className="size-3.5" />
+                Allocated
+              </span>
+            </div>
             <ul className="mt-3 divide-y divide-divider">
               {confirmed.map((h) => (
                 <li key={h.houseId} className="flex items-center justify-between py-3">
@@ -73,9 +87,23 @@ export function AllocationForm({ planned, houses, recommended }: AllocationFormP
             </ul>
           </CardBody>
         </Card>
-        <Button size="lg" block onClick={() => router.push("/app/houses")}>
-          See flock status
-        </Button>
+        <div className="flex flex-col gap-2.5 sm:flex-row-reverse">
+          <Button size="lg" block className="sm:flex-1" onClick={() => router.push("/app/daily")}>
+            Add today&apos;s numbers
+          </Button>
+          <Button
+            size="lg"
+            variant="ghost"
+            block
+            className="sm:w-auto"
+            onClick={() => {
+              setCounts(Object.fromEntries(confirmed.map((h) => [h.houseId, h.count])));
+              setConfirmed(null);
+            }}
+          >
+            Re-allocate
+          </Button>
+        </div>
       </div>
     );
   }

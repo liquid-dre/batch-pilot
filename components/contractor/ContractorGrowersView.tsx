@@ -7,6 +7,7 @@ import { num, pct, grams } from "@/lib/format";
 import { Card, CardBody, CardEyebrow } from "@/components/ui/Card";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/Table";
+import { EstTag, EstFootnote } from "@/components/ui/Estimated";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { cn } from "@/lib/cn";
 import { rowActivation } from "@/lib/a11y";
@@ -129,8 +130,8 @@ export function ContractorGrowersView({ data }: { data: ContractorGrowers }) {
             <TR className="bg-transparent hover:bg-transparent">
               <TH num>#</TH>
               <TH>Grower</TH>
-              <TH num>EPEF</TH>
-              <TH num>FCR</TH>
+              <TH num>EPEF<EstTag /></TH>
+              <TH num>FCR<EstTag /></TH>
               <TH num>Cum mort</TH>
               <TH num>Weight</TH>
               <TH num>On-time</TH>
@@ -163,6 +164,7 @@ export function ContractorGrowersView({ data }: { data: ContractorGrowers }) {
             ))}
           </TBody>
         </Table>
+        <EstFootnote />
       </section>
 
       {/* Position across the days */}

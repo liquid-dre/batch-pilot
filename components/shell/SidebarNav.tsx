@@ -6,7 +6,7 @@ import { useCurrentUser } from "@/lib/auth";
 import { usePersisted } from "@/lib/usePersisted";
 import { cn } from "@/lib/cn";
 import { Logo, LogoMark } from "@/components/brand/Logo";
-import { IconChevronDown, IconCollapse, IconExpand } from "@/components/icons";
+import { IconChevronDown, IconCollapse, IconExpand, IconSwitch, IconInfo } from "@/components/icons";
 import { RoleSwitcher } from "./RoleSwitcher";
 import { NAV, NavGlyph, isActive, type NavSection } from "./nav-config";
 
@@ -73,11 +73,33 @@ export function SidebarNav({ collapsed, onToggleCollapse, onNavigate }: SidebarN
         </div>
       ) : null}
 
-      {/* Role switcher */}
-      <div className={cn("shrink-0 border-t border-divider", collapsed ? "px-2 py-3" : "px-4 py-4")}>
+      {/* Role switcher + demo-data note */}
+      <div className={cn("shrink-0 space-y-3 border-t border-divider", collapsed ? "px-2 py-3" : "px-4 py-4")}>
         {collapsed ? <RoleRail /> : <RoleSwitcher />}
+        <DemoNote collapsed={collapsed} />
       </div>
     </div>
+  );
+}
+
+const DEMO_NOTE = "Demo data · resets on refresh";
+
+/** Calm, persistent reminder that nothing here is saved (no DB yet). */
+function DemoNote({ collapsed }: { collapsed: boolean }) {
+  if (collapsed) {
+    return (
+      <div className="flex justify-center">
+        <span title={DEMO_NOTE} aria-label={DEMO_NOTE} className="flex size-7 items-center justify-center text-hint">
+          <IconInfo className="size-4" />
+        </span>
+      </div>
+    );
+  }
+  return (
+    <p className="flex items-center gap-1.5 px-1 text-[0.6875rem] text-hint">
+      <IconInfo className="size-3.5 shrink-0" />
+      {DEMO_NOTE}
+    </p>
   );
 }
 
@@ -171,17 +193,19 @@ function RailSection({ section, pathname, onNavigate, withDivider }: { section: 
 function RoleRail() {
   const { role, setRole } = useCurrentUser();
   return (
-    <div role="radiogroup" aria-label="Switch role" className="flex flex-col items-center gap-1">
+    <div role="radiogroup" aria-label="Switch viewpoint between grower and contractor" className="flex flex-col items-center gap-1">
+      <IconSwitch className="mb-0.5 size-4 text-hint" aria-hidden />
       {(["grower", "contractor"] as const).map((r) => {
         const active = role === r;
+        const label = r === "grower" ? "Grower" : "Contractor";
         return (
           <button
             key={r}
             type="button"
             role="radio"
             aria-checked={active}
-            aria-label={r === "grower" ? "Grower" : "Contractor"}
-            title={r === "grower" ? "Grower" : "Contractor"}
+            aria-label={`Viewing as ${label}`}
+            title={`Viewing as ${label}`}
             onClick={() => setRole(r)}
             className={cn(
               "flex size-9 items-center justify-center rounded-[var(--radius-pill)] text-label font-semibold transition-colors",
