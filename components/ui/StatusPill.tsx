@@ -58,7 +58,7 @@ export function StatusPill({ level, label, size = "default", className }: Status
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-[var(--radius-pill)] font-medium",
+        "animate-pop inline-flex items-center rounded-[var(--radius-pill)] font-medium",
         tint,
         fg,
         size === "sm" ? "gap-1.5 px-2.5 py-1 text-[0.8125rem]" : "gap-2 px-3 py-1.5 text-label",

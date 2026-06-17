@@ -8,6 +8,7 @@ import { StatusPill } from "@/components/ui/StatusPill";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/Table";
+import { rowActivation } from "@/lib/a11y";
 
 function SummaryStat({ label, value }: { label: string; value: string }) {
   return (
@@ -86,11 +87,7 @@ export function ContractorOverview({ data }: { data: DashboardData }) {
           </THead>
           <TBody>
             {houses.map(({ house, placement, latest, weight, status, vsRossPct }) => (
-              <TR
-                key={house.id}
-                className="cursor-pointer"
-                onClick={() => router.push(`/app/growers/${site.id}`)}
-              >
+              <TR key={house.id} className="cursor-pointer" {...rowActivation(() => router.push(`/app/growers/${site.id}`))}>
                 <TD className="font-medium text-ink">{house.name}</TD>
                 <TD num>{latest?.day ?? "—"}</TD>
                 <TD num>{num(placement.placedCount)}</TD>

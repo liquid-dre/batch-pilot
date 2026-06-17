@@ -179,6 +179,12 @@ Ross weight curve — that under-performance is the hero story, keep it).
 
 ## 8. MVP feature list & status
 
+> **MVP complete.** Phases 0–4 are all shipped: foundation + design system, the grower
+> experience, the contractor experience, the rule-based analytics engine, and the Phase-4
+> polish pass (motion, empty/loading/error states, mobile, accessibility). What remains is
+> explicitly deferred (§9): real auth (Clerk), database + realtime (Convex), payments
+> (Stripe), WhatsApp ingestion (Twilio), and offline/PWA/ML. The seams for each are in place.
+
 **Phase 0 — Foundation**
 - [x] Scaffold Next.js (App Router, TS, Tailwind); install deps; load the three fonts — Next 16.2.9 + Tailwind v4 (CSS-first); fonts via `next/font/google` in `app/layout.tsx` (Plus Jakarta Sans / IBM Plex Sans / IBM Plex Mono → CSS vars)
 - [x] `globals.css` with full token set (§6); Tailwind wired to the CSS variables — raw + semantic tokens in `:root`; `@theme inline` bridges them to utilities (re-theme = edit this file only)
@@ -224,10 +230,12 @@ Ross weight curve — that under-performance is the hero story, keep it).
 > **Phase 3 decisions.** (1) **The engine is pure** (`lib/engine/`, no data-layer imports): the seam passes the Ross curve + overlay in, so it's testable and backend-agnostic. (2) **Thresholds are a config object** (`DEFAULT_THRESHOLDS`) a contractor can override without touching logic. (3) **Single source of truth for status:** `getHouseStatus` / `getAlerts` / portfolio / grower-detail all call the engine now — the Phase-0/1 hand-seeded `SEED_STATUS_BY_HOUSE` is deleted. Overall house status = the worst metric (welfare/growth before efficiency), carrying that metric's cause + fix. (4) **Chart and engine share the bands:** `WeightBandChart` reads the same `weight.green`/`weight.amber` fractions, so the shaded zones always match the rule that colours the pills. With the flock ~13% under, weight and FCR both score red across the board — that's the honest headline, not a styling choice.
 
 **Phase 4 — Polish**
-- [ ] Motion: page/route transitions, status-pill and toast micro-interactions (emil-kowalski-design)
-- [ ] Empty, loading and error states for every surface
-- [ ] Responsive + true mobile pass (grower flow on a phone)
-- [ ] Accessibility pass (AA, focus rings, 48px targets, status never colour-only)
+- [x] Motion: page/route transitions, status-pill and toast micro-interactions (emil-kowalski-design) — route entrance via `app/app/template.tsx` (rise-in, TopBar persists); `AnimatedNumber` counts hero stat figures up on mount; `StatusPill` pops in; toast exits faster than it enters; all on the strong `--ease-out` curve, <300ms, and disabled under `prefers-reduced-motion`
+- [x] Empty, loading and error states for every surface — `app/app/loading.tsx` (branded skeleton streamed while data resolves), `app/app/error.tsx` (calm retry boundary), `app/not-found.tsx` (branded 404), `app/global-error.tsx`; reusable `EmptyState` + `Skeleton` primitives, wired where lists can be empty (feed log, alerts, compare picker, daily-done)
+- [x] Responsive + true mobile pass (grower flow on a phone) — verified the grower flow at 375px (overview, daily, houses): chips wrap, 56px steppers, charts size down (band chart ~303px), no horizontal overflow, one clear action per screen
+- [x] Accessibility pass (AA, focus rings, 48px targets, status never colour-only) — global `:focus-visible` brand ring; clickable table rows made keyboard-operable (`rowActivation`: role/tabindex/Enter-Space); grower primary actions 52–56px; status always colour + icon + word + shape; toast region is `aria-live`, loading is `aria-busy`; reduced-motion honoured (CSS + `AnimatedNumber` guard)
+
+> **Phase 4 decisions.** Motion is purposeful, never decorative: a single route-entrance (not per-section), number count-ups only on the hero stat blocks, a subtle status-pill entrance because status is what the eye should find first. Everything degrades to a crossfade/instant under `prefers-reduced-motion`. The Recharts `ResponsiveContainer` can measure 0 on its very first mount frame (it recovers on the next layout tick); harmless given every chart sits in a sized card.
 
 **Shell — public site & app boundary**
 - [x] Marketing landing at `/` (Horizon-blue hero, value props, two-register section, "Get started" / "Log in" CTAs, tasteful motion) + the grower/contractor experience moved under `/app` (role switcher retained) — `components/marketing/Landing.tsx`; `app/app/layout.tsx` owns the `AppFrame`/TopBar so only `/app/*` gets the shell

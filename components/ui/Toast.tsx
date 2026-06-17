@@ -65,7 +65,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   const remove = useCallback((id: number) => {
     setItems((prev) => prev.map((t) => (t.id === id ? { ...t, leaving: true } : t)));
-    window.setTimeout(() => setItems((prev) => prev.filter((t) => t.id !== id)), 200);
+    window.setTimeout(() => setItems((prev) => prev.filter((t) => t.id !== id)), 160);
   }, []);
 
   const toast = useCallback(
@@ -85,14 +85,15 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         className="pointer-events-none fixed inset-x-0 bottom-4 z-[var(--z-toast)] flex flex-col items-center gap-2 px-4"
         role="region"
         aria-label="Notifications"
+        aria-live="polite"
       >
         {items.map((t) => (
           <div
             key={t.id}
             className={cn(
-              "pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-[var(--radius-control)] bg-surface p-3.5 shadow-raised",
-              "transition-[opacity,transform] duration-[var(--dur)] ease-[var(--ease-out)]",
-              t.leaving ? "translate-y-1 opacity-0" : "animate-rise",
+              "pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-[var(--radius-control)] bg-surface p-3.5 shadow-raised ease-[var(--ease-out)]",
+              // Exit is snappier than entry (emil): fast on the way out.
+              t.leaving ? "translate-y-1 opacity-0 transition-[opacity,transform] duration-[var(--dur-fast)]" : "animate-rise",
             )}
           >
             <span className={cn("mt-0.5 shrink-0", TONE_FG[t.tone])}>
