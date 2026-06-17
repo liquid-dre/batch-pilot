@@ -12,6 +12,8 @@ import { Card, CardBody, CardEyebrow } from "@/components/ui/Card";
 import { Alert } from "@/components/ui/Alert";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { WeightBandChart } from "@/components/charts/WeightBandChart";
+import { weightGuidance } from "@/lib/guidance";
+import { WeightGuidanceCard } from "./WeightGuidanceCard";
 import { ProjectionCard } from "./ProjectionCard";
 import { AlertsList } from "./AlertsList";
 import { SiteRollupCard } from "./SiteRollupCard";
@@ -52,6 +54,15 @@ export function GrowerDashboard({ data }: { data: GrowerDashboardData }) {
   const [allocation] = useConfirmedAllocation(plannedBatch?.id ?? "");
   const needsAllocation = plannedBatch && !plannedBatch.allocated && !allocation;
 
+  // Constructive framing for the weight gap (copy in lib/guidance.ts). Inputs
+  // come from existing dashboard data: average weight vs Ross, the latest weigh
+  // day, and whether the birds are eating yet under-converting (FCR off target).
+  const vsRoss = houseViews.map((v) => v.vsRossPct).filter((p): p is number => p != null);
+  const avgVsRossPct = vsRoss.length ? Math.round(vsRoss.reduce((s, p) => s + p, 0) / vsRoss.length) : 100;
+  const weighDay = Math.max(0, ...houseViews.map((v) => v.weight?.day ?? 0));
+  const eatingAtOrAboveTarget = efficiency.some((h) => h.fcr && h.fcr.level !== "green");
+  const guidance = weightGuidance({ vsRossPct: avgVsRossPct, day: weighDay, eatingAtOrAboveTarget });
+
   return (
     <div className="mx-auto max-w-5xl space-y-8 px-4 py-8 sm:px-6 sm:py-10">
       <PageHeader
@@ -84,11 +95,12 @@ export function GrowerDashboard({ data }: { data: GrowerDashboardData }) {
       {/* Hero: actual weight per house vs the Ross curve, with the green/amber/red band */}
       <section className="space-y-3">
         <h2 className="text-h2">Weight against the Ross curve</h2>
+        {guidance ? <WeightGuidanceCard guidance={guidance} /> : null}
         <Card>
           <CardBody className="pt-5">
             <CardEyebrow>Every house · day of cycle</CardEyebrow>
             <p className="mt-2 mb-4 max-w-prose text-body text-slate">
-              Every house is sitting in the amber-to-red band — around 13% under the Ross 308 target by day 28. That gap is the headline.
+              Each line is a house against the Ross 308 objective; the shaded bands are on track, at risk and behind.
             </p>
             <WeightBandChart data={weightBand} />
           </CardBody>
