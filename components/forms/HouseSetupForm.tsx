@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/Input";
 import { Stepper } from "@/components/ui/Stepper";
 import { useToast } from "@/components/ui/Toast";
 import { PageHeader } from "@/components/shell/PageHeader";
+import { IconTrash } from "@/components/icons";
 
 interface Row {
   key: string;
@@ -19,11 +20,7 @@ interface Row {
   capacity: number;
 }
 
-const TrashIcon = () => (
-  <svg viewBox="0 0 24 24" className="size-5" fill="none" aria-hidden>
-    <path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
+const TrashIcon = () => <IconTrash className="size-5" />;
 
 export function HouseSetupForm({ houses }: { houses: House[] }) {
   const router = useRouter();

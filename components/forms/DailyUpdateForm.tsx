@@ -12,6 +12,7 @@ import { Stepper } from "@/components/ui/Stepper";
 import { Alert } from "@/components/ui/Alert";
 import { useToast } from "@/components/ui/Toast";
 import { PageHeader } from "@/components/shell/PageHeader";
+import { IconCheck } from "@/components/icons";
 import { cn } from "@/lib/cn";
 
 interface Draft {
@@ -30,11 +31,7 @@ function initialDrafts(houses: FormHouse[]): Record<string, Draft> {
   return out;
 }
 
-const CheckGlyph = () => (
-  <svg viewBox="0 0 16 16" className="size-4" fill="none" aria-hidden>
-    <path d="M3.5 8.5 6.5 11.5 12.5 4.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
+const CheckGlyph = () => <IconCheck className="size-4" />;
 
 export function DailyUpdateForm({ data }: { data: DailyFormData }) {
   const router = useRouter();

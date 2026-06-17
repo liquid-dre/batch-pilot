@@ -6,20 +6,14 @@ import { useCurrentUser } from "@/lib/auth";
 import { usePersisted } from "@/lib/usePersisted";
 import { cn } from "@/lib/cn";
 import { Logo, LogoMark } from "@/components/brand/Logo";
+import { IconChevronDown, IconCollapse, IconExpand } from "@/components/icons";
 import { RoleSwitcher } from "./RoleSwitcher";
 import { NAV, NavGlyph, isActive, type NavSection } from "./nav-config";
 
 const Chevron = ({ open }: { open: boolean }) => (
-  <svg viewBox="0 0 24 24" className={cn("size-3.5 transition-transform duration-[var(--dur-fast)] ease-[var(--ease-out)]", open ? "" : "-rotate-90")} fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-    <path d="M6 9l6 6 6-6" />
-  </svg>
-);
-
-const CollapseIcon = ({ collapsed }: { collapsed: boolean }) => (
-  <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-    <path d="M4 5v14" />
-    <path d={collapsed ? "M10 12h9m0 0-3-3m3 3-3 3" : "M19 12h-9m0 0 3-3m-3 3 3 3"} />
-  </svg>
+  <IconChevronDown
+    className={cn("size-3.5 transition-transform duration-[var(--dur-fast)] ease-[var(--ease-out)]", open ? "" : "-rotate-90")}
+  />
 );
 
 interface SidebarNavProps {
@@ -49,7 +43,7 @@ export function SidebarNav({ collapsed, onToggleCollapse, onNavigate }: SidebarN
             aria-label="Collapse sidebar"
             className="flex size-9 items-center justify-center rounded-[var(--radius-control)] text-muted transition-colors hover:bg-[rgba(11,42,74,0.05)] hover:text-slate"
           >
-            <CollapseIcon collapsed={false} />
+            <IconCollapse className="size-5" />
           </button>
         ) : null}
       </div>
@@ -74,7 +68,7 @@ export function SidebarNav({ collapsed, onToggleCollapse, onNavigate }: SidebarN
             aria-label="Expand sidebar"
             className="flex size-10 items-center justify-center rounded-[var(--radius-control)] text-muted transition-colors hover:bg-[rgba(11,42,74,0.05)] hover:text-slate"
           >
-            <CollapseIcon collapsed />
+            <IconExpand className="size-5" />
           </button>
         </div>
       ) : null}

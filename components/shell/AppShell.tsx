@@ -5,18 +5,8 @@ import Link from "next/link";
 import { usePersisted } from "@/lib/usePersisted";
 import { cn } from "@/lib/cn";
 import { Logo } from "@/components/brand/Logo";
+import { IconMenu, IconClose } from "@/components/icons";
 import { SidebarNav } from "./SidebarNav";
-
-const MenuIcon = () => (
-  <svg viewBox="0 0 24 24" className="size-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
-    <path d="M4 7h16M4 12h16M4 17h16" />
-  </svg>
-);
-const CloseIcon = () => (
-  <svg viewBox="0 0 24 24" className="size-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
-    <path d="M6 6l12 12M18 6 6 18" />
-  </svg>
-);
 
 /**
  * App shell: a collapsible left sidebar on desktop (full ↔ icon rail, persisted)
@@ -82,7 +72,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             aria-expanded={drawerOpen}
             className="flex size-11 items-center justify-center rounded-[var(--radius-control)] text-slate transition-colors hover:bg-[rgba(11,42,74,0.05)] active:scale-95"
           >
-            <MenuIcon />
+            <IconMenu className="size-6" />
           </button>
           <Link href="/app" aria-label="BatchPilot home" className="rounded-[var(--radius-control)]">
             <Logo />
@@ -119,7 +109,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             aria-label="Close menu"
             className="absolute right-2 top-3 z-10 flex size-9 items-center justify-center rounded-[var(--radius-control)] text-muted hover:bg-[rgba(11,42,74,0.05)]"
           >
-            <CloseIcon />
+            <IconClose className="size-6" />
           </button>
           <SidebarNav collapsed={false} onNavigate={() => setDrawerOpen(false)} />
         </div>
