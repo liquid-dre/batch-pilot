@@ -3,6 +3,7 @@ import { num, pct, grams, shortDate } from "@/lib/format";
 import { Card, CardBody, CardEyebrow } from "@/components/ui/Card";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/Table";
+import { EstTag, EstFootnote } from "@/components/ui/Estimated";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { SiteRollupCard } from "@/components/flock/SiteRollupCard";
 import { Sparkline } from "./Sparkline";
@@ -70,7 +71,7 @@ export function GrowerDetail({ data }: { data: GrowerDetailData }) {
               <TH>Closed</TH>
               <TH num>Final weight</TH>
               <TH num>Mortality</TH>
-              <TH num>EPEF</TH>
+              <TH num>EPEF<EstTag /></TH>
             </TR>
           </THead>
           <TBody>
@@ -85,6 +86,7 @@ export function GrowerDetail({ data }: { data: GrowerDetailData }) {
             ))}
           </TBody>
         </Table>
+        <EstFootnote />
       </section>
     </div>
   );

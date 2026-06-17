@@ -7,6 +7,7 @@ import { Card, CardBody, CardEyebrow } from "@/components/ui/Card";
 import { Stepper } from "@/components/ui/Stepper";
 import { Button } from "@/components/ui/Button";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/Table";
+import { EstTag, EstFootnote } from "@/components/ui/Estimated";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { cn } from "@/lib/cn";
 import { HistoryChart, type ChartDatum } from "./HistoryChart";
@@ -173,6 +174,7 @@ export function HistoryView({ data }: { data: BatchHistory }) {
             {METRICS.map((m) => (
               <Chip key={m.key} active={metricKey === m.key} onClick={() => setMetricKey(m.key)}>
                 {m.label}
+                {m.key === "fcr" ? <EstTag /> : null}
               </Chip>
             ))}
           </div>
@@ -202,6 +204,7 @@ export function HistoryView({ data }: { data: BatchHistory }) {
           ) : metric.band ? (
             <p className="text-label text-muted">Dashed red line is the contractor cumulative-mortality ceiling.</p>
           ) : null}
+          {metric.key === "fcr" ? <EstFootnote /> : null}
         </CardBody>
       </Card>
 

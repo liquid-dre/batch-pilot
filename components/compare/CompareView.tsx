@@ -5,6 +5,7 @@ import type { ComparePoint, CompareData } from "@/lib/view";
 import { pct, grams, shortDate } from "@/lib/format";
 import { Card, CardBody, CardEyebrow } from "@/components/ui/Card";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/Table";
+import { EstTag, EstFootnote } from "@/components/ui/Estimated";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { cn } from "@/lib/cn";
 import { CompareChart, type CompareSeries } from "./CompareChart";
@@ -166,7 +167,7 @@ export function CompareView({ data }: { data: CompareData }) {
               <TH num>Weight</TH>
               <TH num>vs Ross</TH>
               <TH num>Cum mort</TH>
-              <TH num>FCR</TH>
+              <TH num>FCR<EstTag /></TH>
               <TH num>Days to target</TH>
               <TH>vs kill date</TH>
             </TR>
@@ -197,6 +198,7 @@ export function CompareView({ data }: { data: CompareData }) {
         <p className="text-label text-muted">
           Weight is the final figure for closed batches and the latest weigh-in for the current one. Target is the Ross 308 weight at each batch&apos;s kill date ({selectedBatches.length ? shortDate(selectedBatches[0].killDate) : "—"} for the current cycle).
         </p>
+        <EstFootnote />
       </section>
     </div>
   );
