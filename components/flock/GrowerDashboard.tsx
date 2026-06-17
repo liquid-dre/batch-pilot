@@ -1,11 +1,14 @@
+"use client";
+
+import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useCurrentUser } from "@/lib/auth";
 import type { BatchProjection, FlockAlert, PlannedBatch } from "@/lib/types";
-import type { HouseView, WeightBandData } from "@/lib/view";
-import type { SiteRollup } from "@/lib/data";
+import type { DashboardData, HouseView, WeightBandData } from "@/lib/view";
 import { num } from "@/lib/format";
 import { Button } from "@/components/ui/Button";
-import { Alert } from "@/components/ui/Alert";
 import { Card, CardBody, CardEyebrow } from "@/components/ui/Card";
+import { Alert } from "@/components/ui/Alert";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { WeightBandChart } from "@/components/charts/WeightBandChart";
 import { ProjectionCard } from "./ProjectionCard";
@@ -14,33 +17,47 @@ import { SiteRollupCard } from "./SiteRollupCard";
 import { HouseStatusCard } from "./HouseStatusCard";
 import { EfficiencyPanel, type HouseEfficiency } from "./EfficiencyPanel";
 
-interface FlockStatusProps {
-  rollup: SiteRollup;
+export interface GrowerDashboardData {
+  overview: DashboardData;
   projection: BatchProjection;
   alerts: FlockAlert[];
-  houses: HouseView[];
+  houseViews: HouseView[];
   weightBand: WeightBandData;
   efficiency: HouseEfficiency[];
-  /** A next cycle awaiting per-house allocation, if any. */
   plannedBatch?: PlannedBatch;
 }
 
-/** Grower flock-status screen: what now (projection + alerts) before the detail. */
-export function FlockStatus({ rollup, projection, alerts, houses, weightBand, efficiency, plannedBatch }: FlockStatusProps) {
+function countdownLabel(days: number): string {
+  if (days > 1) return `Collection in ${days} days`;
+  if (days === 1) return "Collection tomorrow";
+  if (days === 0) return "Collection target is today";
+  return "Past collection target";
+}
+
+/**
+ * The grower's one home (Dashboard): "what now?" first — greeting + the single
+ * clear action, then the projection verdict, top alerts, the weight-vs-Ross
+ * hero, efficiency, the site rollup and per-house status. Consolidates the old
+ * overview + flock-status screens so there's a single starting point.
+ */
+export function GrowerDashboard({ data }: { data: GrowerDashboardData }) {
+  const router = useRouter();
+  const { user } = useCurrentUser();
+  const firstName = user.name.split(" ")[0];
+  const { overview, projection, alerts, houseViews, weightBand, efficiency, plannedBatch } = data;
+  const { site, batch, rollup } = overview;
   const needsAllocation = plannedBatch && !plannedBatch.allocated;
+
   return (
     <div className="mx-auto max-w-5xl space-y-8 px-4 py-8 sm:px-6 sm:py-10">
       <PageHeader
-        eyebrow="Flock status"
-        title="How the flock is doing"
-        intro="The headline first: will the birds hit target by the kill date, and which houses need a hand today."
+        eyebrow={`${site.name} · Cycle ${batch.cycleNo} · ${batch.breed}`}
+        title={`Good morning, ${firstName}.`}
+        intro={`Day 26–27 across ${rollup.houseCount} houses. ${countdownLabel(overview.killCountdownDays)}.`}
         action={
-          <Link
-            href="/app/houses/setup"
-            className="inline-flex h-11 items-center rounded-[var(--radius-control)] border border-brand-100 bg-brand-50 px-5 text-label font-semibold text-brand-700 transition-colors duration-[var(--dur-fast)] hover:bg-brand-100"
-          >
-            Manage houses
-          </Link>
+          <Button size="lg" onClick={() => router.push("/app/daily")}>
+            Add today&apos;s numbers
+          </Button>
         }
       />
 
@@ -75,21 +92,26 @@ export function FlockStatus({ rollup, projection, alerts, houses, weightBand, ef
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-h2">Needs attention</h2>
-        <AlertsList alerts={alerts} />
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 className="text-h2">Needs attention</h2>
+          <Link href="/app/alerts" className="text-label font-semibold text-brand-700 underline-offset-4 hover:text-brand-600 hover:underline">
+            All alerts →
+          </Link>
+        </div>
+        <AlertsList alerts={alerts} limit={2} moreHref="/app/alerts" />
       </section>
+
+      <SiteRollupCard rollup={rollup} />
 
       <section className="space-y-3">
         <h2 className="text-h2">Efficiency &amp; feed</h2>
         <EfficiencyPanel houses={efficiency} />
       </section>
 
-      <SiteRollupCard rollup={rollup} />
-
       <section className="space-y-4">
         <h2 className="text-h2">Every house</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {houses.map((view) => (
+          {houseViews.map((view) => (
             <HouseStatusCard key={view.house.id} view={view} />
           ))}
         </div>

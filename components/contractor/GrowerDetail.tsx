@@ -23,6 +23,7 @@ export function GrowerDetail({ data }: { data: GrowerDetailData }) {
   return (
     <div className="mx-auto max-w-5xl space-y-8 px-4 py-8 sm:px-6">
       <PageHeader
+        back={{ href: "/app/growers", label: "Growers" }}
         eyebrow={`${data.farmCode}/0${data.cycleNo} · ${data.breed}`}
         title={data.siteName}
         intro={`Per-house detail and trends for cycle ${data.cycleNo}, against a kill date of ${shortDate(data.killDate)}.`}

@@ -83,6 +83,7 @@ export function AllocationForm({ planned, houses, recommended }: AllocationFormP
   return (
     <div className="mx-auto max-w-2xl space-y-7 px-4 py-8 sm:px-6 sm:py-10">
       <PageHeader
+        back={{ href: "/app/houses", label: "Setup · Houses" }}
         eyebrow={`Cycle ${planned.cycleNo} · ${planned.breed}`}
         title="Allocate the houses"
         intro="We've suggested a split proportional to each house's capacity. Accept it, or adjust any house before you confirm."
@@ -98,7 +99,7 @@ export function AllocationForm({ planned, houses, recommended }: AllocationFormP
       </Card>
 
       {overCapacity ? (
-        <Alert tone="warning" title={`${num(target - sumCap)} birds over site capacity`} action={<Button size="sm" variant="secondary" onClick={() => router.push("/app/houses/setup")}>Edit houses</Button>}>
+        <Alert tone="warning" title={`${num(target - sumCap)} birds over site capacity`} action={<Button size="sm" variant="secondary" onClick={() => router.push("/app/houses")}>Edit houses</Button>}>
           The cycle won&apos;t fit in the current houses. Raise a capacity or add a house, then come back.
         </Alert>
       ) : null}
