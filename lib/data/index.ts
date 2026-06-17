@@ -647,6 +647,8 @@ export interface AllocatedHouse {
 /**
  * Confirms an allocation for the planned batch (mock: flips `allocated` and
  * records the split). Returns each house's placed count and resulting day-count.
+ * The confirmed split is persisted client-side (see lib/allocationStore) so the
+ * done-state survives navigation; this seam becomes a Convex mutation later.
  */
 export async function confirmAllocation(
   allocations: { houseId: string; count: number }[],

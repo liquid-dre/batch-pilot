@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useCurrentUser } from "@/lib/auth";
+import { useConfirmedAllocation } from "@/lib/allocationStore";
 import type { BatchProjection, FlockAlert, PlannedBatch } from "@/lib/types";
 import type { DashboardData, HouseView, WeightBandData } from "@/lib/view";
 import { num } from "@/lib/format";
@@ -46,7 +47,10 @@ export function GrowerDashboard({ data }: { data: GrowerDashboardData }) {
   const firstName = user.name.split(" ")[0];
   const { overview, projection, alerts, houseViews, weightBand, efficiency, plannedBatch } = data;
   const { site, batch, rollup } = overview;
-  const needsAllocation = plannedBatch && !plannedBatch.allocated;
+  // Hide the banner once the grower has confirmed the split (persisted client-side,
+  // so it stays cleared across navigation even though the seam write is in-browser).
+  const [allocation] = useConfirmedAllocation(plannedBatch?.id ?? "");
+  const needsAllocation = plannedBatch && !plannedBatch.allocated && !allocation;
 
   return (
     <div className="mx-auto max-w-5xl space-y-8 px-4 py-8 sm:px-6 sm:py-10">
