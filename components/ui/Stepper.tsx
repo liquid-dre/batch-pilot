@@ -16,17 +16,10 @@ interface StepperProps {
   suffix?: string;
 }
 
-const MinusIcon = () => (
-  <svg viewBox="0 0 24 24" className="size-6" fill="none" aria-hidden>
-    <path d="M5 12h14" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" />
-  </svg>
-);
+import { IconMinus, IconPlus } from "@/components/icons";
 
-const PlusIcon = () => (
-  <svg viewBox="0 0 24 24" className="size-6" fill="none" aria-hidden>
-    <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" />
-  </svg>
-);
+const MinusIcon = () => <IconMinus className="size-6" />;
+const PlusIcon = () => <IconPlus className="size-6" />;
 
 /**
  * Hybrid numeric control for grower screens (ROADMAP §6 + §8): tap +/- OR tap

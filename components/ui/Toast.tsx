@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
+import { IconStatusGood, IconStatusBad, IconInfo } from "@/components/icons";
 
 type Tone = "info" | "success" | "error";
 
@@ -33,30 +34,8 @@ const TONE_FG: Record<Tone, string> = {
 };
 
 const Dot = ({ tone }: { tone: Tone }) => {
-  if (tone === "success") {
-    return (
-      <svg viewBox="0 0 16 16" className="size-4" fill="none" aria-hidden>
-        <circle cx="8" cy="8" r="7" fill="currentColor" />
-        <path d="M5 8.2 7 10.2 11 5.8" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    );
-  }
-  if (tone === "error") {
-    return (
-      <svg viewBox="0 0 16 16" className="size-4" fill="none" aria-hidden>
-        <rect x="1.5" y="1.5" width="13" height="13" rx="2.5" fill="currentColor" />
-        <path d="M8 4.4v4.2" stroke="white" strokeWidth="1.6" strokeLinecap="round" />
-        <circle cx="8" cy="11.2" r="1" fill="white" />
-      </svg>
-    );
-  }
-  return (
-    <svg viewBox="0 0 16 16" className="size-4" fill="none" aria-hidden>
-      <circle cx="8" cy="8" r="7" fill="currentColor" />
-      <path d="M8 7.2v4" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
-      <circle cx="8" cy="4.7" r="0.95" fill="white" />
-    </svg>
-  );
+  const Icon = tone === "success" ? IconStatusGood : tone === "error" ? IconStatusBad : IconInfo;
+  return <Icon className="size-[18px]" />;
 };
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
