@@ -13,8 +13,23 @@
 export type ID = string;
 export type ISODate = string; // 'YYYY-MM-DD'
 
-/** Who's looking. No login yet — a role switcher stands in (ROADMAP §5). */
-export type Role = "grower" | "contractor";
+/**
+ * Who's looking. No login yet — a role switcher stands in (ROADMAP §5).
+ *
+ * The grower experience is split into two profiles that share the same site
+ * scope but do different jobs: `supervisor` (the foreman who captures the daily
+ * numbers) and `manager` (oversight — analytics and projections). `contractor`
+ * is unchanged. When Clerk lands, each becomes a session role (ROADMAP §9).
+ */
+export type Role = "supervisor" | "manager" | "contractor";
+
+/** The two grower-side profiles (both scoped to a site). */
+export type GrowerRole = Extract<Role, "supervisor" | "manager">;
+
+/** True for either grower profile — use instead of comparing to a single role. */
+export function isGrowerRole(role: Role): role is GrowerRole {
+  return role === "supervisor" || role === "manager";
+}
 
 export interface User {
   id: ID;
@@ -59,6 +74,22 @@ export interface House {
   siteId: ID;
   name: string;
   capacity: number;
+}
+
+/**
+ * An optional consumable logged against a day — a vaccine or medication. Carries
+ * a free-text name plus an amount and its unit (e.g. "Gumboro", 16, "L").
+ */
+export interface TreatmentEntry {
+  name: string;
+  amount: number;
+  unit: string;
+}
+
+/** A simple amount + unit, used for additives like charcoal (no name). */
+export interface Amount {
+  amount: number;
+  unit: string;
 }
 
 export type Breed = "Ross 308" | "Cobb 500";
@@ -119,6 +150,12 @@ export interface DailyEntry {
   date: ISODate;
   day: number;
   // entered
+  /** Birds found dead during the day. */
+  dayMortality: number;
+  /** Birds found dead overnight. */
+  nightMortality: number;
+  /** Total deaths = dayMortality + nightMortality. The single figure every
+   *  downstream calc/chart reads, so the day/night split is additive metadata. */
   mortality: number;
   culls: number;
   /** Feed *added* to the house (bin refill) — differs from consumed. */
@@ -127,6 +164,13 @@ export interface DailyEntry {
   feedConsumedKg?: number;
   /** Optional, diagnostic only (not a benchmark). */
   tempC?: number;
+  // optional consumables (all collapsed by default in capture)
+  /** Charcoal used (amount + unit). */
+  charcoal?: Amount;
+  /** Vaccines administered (name + amount + unit). */
+  vaccines?: TreatmentEntry[];
+  /** Medications administered (name + amount + unit). */
+  medications?: TreatmentEntry[];
   // derived
   cullAndMort: number;
   cumMort: number;

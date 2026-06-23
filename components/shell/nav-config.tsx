@@ -50,17 +50,36 @@ export interface NavSection {
   items: NavItem[];
 }
 
+// Setup is shared by both grower profiles.
+const GROWER_SETUP: NavSection = {
+  label: "Setup",
+  items: [
+    { key: "houses", label: "Houses", href: "/app/houses", icon: "houses" },
+    { key: "allocate", label: "Allocate a cycle", href: "/app/houses/allocate", icon: "allocate" },
+  ],
+};
+const GROWER_ALERTS: NavSection = { items: [{ key: "alerts", label: "Alerts", href: "/app/alerts", icon: "alerts" }] };
+
 export const NAV: Record<Role, NavSection[]> = {
-  grower: [
-    { items: [{ key: "dashboard", label: "Dashboard", href: "/app", icon: "dashboard" }] },
+  // Supervisor / foreman — the data capturer. Home is the daily round; the nav
+  // is capture-first (records), with setup + alerts. No oversight analytics.
+  supervisor: [
+    { items: [{ key: "home", label: "Today", href: "/app", icon: "dashboard" }] },
     {
-      label: "Records",
+      label: "Capture",
       items: [
         { key: "daily", label: "Daily update", href: "/app/daily", icon: "daily" },
         { key: "feed", label: "Feed deliveries", href: "/app/feed", icon: "feed" },
         { key: "weights", label: "Weights", href: "/app/weights", icon: "weights" },
       ],
     },
+    GROWER_SETUP,
+    GROWER_ALERTS,
+  ],
+  // Manager — oversight. Home is the consolidated dashboard; the nav is
+  // analytics-first, with setup + alerts. Capture is the supervisor's job.
+  manager: [
+    { items: [{ key: "dashboard", label: "Dashboard", href: "/app", icon: "dashboard" }] },
     {
       label: "Analytics",
       items: [
@@ -68,14 +87,8 @@ export const NAV: Record<Role, NavSection[]> = {
         { key: "compare", label: "Batch comparison", href: "/app/compare", icon: "compare" },
       ],
     },
-    {
-      label: "Setup",
-      items: [
-        { key: "houses", label: "Houses", href: "/app/houses", icon: "houses" },
-        { key: "allocate", label: "Allocate a cycle", href: "/app/houses/allocate", icon: "allocate" },
-      ],
-    },
-    { items: [{ key: "alerts", label: "Alerts", href: "/app/alerts", icon: "alerts" }] },
+    GROWER_SETUP,
+    GROWER_ALERTS,
   ],
   contractor: [
     { items: [{ key: "overview", label: "Overview", href: "/app", icon: "dashboard" }] },
