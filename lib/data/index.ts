@@ -36,6 +36,8 @@ import type {
   WeightEntry,
 } from "@/lib/types";
 import type {
+  BatchArchiveData,
+  BatchArchiveRow,
   BatchHistory,
   CaptureHouse,
   ComparableBatch,
@@ -65,6 +67,7 @@ import {
   GROWER_PROFILES,
   type GrowerProfile,
   HISTORICAL_BATCHES,
+  type HistoricalBatchSeed,
   MANIFEST,
   nextHouseId,
   OTHER_CONTRACTOR,
@@ -855,18 +858,26 @@ export async function confirmAllocation(
 // ===========================================================================
 
 /**
- * Assembles the whole current batch's history: each house's day-by-day rows
- * (daily mort %, cumulative %, feed, temperature, and weigh-day weight/ADG/
- * uniformity with vs-Ross and an estimated FCR), the batch-level rollup per day
- * (carry-forward so staggered houses still aggregate cleanly), plus the Ross 308
- * objective and the contractor mortality band for chart overlays.
+ * Assembles a batch's whole history from raw placements/daily/weigh records:
+ * each house's day-by-day rows (daily mort %, cumulative %, feed, temperature,
+ * and weigh-day weight/ADG/uniformity with vs-Ross and an estimated FCR), the
+ * batch-level rollup per day (carry-forward so staggered houses still aggregate
+ * cleanly), plus the Ross 308 objective and the contractor mortality band for
+ * chart overlays. Pure: the current batch reads module data, a closed batch
+ * passes generated data — both produce the identical shape, so the History &
+ * Charts view renders either without forking.
  */
-export async function getBatchHistory(): Promise<BatchHistory> {
+function assembleBatchHistory(
+  placements: Placement[],
+  daily: DailyEntry[],
+  weights: WeightEntry[],
+  nameOf: (houseId: string) => string,
+): BatchHistory {
   const maxDay = Math.max(
-    ...PLACEMENTS.map((p) => p.dayCount),
-    ...WEIGHT_ENTRIES.map((w) => w.day),
+    ...placements.map((p) => p.dayCount),
+    ...weights.map((w) => w.day),
   );
-  const placedTotal = PLACEMENTS.reduce((s, p) => s + p.placedCount, 0);
+  const placedTotal = placements.reduce((s, p) => s + p.placedCount, 0);
 
   // Per-house as-of arrays (index by day) so the batch rollup can carry forward.
   interface Prepared {
@@ -883,12 +894,11 @@ export async function getBatchHistory(): Promise<BatchHistory> {
     series: HouseSeries;
   }
 
-  const prepared: Prepared[] = PLACEMENTS.map((p) => {
-    const house = SITE.houses.find((h) => h.id === p.houseId);
-    const houseName = house?.name ?? p.houseId;
-    const entries = DAILY_ENTRIES.filter((e) => e.placementId === p.id);
+  const prepared: Prepared[] = placements.map((p) => {
+    const houseName = nameOf(p.houseId);
+    const entries = daily.filter((e) => e.placementId === p.id);
     const entriesByDay = new Map(entries.map((e) => [e.day, e]));
-    const weights = WEIGHT_ENTRIES.filter((w) => w.placementId === p.id).sort((a, b) => a.day - b.day);
+    const weighs = weights.filter((w) => w.placementId === p.id).sort((a, b) => a.day - b.day);
 
     const asOfCum: number[] = [];
     const asOfRem: number[] = [];
@@ -928,7 +938,7 @@ export async function getBatchHistory(): Promise<BatchHistory> {
 
     // Weigh points with vs-Ross and FCR.
     const weighByDay = new Map<number, HouseDayRow["weigh"]>();
-    for (const w of weights) {
+    for (const w of weighs) {
       const rossW = ROSS_308_CURVE[w.day]?.weightG ?? 0;
       const rem = asOfRem[w.day] ?? lastRem;
       const cumFeed = cumFeedAsOf[w.day] ?? runFeed;
@@ -944,7 +954,7 @@ export async function getBatchHistory(): Promise<BatchHistory> {
     }
 
     // House rows: every day that has a daily entry or a weigh-in.
-    const dayset = new Set<number>([...entries.map((e) => e.day), ...weights.map((w) => w.day)]);
+    const dayset = new Set<number>([...entries.map((e) => e.day), ...weighs.map((w) => w.day)]);
     const rows: HouseDayRow[] = [...dayset]
       .sort((a, b) => a - b)
       .map((d) => {
@@ -1035,14 +1045,23 @@ export async function getBatchHistory(): Promise<BatchHistory> {
     return { day, weightG: pt?.weightG ?? 0, fcr: pt?.fcr ?? null };
   });
 
-  return resolve({
+  return {
     maxDay,
     placed: placedTotal,
     houses: prepared.map((ph) => ph.series),
     batch,
     ross,
     mortalityBand: ROSS_308_OVERLAY.mortalityBand,
-  });
+  };
+}
+
+/** The current batch's full day-by-day history (real captured data). */
+export function getBatchHistory(): Promise<BatchHistory> {
+  return resolve(
+    assembleBatchHistory(PLACEMENTS, DAILY_ENTRIES, WEIGHT_ENTRIES, (id) =>
+      SITE.houses.find((h) => h.id === id)?.name ?? id,
+    ),
+  );
 }
 
 /** ISO date for a placement's day-of-cycle (placing date = day 0). */
@@ -1172,6 +1191,196 @@ export async function getComparableBatches(): Promise<CompareData> {
   });
 
   return resolve({ batches, ross, maxDay });
+}
+
+// ===========================================================================
+// Batch archive — the "Previous batches" table + per-batch detail history
+// (manager profile). The current batch reads real captured data; closed batches
+// generate a full per-house day-by-day history deterministically from their
+// summary seed (the same approach as the generated growers/comparison curves),
+// so the History & Charts view renders either without forking.
+// ===========================================================================
+
+const ARCHIVE_HOUSE_COUNT = 6;
+const ARCHIVE_PLACED_BASE = 16_100;
+
+interface GeneratedBatch {
+  placements: Placement[];
+  daily: DailyEntry[];
+  weights: WeightEntry[];
+  nameOf: (houseId: string) => string;
+}
+
+/** Synthesise a closed batch's per-house placements/daily/weigh records. */
+function genClosedBatchData(seed: HistoricalBatchSeed): GeneratedBatch {
+  const batchId = `batch_c${seed.cycleNo}`;
+  const finalDay = seed.finalDay;
+  const finalRossW = rossOf(finalDay).weightG || seed.finalWeightG;
+  const placements: Placement[] = [];
+  const daily: DailyEntry[] = [];
+  const weights: WeightEntry[] = [];
+  const names: Record<string, string> = {};
+
+  for (let i = 0; i < ARCHIVE_HOUSE_COUNT; i++) {
+    const houseId = `${batchId}-h${i + 1}`;
+    const placementId = `${batchId}-p${i + 1}`;
+    names[houseId] = `House ${i + 1}`;
+    // Symmetric per-house variation, so the batch mean tracks the seed's finals.
+    const centered = i - (ARCHIVE_HOUSE_COUNT - 1) / 2; // −2.5 … +2.5
+    const placed = ARCHIVE_PLACED_BASE + Math.round(centered * 40);
+    const hCumPct = Number(Math.max(0, seed.finalCumMortPct * (1 + centered * 0.08)).toFixed(2));
+    const hFinalWeight = Math.round(seed.finalWeightG * (1 + centered * 0.006));
+
+    placements.push({ id: placementId, batchId, houseId, placedCount: placed, placingDate: seed.placingDate, dayCount: finalDay });
+
+    // Front-loaded daily mortality summing to the house's cumulative %.
+    const { mortSeries } = genHouseDaily(placed, finalDay, hCumPct);
+    let cum = 0;
+    for (let d = 1; d <= finalDay; d++) {
+      const mort = mortSeries[d - 1] ?? 0;
+      cum += mort;
+      const birdsRemaining = placed - cum;
+      const intakeG = rossOf(d).dailyIntakeG ?? 0;
+      const feedAddedKg = Math.round(((intakeG * birdsRemaining) / 1000) * 1.06);
+      const nightMortality = Math.round(mort * 0.35);
+      daily.push({
+        id: `${placementId}-d${d}`,
+        placementId,
+        date: addDays(seed.placingDate, d),
+        day: d,
+        dayMortality: mort - nightMortality,
+        nightMortality,
+        mortality: mort,
+        culls: 0,
+        feedAddedKg,
+        cullAndMort: mort,
+        cumMort: cum,
+        cumPct: Number(((cum / placed) * 100).toFixed(2)),
+        birdsRemaining,
+      });
+    }
+
+    // Weigh-ins climbing toward the house's final weight (same shape as live).
+    const finalFactor = hFinalWeight / finalRossW;
+    const weighDays = [7, 14, 21, finalDay].filter((d, idx, arr) => d <= finalDay && arr.indexOf(d) === idx);
+    let prevW = rossOf(0).weightG;
+    let prevD = 0;
+    for (const d of weighDays) {
+      const isFinal = d === finalDay;
+      const frac = finalDay > 7 ? (d - 7) / (finalDay - 7) : 1;
+      const factor = 0.96 + (finalFactor - 0.96) * frac;
+      const avgWeightG = isFinal ? hFinalWeight : Math.round(rossOf(d).weightG * factor);
+      const adgG = d > prevD ? Math.round((avgWeightG - prevW) / (d - prevD)) : 0;
+      weights.push({
+        id: `${placementId}-w${d}`,
+        placementId,
+        day: d,
+        avgWeightG,
+        adgG,
+        growthRatio: 1.2,
+        uniformityPct: Math.round(74 - centered),
+      });
+      prevW = avgWeightG;
+      prevD = d;
+    }
+  }
+
+  return { placements, daily, weights, nameOf: (id) => names[id] ?? id };
+}
+
+/** Vaccinations whose scheduled day falls within a grow-out of `finalDay`. */
+function vaccinesUpTo(finalDay: number): string[] {
+  return VACCINATION_SCHEDULE.filter((v) => v.day <= finalDay).flatMap((v) => v.vaccines);
+}
+
+/**
+ * Full day-by-day history for any batch in the archive. The current batch reads
+ * the real captured data; a closed batch is assembled from its generated
+ * records. Returns null for an unknown id (the detail route 404s).
+ */
+export async function getArchivedBatchHistory(batchId: string): Promise<BatchHistory | null> {
+  if (batchId === BATCH.id) return getBatchHistory();
+  const seed = HISTORICAL_BATCHES.find((b) => `batch_c${b.cycleNo}` === batchId);
+  if (!seed) return resolve(null);
+  const g = genClosedBatchData(seed);
+  return resolve(assembleBatchHistory(g.placements, g.daily, g.weights, g.nameOf));
+}
+
+/** The live batch as an archive row (real captured totals + estimated EPEF). */
+async function currentArchiveRow(): Promise<BatchArchiveRow> {
+  const [history, compare, rollup] = await Promise.all([getBatchHistory(), getComparableBatches(), getSiteRollup()]);
+  const cb = compare.batches.find((b) => b.status === "current")!;
+  const finalDay = history.maxDay;
+  const feedUsedKg = history.batch.reduce((s, r) => s + r.feedAddedKg, 0);
+  const livability = rollup.placed ? (rollup.remaining / rollup.placed) * 100 : 0;
+  const epef = cb.fcr && finalDay ? Math.round(((livability * (cb.weightG / 1000)) / (finalDay * cb.fcr)) * 100) : 0;
+  const vaccineNames = vaccinesUpTo(finalDay);
+  return {
+    id: BATCH.id,
+    cycleNo: BATCH.cycleNo,
+    title: `Batch ${BATCH.cycleNo}`,
+    status: "current",
+    placingDate: cb.placingDate,
+    killDate: BATCH.killDate,
+    growOutDays: finalDay,
+    placed: rollup.placed,
+    totalMortality: rollup.cumMort,
+    cumMortPct: cb.cumMortPct,
+    finalWeightG: cb.weightG,
+    vsRossPct: cb.vsRossPct,
+    fcr: cb.fcr,
+    epef,
+    feedUsedKg,
+    vaccineCount: vaccineNames.length,
+    vaccineNames,
+    readyVsKillDays: cb.readyVsKillDays,
+    level: growerLevel(cb.vsRossPct),
+  };
+}
+
+/** A closed cycle as an archive row — headline figures match the track record. */
+function closedArchiveRow(seed: HistoricalBatchSeed): BatchArchiveRow {
+  const comp = genComparable(seed);
+  const g = genClosedBatchData(seed);
+  const placed = g.placements.reduce((s, p) => s + p.placedCount, 0);
+  const feedUsedKg = g.daily.reduce((s, e) => s + e.feedAddedKg, 0);
+  const totalMortality = g.daily.reduce((s, e) => s + e.mortality + e.culls, 0);
+  const vaccineNames = vaccinesUpTo(seed.finalDay);
+  return {
+    id: comp.id,
+    cycleNo: seed.cycleNo,
+    title: `Batch ${seed.cycleNo}`,
+    status: "closed",
+    placingDate: seed.placingDate,
+    killDate: seed.killDate,
+    growOutDays: seed.finalDay,
+    placed,
+    totalMortality,
+    cumMortPct: seed.finalCumMortPct,
+    finalWeightG: seed.finalWeightG,
+    vsRossPct: comp.vsRossPct,
+    fcr: seed.finalFcr,
+    epef: seed.epef,
+    feedUsedKg,
+    vaccineCount: vaccineNames.length,
+    vaccineNames,
+    readyVsKillDays: comp.readyVsKillDays,
+    level: growerLevel(comp.vsRossPct),
+  };
+}
+
+/** Every batch on the site for the Previous Batches archive (newest first). */
+export async function getBatchArchive(): Promise<BatchArchiveData> {
+  const current = await currentArchiveRow();
+  const closed = HISTORICAL_BATCHES.map(closedArchiveRow);
+  const rows = [current, ...closed].sort((a, b) => b.cycleNo - a.cycleNo);
+  return resolve({ rows });
+}
+
+/** One archive row by batch id (for the detail page header + highlights). */
+export async function getBatchArchiveRow(id: string): Promise<BatchArchiveRow | null> {
+  const { rows } = await getBatchArchive();
+  return resolve(rows.find((r) => r.id === id) ?? null);
 }
 
 // ===========================================================================

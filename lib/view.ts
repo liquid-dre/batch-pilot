@@ -232,6 +232,52 @@ export interface BatchHistory {
 }
 
 // ---------------------------------------------------------------------------
+// Batch archive (previous batches table + per-batch detail highlights)
+// ---------------------------------------------------------------------------
+
+/**
+ * One row in the Previous Batches archive — a closed cycle (or the current one),
+ * with the headline results the table and the detail-page highlights both read.
+ * Mortality/feed counts are totals over the whole cycle; FCR/EPEF are estimated
+ * (feed delivered, not consumed) and flagged as such wherever they appear.
+ */
+export interface BatchArchiveRow {
+  id: string;
+  cycleNo: number;
+  /** Page/row title, e.g. "Batch 85". */
+  title: string;
+  status: "current" | "closed";
+  placingDate: string;
+  killDate: string;
+  /** Grow-out length in days (current age for the live batch). */
+  growOutDays: number;
+  placed: number;
+  /** Total deaths + culls over the cycle. */
+  totalMortality: number;
+  cumMortPct: number;
+  /** Final average weight collected (latest weigh-in for the live batch), grams. */
+  finalWeightG: number;
+  /** Final weight as a % of the Ross 308 objective at the kill day. */
+  vsRossPct: number;
+  /** Estimated feed conversion ratio. */
+  fcr: number;
+  /** Estimated European Production Efficiency Factor. */
+  epef: number;
+  /** Total feed used over the cycle, kg. */
+  feedUsedKg: number;
+  /** Vaccinations given in the cycle (program rounds completed by the grow-out). */
+  vaccineCount: number;
+  vaccineNames: string[];
+  /** daysToTarget − killDay: negative = reached target ahead of the kill date. */
+  readyVsKillDays: number;
+  level: StatusLevel;
+}
+
+export interface BatchArchiveData {
+  rows: BatchArchiveRow[];
+}
+
+// ---------------------------------------------------------------------------
 // Batch comparison (trends across batches, aligned by day of cycle)
 // ---------------------------------------------------------------------------
 
