@@ -9,6 +9,10 @@ const MONTHS = [
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
 
+const WEEKDAYS = [
+  "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday",
+];
+
 /** Group digits with thin separators: 94783 → "94,783". */
 export function num(value: number): string {
   return value.toLocaleString("en-US");
@@ -33,6 +37,13 @@ export function kg(value: number): string {
 export function shortDate(iso: string): string {
   const [y, m, d] = iso.split("-").map(Number);
   return `${d} ${MONTHS[m - 1]} ${y}`;
+}
+
+/** ISO 'YYYY-MM-DD' → "Tuesday, 16 Jun 2026" (UTC-safe, for orientation). */
+export function longDate(iso: string): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  const weekday = WEEKDAYS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
+  return `${weekday}, ${d} ${MONTHS[m - 1]} ${y}`;
 }
 
 /** Whole days from `from` to `to` (both ISO). Negative if `to` is past. */

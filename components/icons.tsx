@@ -27,6 +27,8 @@ export {
   AlertTriangle as IconStatusWarn,
   AlertCircle as IconStatusBad,
   InfoCircle as IconInfo,
+  // Vaccination day — shield + tick reads as "protected / immunised"
+  ShieldTick as IconVaccine,
   // UI affordances
   Menu02 as IconMenu,
   XClose as IconClose,

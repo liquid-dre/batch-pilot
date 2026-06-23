@@ -34,6 +34,7 @@ import type {
 } from "@/lib/types";
 import type {
   BatchHistory,
+  CaptureHouse,
   ComparableBatch,
   CompareData,
   ComparePoint,
@@ -46,6 +47,7 @@ import type {
   HouseSeries,
   HouseTrend,
   PortfolioData,
+  SupervisorCaptureData,
   WeightBandData,
 } from "@/lib/view";
 import {
@@ -66,9 +68,10 @@ import {
   PLACEMENTS,
   PLANNED_BATCH,
   SITE,
+  VACCINATION_SCHEDULE,
   WEIGHT_ENTRIES,
 } from "./mock";
-import { ROSS_308_CURVE, ROSS_308_OVERLAY, ross308At } from "./ross308";
+import { ROSS_308_CURVE, ROSS_308_OVERLAY, mortalityBandPctAt, ross308At } from "./ross308";
 import { addDays, daysBetween } from "@/lib/format";
 import { dailyTotals } from "@/lib/calc";
 import { DEFAULT_THRESHOLDS, evaluatePlacement, type EngineContext, type MetricStatus, type PlacementMetrics } from "@/lib/engine";
@@ -319,6 +322,52 @@ export async function getSiteRollup(): Promise<SiteRollup> {
   }
   const mortPct = placed ? Number(((cumMort / placed) * 100).toFixed(2)) : 0;
   return resolve({ placed, remaining, cumMort, mortPct, houseCount: PLACEMENTS.length });
+}
+
+// --- Supervisor capture (the single, minimal capture screen) ---------------
+
+/**
+ * Per-house context for the supervisor's capture-first home: the day being
+ * recorded, the figures today's losses/feed add onto, and the Ross 308 +
+ * contractor guideline values shown as plain descriptions (target weight,
+ * expected cumulative mortality, feed intake), plus whether today is a
+ * vaccination day for the house. Computed server-side so the calm capture
+ * screen stays a thin client. Becomes a Convex query behind the same signature.
+ */
+export async function getSupervisorCapture(): Promise<SupervisorCaptureData> {
+  const houses: CaptureHouse[] = [];
+  for (const house of SITE.houses) {
+    const placement = PLACEMENTS.find((p) => p.houseId === house.id);
+    if (!placement) continue;
+    const entries = DAILY_ENTRIES.filter((e) => e.placementId === placement.id).sort((a, b) => a.day - b.day);
+    const latest = entries[entries.length - 1];
+    const day = (latest?.day ?? 0) + 1;
+    const placed = placement.placedCount;
+    const priorCumMort = latest?.cumMort ?? 0;
+    const ross = ross308At(day);
+    const vac = VACCINATION_SCHEDULE.find((v) => v.day === day);
+    houses.push({
+      id: house.id,
+      name: house.name,
+      placedCount: placed,
+      remaining: placed - priorCumMort,
+      day,
+      priorCumMort,
+      priorCumPct: placed ? Number(((priorCumMort / placed) * 100).toFixed(2)) : 0,
+      lastFeedKg: latest?.feedAddedKg ?? 0,
+      rossTargetWeightG: ross.weightG,
+      rossIntakeG: ross.dailyIntakeG,
+      standardCumMortPct: Number(mortalityBandPctAt(day).toFixed(2)),
+      vaccination: vac ? { vaccines: vac.vaccines, method: vac.method } : undefined,
+    });
+  }
+  return resolve({
+    siteName: SITE.name,
+    cycleNo: BATCH.cycleNo,
+    breed: BATCH.breed,
+    today: DEMO_TODAY,
+    houses,
+  });
 }
 
 // --- Writes (stub seam; persistence is Phase 1 → Convex mutation) ----------

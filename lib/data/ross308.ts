@@ -94,3 +94,25 @@ export function ross308At(day: number): BenchmarkPoint {
   const clamped = Math.max(0, Math.min(day, ROSS_308_CURVE.length - 1));
   return ROSS_308_CURVE[clamped];
 }
+
+/**
+ * The contractor's standard cumulative-mortality ceiling (%) for a day,
+ * linearly interpolated between the overlay band points. This is the "expected
+ * by today" figure the grower screens describe in plain language and compare
+ * against. Pure; mirrors the engine's internal band lookup so the descriptive
+ * line and the status pill always agree.
+ */
+export function mortalityBandPctAt(day: number): number {
+  const band = ROSS_308_OVERLAY.mortalityBand;
+  if (band.length === 0) return 100;
+  if (day <= band[0].day) return band[0].maxCumPct;
+  for (let i = 1; i < band.length; i++) {
+    if (day <= band[i].day) {
+      const a = band[i - 1];
+      const b = band[i];
+      const t = (day - a.day) / (b.day - a.day);
+      return a.maxCumPct + (b.maxCumPct - a.maxCumPct) * t;
+    }
+  }
+  return band[band.length - 1].maxCumPct;
+}
