@@ -61,20 +61,13 @@ const GROWER_SETUP: NavSection = {
 const GROWER_ALERTS: NavSection = { items: [{ key: "alerts", label: "Alerts", href: "/app/alerts", icon: "alerts" }] };
 
 export const NAV: Record<Role, NavSection[]> = {
-  // Supervisor / foreman — the data capturer. Home is the daily round; the nav
-  // is capture-first (records), with setup + alerts. No oversight analytics.
+  // Supervisor / foreman — the data capturer. The home is one calm capture
+  // screen (the daily round) and the nav stays deliberately tiny so the
+  // supervisor never feels overwhelmed: just the daily capture plus logging a
+  // feed delivery. Oversight (analytics, setup, alerts) lives with the Manager.
   supervisor: [
-    { items: [{ key: "home", label: "Today", href: "/app", icon: "dashboard" }] },
-    {
-      label: "Capture",
-      items: [
-        { key: "daily", label: "Daily update", href: "/app/daily", icon: "daily" },
-        { key: "feed", label: "Feed deliveries", href: "/app/feed", icon: "feed" },
-        { key: "weights", label: "Weights", href: "/app/weights", icon: "weights" },
-      ],
-    },
-    GROWER_SETUP,
-    GROWER_ALERTS,
+    { items: [{ key: "home", label: "Today's capture", href: "/app", icon: "daily" }] },
+    { items: [{ key: "feed", label: "Feed deliveries", href: "/app/feed", icon: "feed" }] },
   ],
   // Manager — oversight. Home is the consolidated dashboard; the nav is
   // analytics-first, with setup + alerts. Capture is the supervisor's job.

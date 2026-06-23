@@ -49,6 +49,44 @@ export interface DailyFormData {
   today: string;
 }
 
+/**
+ * One house's context for the supervisor capture screen. Everything the calm,
+ * single-screen capture needs: the day being recorded, the figures to add today
+ * onto, and the Ross 308 / contractor guideline values shown as plain
+ * descriptions (target weight, expected cumulative mortality, feed intake) plus
+ * whether today is a vaccination day for this house.
+ */
+export interface CaptureHouse {
+  id: string;
+  name: string;
+  placedCount: number;
+  /** Birds on the floor before today (placed − prior losses). */
+  remaining: number;
+  /** Day of cycle being recorded (latest recorded day + 1). */
+  day: number;
+  /** Cumulative deaths + culls before today. */
+  priorCumMort: number;
+  priorCumPct: number;
+  /** Yesterday's feed, the stepper's starting value. */
+  lastFeedKg: number;
+  /** Ross 308 objective weight at `day`, grams. */
+  rossTargetWeightG: number;
+  /** Ross 308 daily feed intake at `day`, g/bird (null on day 0). */
+  rossIntakeG: number | null;
+  /** Contractor standard cumulative-mortality ceiling at `day`, %. */
+  standardCumMortPct: number;
+  /** Set when `day` is a vaccination day for this house. */
+  vaccination?: { vaccines: string[]; method: string };
+}
+
+export interface SupervisorCaptureData {
+  siteName: string;
+  cycleNo: number;
+  breed: string;
+  today: string;
+  houses: CaptureHouse[];
+}
+
 export interface DashboardData {
   site: Site;
   contractor: Contractor;

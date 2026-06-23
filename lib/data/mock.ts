@@ -129,6 +129,28 @@ export const PLACEMENTS: Placement[] = [
 ];
 
 // ---------------------------------------------------------------------------
+// Vaccination schedule — the days a vaccine is due, by day of cycle. Drives the
+// "it's a vaccination day" prompt on the supervisor capture screen, where the
+// vaccines-used fields are surfaced. A typical Ross 308 broiler program: an
+// early Gumboro, a mid Newcastle, and a late ND booster. (Days are matched
+// against each house's own day-count, since placings are staggered.)
+// ---------------------------------------------------------------------------
+
+export interface VaccinationDay {
+  day: number;
+  /** Vaccine(s) due that day. */
+  vaccines: string[];
+  /** How it's given (drinking water, coarse spray, eye drop). */
+  method: string;
+}
+
+export const VACCINATION_SCHEDULE: VaccinationDay[] = [
+  { day: 10, vaccines: ["Infectious Bursal Disease (Gumboro)"], method: "Drinking water" },
+  { day: 18, vaccines: ["Newcastle disease (ND)"], method: "Drinking water" },
+  { day: 28, vaccines: ["Newcastle disease (ND) booster"], method: "Coarse spray" },
+];
+
+// ---------------------------------------------------------------------------
 // Daily entries — FULL day-1..current series per house.
 // The cumulative mortality lands EXACTLY on the documented BRD §7.2 figure at
 // each house's latest day (296/298/530/273/355/368). Mortality is front-loaded

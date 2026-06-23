@@ -15,6 +15,7 @@ import {
   getProjection,
   getSite,
   getSiteRollup,
+  getSupervisorCapture,
   getWeightBandData,
   DEMO_TODAY,
 } from "@/lib/data";
@@ -27,7 +28,7 @@ import { RoleHome } from "@/components/shell/RoleHome";
 
 export default async function Page() {
   // The home assembles both role bundles; RoleHome picks by the active role.
-  const [site, contractor, batch, rollup, houses, feed, catching, projection, alerts, weightBand, plannedBatch, portfolio] =
+  const [site, contractor, batch, rollup, houses, feed, catching, projection, alerts, weightBand, plannedBatch, portfolio, supervisor] =
     await Promise.all([
       getSite(),
       getContractor(),
@@ -41,6 +42,7 @@ export default async function Page() {
       getWeightBandData(),
       getPlannedBatch(),
       getPortfolio(),
+      getSupervisorCapture(),
     ]);
 
   const houseViews: HouseView[] = await Promise.all(
@@ -81,5 +83,5 @@ export default async function Page() {
 
   const grower: GrowerDashboardData = { overview, projection, alerts, houseViews, weightBand, efficiency, plannedBatch };
 
-  return <RoleHome grower={grower} contractor={{ data: portfolio, siteId: site.id }} today={DEMO_TODAY} />;
+  return <RoleHome grower={grower} supervisor={supervisor} contractor={{ data: portfolio, siteId: site.id }} />;
 }
