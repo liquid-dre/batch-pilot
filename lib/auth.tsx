@@ -10,10 +10,11 @@
  */
 import { createContext, useContext, useState } from "react";
 import type { Role, User } from "@/lib/types";
-import { CONTRACTOR_USER, GROWER_USER } from "@/lib/data/mock";
+import { CONTRACTOR_USER, MANAGER_USER, SUPERVISOR_USER } from "@/lib/data/mock";
 
 const USERS: Record<Role, User> = {
-  grower: GROWER_USER,
+  supervisor: SUPERVISOR_USER,
+  manager: MANAGER_USER,
   contractor: CONTRACTOR_USER,
 };
 
@@ -26,9 +27,10 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  // Role is session-scoped for the demo (defaults to Grower). When Clerk lands,
-  // the active user/role comes from the auth session instead of this state.
-  const [role, setRole] = useState<Role>("grower");
+  // Role is session-scoped for the demo (defaults to the manager profile). The
+  // landing CTAs set the chosen profile before entering. When Clerk lands, the
+  // active user/role comes from the auth session instead of this state.
+  const [role, setRole] = useState<Role>("manager");
 
   return (
     <AuthContext.Provider value={{ user: USERS[role], role, setRole }}>

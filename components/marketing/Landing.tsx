@@ -7,10 +7,12 @@ import { LogoMark } from "@/components/brand/Logo";
 import { cn } from "@/lib/cn";
 
 /**
- * Marketing landing at `/`. No real auth: the CTAs call the AuthProvider stub to
- * set a demo session (role), then navigate into `/app`. "Get started" and
- * "Log in" both land on the grower app; "for contractors" sets the contractor
- * role. This is the Clerk seam — when auth lands, these calls become sign-in.
+ * Marketing landing at `/` — also the (stub) login screen. No real auth: the
+ * CTAs call the AuthProvider stub to set a demo session role, then navigate into
+ * `/app`. The grower app offers TWO profiles — "Supervisor / Foreman" (the data
+ * capturer) and "Manager" (oversight) — and "for contractors" sets the
+ * contractor role. This is the Clerk seam — when auth lands, these calls become
+ * sign-in / sign-up against the chosen role.
  */
 export function Landing() {
   const router = useRouter();
@@ -51,7 +53,7 @@ function Hero({ onEnter }: { onEnter: (r: Role) => void }) {
         </span>
         <button
           type="button"
-          onClick={() => onEnter("grower")}
+          onClick={() => onEnter("manager")}
           className="rounded-[var(--radius-control)] px-4 py-2 text-label font-semibold text-brand-100 transition-colors duration-[var(--dur-fast)] hover:text-white"
         >
           Log in
@@ -82,21 +84,27 @@ function Hero({ onEnter }: { onEnter: (r: Role) => void }) {
           green-amber-red status per house, and a projection against the contractor&apos;s kill date.
         </p>
 
-        <div className="animate-rise mt-8 flex flex-col gap-3 sm:flex-row sm:items-center" style={{ animationDelay: "210ms" }}>
-          <button
-            type="button"
-            onClick={() => onEnter("grower")}
-            className="inline-flex h-[52px] items-center justify-center rounded-[var(--radius-control)] bg-surface px-7 text-[1.0625rem] font-semibold text-brand-700 shadow-[0_1px_2px_rgba(11,42,74,0.25)] transition-transform duration-[var(--dur-fast)] ease-[var(--ease-out)] hover:brightness-[0.97] active:scale-[0.98]"
-          >
-            Get started
-          </button>
-          <button
-            type="button"
-            onClick={() => onEnter("grower")}
-            className="inline-flex h-[52px] items-center justify-center rounded-[var(--radius-control)] border border-white/30 px-7 text-[1.0625rem] font-semibold text-white transition-colors duration-[var(--dur-fast)] ease-[var(--ease-out)] hover:bg-white/10 active:scale-[0.98]"
-          >
-            Log in
-          </button>
+        <div className="animate-rise mt-8" style={{ animationDelay: "210ms" }}>
+          <p className="mb-2.5 text-label font-medium text-brand-100/80">Sign in to the grower app</p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <button
+              type="button"
+              onClick={() => onEnter("supervisor")}
+              className="inline-flex h-[52px] items-center justify-center rounded-[var(--radius-control)] bg-surface px-7 text-[1.0625rem] font-semibold text-brand-700 shadow-[0_1px_2px_rgba(11,42,74,0.25)] transition-transform duration-[var(--dur-fast)] ease-[var(--ease-out)] hover:brightness-[0.97] active:scale-[0.98]"
+            >
+              Supervisor / Foreman
+            </button>
+            <button
+              type="button"
+              onClick={() => onEnter("manager")}
+              className="inline-flex h-[52px] items-center justify-center rounded-[var(--radius-control)] border border-white/30 px-7 text-[1.0625rem] font-semibold text-white transition-colors duration-[var(--dur-fast)] ease-[var(--ease-out)] hover:bg-white/10 active:scale-[0.98]"
+            >
+              Manager
+            </button>
+          </div>
+          <p className="mt-2.5 text-label text-brand-100/70">
+            Supervisor captures the daily numbers · Manager oversees performance.
+          </p>
         </div>
 
         <button
@@ -163,16 +171,17 @@ function Registers({ onEnter }: { onEnter: (r: Role) => void }) {
         <RegisterCard
           eyebrow="For growers"
           title="Spacious, one-thumb screens for the house."
-          body="One clear action at a time. Big steppers, no keyboard, no maths. Built for a cheap Android in bright sun."
-          cta="Open the grower app"
-          onClick={() => onEnter("grower")}
+          body="Two profiles on one site: the supervisor captures the daily numbers on big steppers — no keyboard, no maths — while the manager watches performance, projections and the breed curve."
+          actions={[
+            { label: "Supervisor / Foreman →", onClick: () => onEnter("supervisor") },
+            { label: "Manager →", onClick: () => onEnter("manager") },
+          ]}
         />
         <RegisterCard
           eyebrow="For contractors"
           title="A live portfolio of every flock you supply."
           body="Rank houses by EPEF, drill into any grower, plan the catch, and compare the whole network to the breed curve."
-          cta="Open the contractor view"
-          onClick={() => onEnter("contractor")}
+          actions={[{ label: "Open the contractor view →", onClick: () => onEnter("contractor") }]}
         />
       </div>
     </section>
@@ -183,27 +192,30 @@ function RegisterCard({
   eyebrow,
   title,
   body,
-  cta,
-  onClick,
+  actions,
 }: {
   eyebrow: string;
   title: string;
   body: string;
-  cta: string;
-  onClick: () => void;
+  actions: { label: string; onClick: () => void }[];
 }) {
   return (
     <div className="flex flex-col rounded-[var(--radius-card)] bg-surface p-7 shadow-card sm:p-8">
       <p className="font-mono text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-brand-500">{eyebrow}</p>
       <h3 className="mt-3 text-h2 [text-wrap:balance]">{title}</h3>
       <p className="mt-3 flex-1 text-body-l text-slate">{body}</p>
-      <button
-        type="button"
-        onClick={onClick}
-        className="mt-6 inline-flex w-fit items-center gap-1.5 text-label font-semibold text-brand-700 underline-offset-4 transition-colors hover:text-brand-600 hover:underline"
-      >
-        {cta} →
-      </button>
+      <div className="mt-6 flex flex-wrap gap-x-6 gap-y-2">
+        {actions.map((a) => (
+          <button
+            key={a.label}
+            type="button"
+            onClick={a.onClick}
+            className="inline-flex w-fit items-center gap-1.5 text-label font-semibold text-brand-700 underline-offset-4 transition-colors hover:text-brand-600 hover:underline"
+          >
+            {a.label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -223,7 +235,7 @@ function ClosingBand({ onEnter }: { onEnter: (r: Role) => void }) {
         </div>
         <button
           type="button"
-          onClick={() => onEnter("grower")}
+          onClick={() => onEnter("supervisor")}
           className="inline-flex h-[52px] shrink-0 items-center justify-center rounded-[var(--radius-control)] bg-surface px-7 text-[1.0625rem] font-semibold text-brand-700 transition-transform duration-[var(--dur-fast)] ease-[var(--ease-out)] hover:brightness-[0.97] active:scale-[0.98]"
         >
           Get started

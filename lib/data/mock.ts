@@ -223,11 +223,17 @@ function buildSeries(seed: HouseSeed): DailyEntry[] {
       const t = (day - (N - 5)) / 5;
       tempC = Number((21 + (seed.tempPeakC - 21) * t).toFixed(1));
     }
+    // Split the day's deaths into day vs night (most losses are found on the
+    // morning round; the remainder overnight). day + night === mortality.
+    const nightMortality = Math.round(mort * 0.35);
+    const dayMortality = mort - nightMortality;
     return {
       id: `${seed.placementId}-d${day}`,
       placementId: seed.placementId,
       date: dateMinusDays(seed.anchorDate, N - day),
       day,
+      dayMortality,
+      nightMortality,
       mortality: mort,
       culls: 0,
       feedAddedKg,
@@ -438,10 +444,23 @@ export const BENCHMARK: BenchmarkSet = {
 // Users — the role switcher returns one of these (no auth yet, ROADMAP §5).
 // ---------------------------------------------------------------------------
 
-export const GROWER_USER: User = {
-  id: "u_grower",
+/**
+ * The grower side has two profiles on the same site (ROADMAP §5 — the Clerk
+ * seam): the supervisor/foreman who captures the daily numbers, and the manager
+ * who oversees performance. The login screen offers both; the switcher toggles.
+ */
+export const SUPERVISOR_USER: User = {
+  id: "u_supervisor",
   name: "John",
-  role: "grower",
+  role: "supervisor",
+  org: "Murray Downs",
+  siteId: SITE.id,
+};
+
+export const MANAGER_USER: User = {
+  id: "u_manager",
+  name: "Thandi",
+  role: "manager",
   org: "Murray Downs",
   siteId: SITE.id,
 };

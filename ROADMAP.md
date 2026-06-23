@@ -91,8 +91,10 @@ one-module change and the UI never has to be rewritten.
 - **Types are the contract.** `lib/types.ts` defines the data model (§7). Mock data and future Convex
   both conform to it.
 - **Auth seam.** `useCurrentUser()` (and an `<AuthProvider>`) returns a hardcoded user + role now →
-  Clerk later. Because there's no login, a visible **role switcher** in the app shell toggles
-  Grower ↔ Contractor for the demo.
+  Clerk later. Because there's no login, a visible **role switcher** in the app shell toggles between
+  the three profiles for the demo: **Supervisor / Foreman** (grower-side data capturer), **Manager**
+  (grower-side oversight) and **Contractor**. `Role = "supervisor" | "manager" | "contractor"`, with
+  `isGrowerRole()` covering the two grower profiles (both scoped to a site).
 - **Billing seam.** `usePlan()` returns a stub plan now → Stripe later.
 - **Theming seam.** Every brand value is a CSS custom property in `globals.css`. Components reference
   **semantic tokens** (`--color-primary`, `--status-bad`…), never raw hex. Re-theming = editing
@@ -160,8 +162,11 @@ Grower/Site  { id, name, farmCode, location{lat,lng}, contractorIds[], houses[] 
 House        { id, siteId, name, capacity }
 Batch/Cycle  { id, siteId, contractorId, cycleNo, breed, killDate, focPct, contractId }
 Placement    { id, batchId, houseId, placedCount, placingDate, dayCount }   // per-house age
-DailyEntry   { id, placementId, date, day, mortality, culls, feedAddedKg, feedConsumedKg?, tempC?,
+DailyEntry   { id, placementId, date, day, dayMortality, nightMortality, mortality, culls,
+               feedAddedKg, feedConsumedKg?, tempC?,
+               charcoal?:{amount,unit}, vaccines?:[{name,amount,unit}], medications?:[…],
                // derived: cullAndMort, cumMort, cumPct, birdsRemaining }
+TreatmentEntry { name, amount, unit }   // a vaccine/medication line; charcoal is {amount,unit}
 WeightEntry  { id, placementId, day, avgWeightG, adgG, growthRatio, uniformityPct }
 FeedDelivery { id, siteId, date, feedType, bagSizeKg, bagCount, netWeightKg }   // nominal vs net
 CatchingEvent{ id, batchId, night, count, collectionWeightKg? }
@@ -170,6 +175,12 @@ BenchmarkSet { contractorId, breed, sex, unit, curve:[{day,weightG,dailyGainG,av
 Contract     { id, chickPrice, feedPricePerKg, buyBackPerKg, focPct }
 Status       { metric, level:'green'|'amber'|'red', actualVsTarget, cause?, fix? }
 ```
+
+**Mortality capture.** "Birds found dead" is captured as **Day mortality** + **Night mortality**;
+they sum to `mortality`, the single total every downstream calc/chart reads (so the split is additive
+metadata, nothing else changed). **Culls** stay separate. The optional consumables — **charcoal**
+(amount/unit), **vaccines** and **medications** (name + amount + unit) — are collapsed by default in
+capture and are surfaced in the echo-back; they have no scoring impact yet (seams for later analytics).
 
 Seed `BenchmarkSet.curve` from `ross308_as_hatched_benchmark.csv`. Seed mock sites/batches from the
 Nhunge cycle-85 figures so the demo shows realistic numbers (the day-27/28 houses run ~13% under the
@@ -242,7 +253,7 @@ Ross weight curve — that under-performance is the hero story, keep it).
 - [x] **Information architecture + collapsible sidebar** — a left sidebar (`AppShell` + `SidebarNav`, `nav-config.tsx`) is the navigation vehicle: desktop full panel ↔ persisted icon rail (tooltips in rail) with collapsible, open-state-remembering groups; mobile hamburger in a slim top bar opens an off-canvas drawer over a dimmed scrim (tap-scrim / select / Escape / swipe to close, large targets); BatchPilot mark on top, role switcher in the sidebar, clear active highlight. Brand-token only, `prefers-reduced-motion` aware, full keyboard nav (`usePersisted` via `useSyncExternalStore`).
 - [x] **Icon system — Untitled UI** — replaced every hand-built inline SVG with the official free `@untitledui/icons` line set, routed through one central module (`components/icons.tsx`) that re-exports the chosen icons under semantic names (`IconDashboard`, `IconDailyUpdate`, `IconStatusGood/Warn/Bad`, `IconMenu`, `IconCollapse`, …); every other file imports from that module only, so the whole set is swappable in one place. Covers sidebar nav + group headers, hamburger/collapse toggles, status pills, alerts, toasts, stepper +/−, and the form trash/check glyphs. On brand (line style, ~2px stroke, 24px nav / smaller inline) and colour comes from `currentColor` via semantic text tokens (never a hardcoded hex). Status stays colour + icon + word + shape via distinct glyphs — tick-circle (good) / triangle (at risk) / alert-circle (needs attention). A11y: decorative icons `aria-hidden`, icon-only buttons keep an `aria-label`.
 
-> **Shell decision (the Clerk seam).** No real auth: the landing CTAs call the `AuthProvider` stub — "Get started" / "Log in" set a demo session (role = grower) and `router.push('/app')`; the secondary "for contractors" link sets the contractor role. `app/app/layout.tsx` is the authenticated boundary: when **Clerk** lands (ROADMAP §9), these stub calls become real sign-in / sign-up and `/app/*` sits behind the auth middleware. Everything still flows through `lib/data/` and `useCurrentUser()`, so no UI changes are needed for the swap.
+> **Shell decision (the Clerk seam).** No real auth: the landing CTAs call the `AuthProvider` stub and `router.push('/app')`. The grower app offers two profiles — **Supervisor / Foreman** and **Manager** — each setting its demo role; the "for contractors" link sets the contractor role (see "Grower profiles" below). `app/app/layout.tsx` is the authenticated boundary: when **Clerk** lands (ROADMAP §9), these stub calls become real sign-in / sign-up and `/app/*` sits behind the auth middleware. Everything still flows through `lib/data/` and `useCurrentUser()`, so no UI changes are needed for the swap.
 
 > **IA decision.** Features were arriving faster than structure, leaving two competing "homes" (overview vs flock-status), orphaned screens (house setup, allocate, alerts reachable only via buried buttons) and ambiguous labels. The upgrade gives every feature **one obvious home** under intuitive, role-matched sections. **Grower:** `Dashboard` (default, "what now?" — the consolidated greeting + projection + weight-vs-Ross hero + alerts summary + efficiency + per-house status, replacing the old overview *and* flock-status pages) · **Records** {Daily update, Feed deliveries, Weights} · **Analytics** {History & charts, Batch comparison} · **Setup** {Houses, Allocate a cycle} · `Alerts` (now its own screen). **Contractor:** `Overview` (the rankings dashboard, default) · `Growers` · `Collection schedule` · `Benchmarks`. Route moves: grower flock-status folded into `/app`; `/app/houses` is now **Setup → Houses**; new `/app/alerts`; contractor `/app` is the rankings (Portfolio folded in). Old routes redirect (`/app/houses/setup` → `/app/houses`, `/app/portfolio` → `/app`). Orientation: every screen has a clear title, nested screens carry a breadcrumb back-link (`PageHeader.back`), one obvious primary action, and guiding empty states.
 
@@ -255,11 +266,15 @@ Ross weight curve — that under-performance is the hero story, keep it).
 - [x] **Even contractor drill-down** — every grower drill-down has the same depth: per-house cards, a per-day **Trends** chart (reusing `CompareChart`), and track record (`GrowerTrends`).
 - [x] **Unit tests (Vitest)** — pure logic only: the status/threshold engine, `recommendAllocation`, and the cumulative maths (extracted to `lib/calc.ts`); 21 tests via `npm test`. No UI/snapshot tests yet (interface still moving).
 
+**Grower profiles + richer daily capture**
+- [x] **Two grower profiles — Supervisor / Foreman & Manager** — the grower side splits into a data-capturer (supervisor/foreman) and an oversight (manager) profile, both on the same site and both on the auth **stub** (no real auth). `Role` becomes `"supervisor" | "manager" | "contractor"` with `isGrowerRole()` (`lib/types.ts`); mock `SUPERVISOR_USER` / `MANAGER_USER` (`lib/data/mock.ts`); `AuthProvider` maps all three (`lib/auth.tsx`). The login screen (`components/marketing/Landing.tsx`) now offers **Supervisor / Foreman** and **Manager** (plus the contractor link) — each sets the demo role and routes to that profile's home. **Homes:** supervisor → a new capture-first `SupervisorHome` ("today's round" front-and-centre + quick capture links + watch-list + site totals); manager → the existing oversight `GrowerDashboard`; contractor unchanged (`RoleHome`). **Nav** (`nav-config.tsx`) is profile-matched: supervisor = Capture {Daily, Feed, Weights} + Setup + Alerts; manager = Analytics {History, Compare} + Setup + Alerts. `GrowerOnly` gates on `isGrowerRole`; the `RoleSwitcher` + rail show all three profiles. **This is the Clerk seam** (recorded in §5/§9).
+- [x] **Mortality split + optional consumables** — "Birds found dead" → **Day mortality** + **Night mortality** (sum to `mortality`, the figure all calcs/charts keep reading); Culls unchanged. New **optional, collapsed-by-default** consumables on the daily entry: **Charcoal** (amount/unit), **Vaccines** and **Medications** (name + amount + unit, add/remove rows). Wired through types (`DailyEntry`, `TreatmentEntry`, `Amount`), the seam (`submitDailyUpdate` / `DailyUpdateInput` compute the total + echo back the consumables) and the capture UI (`DailyUpdateForm` — paired steppers with a live total, a "Treatments & additives" collapsible). Mock series now carry the day/night split.
+
 ---
 
 ## 9. Explicitly deferred (post-MVP) — and the seam each will use
 
-- **Auth → Clerk** — seam: `<AuthProvider>` / `useCurrentUser()`; the boundary is `app/app/layout.tsx` and the landing CTAs (`components/marketing/Landing.tsx`) become real sign-in / sign-up
+- **Auth → Clerk** — seam: `<AuthProvider>` / `useCurrentUser()`; the boundary is `app/app/layout.tsx` and the landing CTAs (`components/marketing/Landing.tsx`) become real sign-in / sign-up. The login screen already offers the three profiles (Supervisor / Foreman, Manager, Contractor); each Clerk session resolves to one `Role` and `isGrowerRole()` gates the grower register
 - **Database + realtime → Convex** — seam: `lib/data/*`
 - **Payments → Stripe** — seam: `usePlan()`
 - **WhatsApp ingestion → Twilio** — 1:1 messaging to a BatchPilot number, tolerant parser + echo-back

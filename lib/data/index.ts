@@ -10,6 +10,7 @@
  * `await` them directly; client components call them inside effects/actions.
  */
 import type {
+  Amount,
   BatchProjection,
   BenchmarkSet,
   Batch,
@@ -18,6 +19,7 @@ import type {
   Contractor,
   DailyEntry,
   FeedDelivery,
+  TreatmentEntry,
   FlockAlert,
   House,
   HouseProjection,
@@ -325,16 +327,24 @@ export interface DailyUpdateInput {
   houseId: string;
   date: string;
   day: number;
-  mortality: number;
+  /** Birds found dead during the day. */
+  dayMortality: number;
+  /** Birds found dead overnight. */
+  nightMortality: number;
   culls: number;
   feedAddedKg: number;
   tempC?: number;
+  /** Optional consumables (collapsed by default in capture). */
+  charcoal?: Amount;
+  vaccines?: TreatmentEntry[];
+  medications?: TreatmentEntry[];
 }
 
 /**
  * Computes the derived figures (the wedge: cull&mort, cumMort, cum%, remaining)
- * and returns the resulting entry for echo-back confirmation. Does NOT persist
- * yet — Phase 1 wires the form; the real write becomes a Convex mutation.
+ * and returns the resulting entry for echo-back confirmation. Mortality is the
+ * sum of the day and night counts. Does NOT persist yet — Phase 1 wires the
+ * form; the real write becomes a Convex mutation.
  */
 export async function submitDailyUpdate(input: DailyUpdateInput): Promise<DailyEntry> {
   const placement = PLACEMENTS.find((p) => p.houseId === input.houseId);
@@ -342,10 +352,11 @@ export async function submitDailyUpdate(input: DailyUpdateInput): Promise<DailyE
     ? DAILY_ENTRIES.filter((e) => e.placementId === placement.id).sort((a, b) => a.day - b.day).slice(-1)[0]
     : undefined;
   const placed = placement?.placedCount ?? 0;
+  const mortality = input.dayMortality + input.nightMortality;
   const { cullAndMort, cumMort, birdsRemaining, cumPct } = dailyTotals({
     placed,
     priorCumMort: prior?.cumMort ?? 0,
-    mortality: input.mortality,
+    mortality,
     culls: input.culls,
   });
   return resolve({
@@ -353,10 +364,15 @@ export async function submitDailyUpdate(input: DailyUpdateInput): Promise<DailyE
     placementId: placement?.id ?? input.houseId,
     date: input.date,
     day: input.day,
-    mortality: input.mortality,
+    dayMortality: input.dayMortality,
+    nightMortality: input.nightMortality,
+    mortality,
     culls: input.culls,
     feedAddedKg: input.feedAddedKg,
     tempC: input.tempC,
+    charcoal: input.charcoal,
+    vaccines: input.vaccines,
+    medications: input.medications,
     cullAndMort,
     cumMort,
     cumPct,

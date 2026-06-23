@@ -81,5 +81,5 @@ export default async function Page() {
 
   const grower: GrowerDashboardData = { overview, projection, alerts, houseViews, weightBand, efficiency, plannedBatch };
 
-  return <RoleHome grower={grower} contractor={{ data: portfolio, siteId: site.id }} />;
+  return <RoleHome grower={grower} contractor={{ data: portfolio, siteId: site.id }} today={DEMO_TODAY} />;
 }

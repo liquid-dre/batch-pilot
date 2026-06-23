@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { Role } from "@/lib/types";
 import { useCurrentUser } from "@/lib/auth";
 import { usePersisted } from "@/lib/usePersisted";
 import { cn } from "@/lib/cn";
@@ -190,14 +191,19 @@ function RailSection({ section, pathname, onNavigate, withDivider }: { section: 
 
 /* ---- Rail-mode role toggle (compact) ---- */
 
+const RAIL_ROLES: { role: Role; label: string; glyph: string }[] = [
+  { role: "supervisor", label: "Supervisor", glyph: "S" },
+  { role: "manager", label: "Manager", glyph: "M" },
+  { role: "contractor", label: "Contractor", glyph: "C" },
+];
+
 function RoleRail() {
   const { role, setRole } = useCurrentUser();
   return (
-    <div role="radiogroup" aria-label="Switch viewpoint between grower and contractor" className="flex flex-col items-center gap-1">
+    <div role="radiogroup" aria-label="Switch viewpoint between supervisor, manager and contractor" className="flex flex-col items-center gap-1">
       <IconSwitch className="mb-0.5 size-4 text-hint" aria-hidden />
-      {(["grower", "contractor"] as const).map((r) => {
+      {RAIL_ROLES.map(({ role: r, label, glyph }) => {
         const active = role === r;
-        const label = r === "grower" ? "Grower" : "Contractor";
         return (
           <button
             key={r}
@@ -212,7 +218,7 @@ function RoleRail() {
               active ? "bg-brand-700 text-white" : "bg-brand-50 text-brand-700 hover:bg-brand-100",
             )}
           >
-            {r === "grower" ? "G" : "C"}
+            {glyph}
           </button>
         );
       })}
