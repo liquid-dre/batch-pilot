@@ -79,7 +79,9 @@ export function BatchHighlights({ row }: { row: BatchArchiveRow }) {
         label="vs Ross 308"
         value={`${row.vsRossPct}%`}
         tone={vsRossTone}
-        sub={<StatusPill level={row.level} size="sm" />}
+        // The live-trajectory pill (On track / At risk …) only fits a batch still
+        // on the floor; a closed cycle just shows its final result.
+        sub={row.status === "current" ? <StatusPill level={row.level} size="sm" /> : "of the Ross 308 target"}
       />
       <Stat
         label="vs kill date"

@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import type { BatchArchiveRow } from "@/lib/view";
 import { num, pct, grams, kg, shortDate } from "@/lib/format";
 import { useSessionPersisted } from "@/lib/usePersisted";
-import { rowActivation } from "@/lib/a11y";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/Button";
 import { StatusPill } from "@/components/ui/StatusPill";
@@ -18,7 +17,7 @@ import {
   IconSortAsc,
   IconSortDesc,
   IconClose,
-  IconArrowRight,
+  IconView,
   IconEmpty,
 } from "@/components/icons";
 
@@ -348,6 +347,10 @@ export function PreviousBatchesTable({ rows }: { rows: BatchArchiveRow[] }) {
                   </th>
                 );
               })}
+              {/* Sticky action column — stays put while the grid scrolls sideways */}
+              <th scope="col" className="sticky right-0 z-20 bg-brand-900 px-2 py-2.5">
+                <span className="sr-only">View batch</span>
+              </th>
             </tr>
 
             {/* Per-column filter row */}
@@ -358,6 +361,7 @@ export function PreviousBatchesTable({ rows }: { rows: BatchArchiveRow[] }) {
                     <FilterField col={col} value={filters[col.key]} onChange={(v) => setFilter(col.key, v)} />
                   </th>
                 ))}
+                <th scope="col" aria-hidden className="sticky right-0 z-20 bg-brand-700 px-2 py-2" />
               </tr>
             ) : null}
           </thead>
@@ -366,9 +370,7 @@ export function PreviousBatchesTable({ rows }: { rows: BatchArchiveRow[] }) {
             {filtered.map((r) => (
               <tr
                 key={r.id}
-                {...rowActivation(() => router.push(`/app/batches/${r.id}`))}
-                aria-label={`Open ${r.title}`}
-                className="cursor-pointer bg-surface transition-colors duration-[var(--dur-fast)] hover:bg-brand-50/60 focus-visible:bg-brand-50/60"
+                className="group bg-surface transition-colors duration-[var(--dur-fast)] hover:bg-brand-50/60"
               >
                 {cols.map((col) => (
                   <td
@@ -382,6 +384,17 @@ export function PreviousBatchesTable({ rows }: { rows: BatchArchiveRow[] }) {
                     {col.cell(r)}
                   </td>
                 ))}
+                <td className="sticky right-0 bg-surface px-2 py-2 text-right shadow-[-8px_0_8px_-8px_rgba(11,42,74,0.12)] transition-colors duration-[var(--dur-fast)] group-hover:bg-brand-50/60">
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/app/batches/${r.id}`)}
+                    aria-label={`View ${r.title}`}
+                    title={`View ${r.title}`}
+                    className="inline-flex size-9 items-center justify-center rounded-[var(--radius-control)] text-slate transition-colors duration-[var(--dur-fast)] hover:bg-brand-100 hover:text-brand-700 focus-visible:bg-brand-100 focus-visible:text-brand-700"
+                  >
+                    <IconView className="size-5" aria-hidden />
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -413,13 +426,16 @@ function BatchCell({ row }: { row: BatchArchiveRow }) {
   return (
     <span className="inline-flex items-center gap-2.5">
       <span className="font-display font-semibold text-ink">{row.title}</span>
+      {/* The live-trajectory status (On track / At risk …) only applies to the
+          batch still on the floor; a closed cycle is a finished result. */}
       {row.status === "current" ? (
-        <span className="rounded-[var(--radius-pill)] bg-brand-100 px-1.5 py-0.5 text-[0.625rem] font-semibold uppercase tracking-wide text-brand-700">
-          Live
-        </span>
+        <>
+          <span className="rounded-[var(--radius-pill)] bg-brand-100 px-1.5 py-0.5 text-[0.625rem] font-semibold uppercase tracking-wide text-brand-700">
+            Live
+          </span>
+          <StatusPill level={row.level} size="sm" />
+        </>
       ) : null}
-      <StatusPill level={row.level} size="sm" />
-      <IconArrowRight className="size-4 text-hint" aria-hidden />
     </span>
   );
 }
