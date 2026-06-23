@@ -54,9 +54,22 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
   );
 }
 
-export function HistoryView({ data, editLog }: { data: BatchHistory; editLog: EditRecord[] }) {
+export function HistoryView({
+  data,
+  editLog,
+  embedded = false,
+  editable = true,
+}: {
+  data: BatchHistory;
+  editLog: EditRecord[];
+  /** Render without the page chrome (header + container), for the batch-detail section. */
+  embedded?: boolean;
+  /** Closed/archived batches are read-only — no maker-checker pencil. */
+  editable?: boolean;
+}) {
   const { user } = useCurrentUser();
   const isManager = user.role === "manager";
+  const canEdit = isManager && editable;
   const { toast } = useToast();
   const [compareMode] = useWeightCompareMode();
 
@@ -71,6 +84,19 @@ export function HistoryView({ data, editLog }: { data: BatchHistory; editLog: Ed
   const [houseSel, setHouseSel] = useState<Set<string>>(() => new Set(data.houses.map((h) => h.houseId)));
   const [seriesId, setSeriesId] = useState<string>("batch"); // "batch" | houseId
   const [metricKey, setMetricKey] = useState<MetricKey>("cumPct");
+  const [flashDay, setFlashDay] = useState<number | null>(null);
+
+  // Sticky jump-to-day: scroll the batch table's matching row into view and
+  // flash it briefly. Honours reduced-motion (instant jump, no smooth scroll).
+  const jumpTo = (day: number) => {
+    if (typeof document === "undefined") return;
+    const el = document.getElementById(`bphist-day-${day}`);
+    if (!el) return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    el.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "center" });
+    setFlashDay(day);
+    window.setTimeout(() => setFlashDay((d) => (d === day ? null : d)), 1400);
+  };
 
   const metric = METRICS.find((m) => m.key === metricKey)!;
   const isWeight = metric.key === "weight";
@@ -167,16 +193,18 @@ export function HistoryView({ data, editLog }: { data: BatchHistory; editLog: Ed
     effectiveSeriesId === "batch" ? "Batch" : houses.find((h) => h.houseId === effectiveSeriesId)?.houseName ?? "Batch";
 
   return (
-    <div className="mx-auto max-w-6xl space-y-7 px-4 py-8 sm:px-6 sm:py-10">
-      <PageHeader
-        eyebrow="History"
-        title="Batch history"
-        intro={
-          isManager
-            ? "The full cycle, day by day. Set a day range and pick houses to filter every chart and table. As manager you can correct any captured value — each correction is recorded and the entry stays marked."
-            : "The full cycle, day by day. Set a day range and pick houses to filter every chart and table below."
-        }
-      />
+    <div className={embedded ? "space-y-7" : "mx-auto max-w-6xl space-y-7 px-4 py-8 sm:px-6 sm:py-10"}>
+      {embedded ? null : (
+        <PageHeader
+          eyebrow="History"
+          title="Batch history"
+          intro={
+            canEdit
+              ? "The full cycle, day by day. Set a day range and pick houses to filter every chart and table. As manager you can correct any captured value — each correction is recorded and the entry stays marked."
+              : "The full cycle, day by day. Set a day range and pick houses to filter every chart and table below."
+          }
+        />
+      )}
 
       {/* Filters */}
       <Card>
@@ -260,28 +288,75 @@ export function HistoryView({ data, editLog }: { data: BatchHistory; editLog: Ed
         </CardBody>
       </Card>
 
-      {/* Batch-level table */}
-      <section className="space-y-3">
-        <h2 className="text-h2">Batch totals · per day</h2>
-        <BatchTable rows={history.batch.filter((r) => inRange(r.day))} rossByDay={rossByDay} compareMode={compareMode} />
-      </section>
+      {/* Day-by-day tables, with a sticky jump-to-day control over them */}
+      <div className="space-y-7">
+        <JumpToDay from={from} to={to} onJump={jumpTo} />
 
-      {/* Per-house tables (manager: editable, with audit trail) */}
-      {selectedHouses.map((h) => (
-        <section key={h.houseId} className="space-y-3">
-          <h2 className="text-h2">
-            {h.houseName} <span className="text-muted text-h3 font-normal">· {num(h.placedCount)} placed</span>
-          </h2>
-          <HouseHistoryTable
-            rows={h.rows.filter((r) => inRange(r.day))}
+        <section className="space-y-3">
+          <h2 className="text-h2">Batch totals · per day</h2>
+          <BatchTable
+            rows={history.batch.filter((r) => inRange(r.day))}
             rossByDay={rossByDay}
             compareMode={compareMode}
-            canEdit={isManager}
-            editsByEntry={editsByEntry}
-            onSave={handleSave}
+            flashDay={flashDay}
           />
         </section>
-      ))}
+
+        {/* Per-house tables (manager: editable, with audit trail) */}
+        {selectedHouses.map((h) => (
+          <section key={h.houseId} className="space-y-3">
+            <h2 className="text-h2">
+              {h.houseName} <span className="text-muted text-h3 font-normal">· {num(h.placedCount)} placed</span>
+            </h2>
+            <HouseHistoryTable
+              rows={h.rows.filter((r) => inRange(r.day))}
+              rossByDay={rossByDay}
+              compareMode={compareMode}
+              canEdit={canEdit}
+              editsByEntry={editsByEntry}
+              onSave={handleSave}
+            />
+          </section>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Sticky control that scrolls the day-by-day tables to a chosen day of cycle.
+ * A labelled native select (keyboard-operable) constrained to the active day
+ * range, plus an explicit "Go" so screen-reader/keyboard users aren't scrolled
+ * on every arrow keystroke.
+ */
+function JumpToDay({ from, to, onJump }: { from: number; to: number; onJump: (day: number) => void }) {
+  const [day, setDay] = useState(from);
+  const clamped = Math.min(Math.max(day, from), to);
+  const days: number[] = [];
+  for (let d = from; d <= to; d++) days.push(d);
+  return (
+    <div className="sticky top-2 z-20 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-[var(--radius-pill)] border border-divider bg-surface/90 px-4 py-2.5 shadow-card backdrop-blur-md">
+      <label htmlFor="bphist-jump" className="text-label font-medium text-slate">
+        Jump to day
+      </label>
+      <select
+        id="bphist-jump"
+        value={clamped}
+        onChange={(e) => setDay(Number(e.target.value))}
+        className="h-9 rounded-[var(--radius-control)] border border-border bg-surface px-2.5 font-mono text-label tabular-nums text-ink transition-colors duration-[var(--dur-fast)] focus:border-brand-500"
+      >
+        {days.map((d) => (
+          <option key={d} value={d}>
+            Day {d}
+          </option>
+        ))}
+      </select>
+      <Button size="sm" variant="secondary" onClick={() => onJump(clamped)}>
+        Go
+      </Button>
+      <span className="ml-auto text-label text-muted">
+        Showing days {from}–{to}
+      </span>
     </div>
   );
 }
@@ -290,10 +365,13 @@ function BatchTable({
   rows,
   rossByDay,
   compareMode,
+  flashDay,
 }: {
   rows: BatchDayRow[];
   rossByDay: Map<number, number>;
   compareMode: ReturnType<typeof useWeightCompareMode>[0];
+  /** Day to briefly highlight after a jump-to-day. */
+  flashDay?: number | null;
 }) {
   return (
     <Table>
@@ -314,7 +392,14 @@ function BatchTable({
         {rows.map((r) => {
           const target = r.avgWeightG ? rossByDay.get(r.day) : undefined;
           return (
-            <TR key={r.day}>
+            <TR
+              key={r.day}
+              id={`bphist-day-${r.day}`}
+              className={cn(
+                "scroll-mt-24 transition-colors duration-[var(--dur)]",
+                flashDay === r.day && "bg-brand-50",
+              )}
+            >
               <TD num className="text-ink">{r.day}</TD>
               <TD>{shortDate(r.date)}</TD>
               <TD num>{num(r.mortality)}</TD>

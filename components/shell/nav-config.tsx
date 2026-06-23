@@ -6,6 +6,7 @@ import {
   IconWeights,
   IconHistory,
   IconCompare,
+  IconArchive,
   IconHouses,
   IconAllocate,
   IconAlerts,
@@ -23,6 +24,7 @@ const icons: Record<string, IconComponent> = {
   weights: IconWeights,
   history: IconHistory,
   compare: IconCompare,
+  batches: IconArchive,
   houses: IconHouses,
   allocate: IconAllocate,
   alerts: IconAlerts,
@@ -77,6 +79,7 @@ export const NAV: Record<Role, NavSection[]> = {
       label: "Analytics",
       items: [
         { key: "history", label: "History & charts", href: "/app/history", icon: "history" },
+        { key: "batches", label: "Previous batches", href: "/app/batches", icon: "batches" },
         { key: "compare", label: "Batch comparison", href: "/app/compare", icon: "compare" },
       ],
     },

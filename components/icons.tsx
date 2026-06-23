@@ -18,6 +18,7 @@ export {
   Building07 as IconHouses,
   Dataflow03 as IconAllocate,
   Bell01 as IconAlerts,
+  Archive as IconArchive,
   // Contractor nav
   Users01 as IconGrowers,
   Truck01 as IconCollection,
@@ -46,6 +47,12 @@ export {
   // Manager corrections (maker-checker) — pencil edits, person attribution
   Edit05 as IconEdit,
   User01 as IconUser,
+  // Data-grid affordances — filter, column reorder, sort direction
+  FilterLines as IconFilter,
+  DotsGrid as IconDrag,
+  ChevronSelectorVertical as IconSortNone,
+  ArrowNarrowUp as IconSortAsc,
+  ArrowNarrowDown as IconSortDesc,
 } from "@untitledui/icons";
 
 import type { FC, SVGProps } from "react";
