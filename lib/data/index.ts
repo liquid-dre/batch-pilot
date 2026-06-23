@@ -18,6 +18,8 @@ import type {
   Contract,
   Contractor,
   DailyEntry,
+  EditableField,
+  EditRecord,
   FeedDelivery,
   TreatmentEntry,
   FlockAlert,
@@ -27,6 +29,7 @@ import type {
   PastCycle,
   PlannedBatch,
   Placement,
+  Role,
   Site,
   Status,
   StatusLevel,
@@ -57,6 +60,7 @@ import {
   CONTRACT,
   CONTRACTOR,
   DAILY_ENTRIES,
+  EDIT_LOG,
   FEED_DELIVERIES,
   GROWER_PROFILES,
   type GrowerProfile,
@@ -495,6 +499,118 @@ export async function submitWeights(input: WeightsInput): Promise<WeightsResult>
   });
 }
 
+// --- Manager corrections (maker-checker; ROADMAP §5/§9 — Clerk seam) --------
+
+/** Plain labels for the audit trail and the edit panel. */
+const EDITABLE_FIELD_LABELS: Record<EditableField, string> = {
+  dayMortality: "Day mortality",
+  nightMortality: "Night mortality",
+  culls: "Culls",
+  feedAddedKg: "Feed added (kg)",
+  tempC: "Temperature (°C)",
+};
+
+export interface ManagerEditInput {
+  /** The DailyEntry id being corrected. */
+  entityId: string;
+  /** Who is making the correction (the auth-stub manager today → Clerk later). */
+  editor: { id: string; name: string; role: Role };
+  /** Only the fields that changed; `null` clears an optional field (temp). */
+  changes: Partial<Record<EditableField, number | null>>;
+  /** Optional reason recorded with the correction. */
+  note?: string;
+}
+
+export interface ManagerEditResult {
+  entry: DailyEntry;
+  records: EditRecord[];
+}
+
+/**
+ * Re-derives a placement's cumulative chain after an entry's raw figures change
+ * — mortality cascades forward (cum mort, cum %, birds remaining), so every
+ * later day for the house is recomputed from the same pure arithmetic the
+ * capture path uses. Writes back to the mock entries so every downstream read
+ * (history, rollup, status engine) reflects the correction.
+ */
+function rederivePlacement(placementId: string): void {
+  const placement = PLACEMENTS.find((p) => p.id === placementId);
+  if (!placement) return;
+  const entries = DAILY_ENTRIES.filter((e) => e.placementId === placementId).sort((a, b) => a.day - b.day);
+  let priorCumMort = 0;
+  for (const e of entries) {
+    e.mortality = e.dayMortality + e.nightMortality;
+    const t = dailyTotals({ placed: placement.placedCount, priorCumMort, mortality: e.mortality, culls: e.culls });
+    e.cullAndMort = t.cullAndMort;
+    e.cumMort = t.cumMort;
+    e.cumPct = t.cumPct;
+    e.birdsRemaining = t.birdsRemaining;
+    priorCumMort = t.cumMort;
+  }
+}
+
+/**
+ * Applies a manager's correction to a captured daily entry. Edits are deliberate
+ * and ATTRIBUTED: each changed field becomes an EditRecord (who/when/old→new)
+ * appended to the audit trail, the entry's raw value is updated, and the house's
+ * cumulative chain is re-derived. Nothing is silently overwritten — re-editing a
+ * field appends another record. Mock mutates module memory; becomes a Convex
+ * mutation behind the same signature (with the editor resolved from the session).
+ */
+export async function submitManagerEdit(input: ManagerEditInput): Promise<ManagerEditResult> {
+  const entry = DAILY_ENTRIES.find((e) => e.id === input.entityId);
+  if (!entry) throw new Error(`Daily entry not found: ${input.entityId}`);
+  const houseId = PLACEMENTS.find((p) => p.id === entry.placementId)?.houseId ?? "";
+  const houseName = SITE.houses.find((h) => h.id === houseId)?.name ?? houseId;
+  const editedAt = new Date().toISOString();
+
+  const records: EditRecord[] = [];
+  for (const field of Object.keys(input.changes) as EditableField[]) {
+    const next = input.changes[field];
+    if (next === undefined) continue;
+    const old = (entry[field] ?? null) as number | null;
+    if (old === next) continue; // no-op, don't record
+    switch (field) {
+      case "dayMortality": entry.dayMortality = next ?? 0; break;
+      case "nightMortality": entry.nightMortality = next ?? 0; break;
+      case "culls": entry.culls = next ?? 0; break;
+      case "feedAddedKg": entry.feedAddedKg = next ?? 0; break;
+      case "tempC": entry.tempC = next ?? undefined; break;
+    }
+    records.push({
+      id: `edit_${entry.id}_${field}_${EDIT_LOG.length + records.length + 1}`,
+      entityType: "dailyEntry",
+      entityId: entry.id,
+      placementId: entry.placementId,
+      houseId,
+      houseName,
+      day: entry.day,
+      field,
+      fieldLabel: EDITABLE_FIELD_LABELS[field],
+      oldValue: old,
+      newValue: next,
+      editedById: input.editor.id,
+      editedByName: input.editor.name,
+      editedByRole: input.editor.role,
+      editedAt,
+      note: input.note,
+    });
+  }
+
+  if (records.length) {
+    rederivePlacement(entry.placementId);
+    EDIT_LOG.push(...records);
+  }
+  return resolve({ entry: { ...entry }, records });
+}
+
+/** The audit trail — all corrections, or those for one entry, newest first. */
+export function getEditLog(entityId?: string): Promise<EditRecord[]> {
+  const rows = entityId ? EDIT_LOG.filter((r) => r.entityId === entityId) : [...EDIT_LOG];
+  rows.sort((a, b) => (a.editedAt < b.editedAt ? 1 : a.editedAt > b.editedAt ? -1 : 0));
+  return resolve(rows);
+}
+
 // ===========================================================================
 // Contractor (Phase 2)
 // ===========================================================================
@@ -831,18 +947,24 @@ export async function getBatchHistory(): Promise<BatchHistory> {
     const dayset = new Set<number>([...entries.map((e) => e.day), ...weights.map((w) => w.day)]);
     const rows: HouseDayRow[] = [...dayset]
       .sort((a, b) => a - b)
-      .map((d) => ({
-        day: d,
-        date: dateByDay.get(d) ?? "",
-        mortality: exactMort[d] ?? 0,
-        culls: exactCulls[d] ?? 0,
-        cumMort: asOfCum[d] ?? 0,
-        cumPct: Number(((asOfCum[d] / p.placedCount) * 100).toFixed(2)),
-        dailyMortPct: Number((((exactMort[d] ?? 0) / p.placedCount) * 100).toFixed(3)),
-        feedAddedKg: exactFeed[d] ?? 0,
-        tempC: entriesByDay.get(d)?.tempC,
-        weigh: weighByDay.get(d),
-      }));
+      .map((d) => {
+        const e = entriesByDay.get(d);
+        return {
+          day: d,
+          date: dateByDay.get(d) ?? "",
+          mortality: exactMort[d] ?? 0,
+          culls: exactCulls[d] ?? 0,
+          cumMort: asOfCum[d] ?? 0,
+          cumPct: Number(((asOfCum[d] / p.placedCount) * 100).toFixed(2)),
+          dailyMortPct: Number((((exactMort[d] ?? 0) / p.placedCount) * 100).toFixed(3)),
+          feedAddedKg: exactFeed[d] ?? 0,
+          tempC: e?.tempC,
+          weigh: weighByDay.get(d),
+          entryId: e?.id,
+          dayMortality: e?.dayMortality,
+          nightMortality: e?.nightMortality,
+        };
+      });
 
     return {
       placement: p,

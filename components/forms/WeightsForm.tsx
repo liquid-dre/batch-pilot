@@ -9,8 +9,10 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardEyebrow } from "@/components/ui/Card";
 import { Stepper } from "@/components/ui/Stepper";
 import { StatusPill } from "@/components/ui/StatusPill";
+import { BenchmarkToggle, useWeightCompareMode } from "@/components/ui/BenchmarkToggle";
 import { useToast } from "@/components/ui/Toast";
 import { PageHeader } from "@/components/shell/PageHeader";
+import { formatGap, vsBenchmark } from "@/lib/weightCompare";
 import { cn } from "@/lib/cn";
 
 export interface WeightFormHouse {
@@ -47,6 +49,7 @@ function initialDrafts(houses: WeightFormHouse[]): Record<string, Draft> {
 
 export function WeightsForm({ houses }: { houses: WeightFormHouse[] }) {
   const { toast } = useToast();
+  const [compareMode] = useWeightCompareMode();
   const [drafts, setDrafts] = useState<Record<string, Draft>>(() => initialDrafts(houses));
   const [selectedId, setSelectedId] = useState(houses[0]?.id);
   const [savedPct, setSavedPct] = useState<Record<string, number>>({});
@@ -112,14 +115,22 @@ export function WeightsForm({ houses }: { houses: WeightFormHouse[] }) {
           <Stepper label="Growth ratio" value={draft.growthRatio} onChange={(v) => update({ growthRatio: v })} step={0.1} decimals={1} min={0} max={3} />
           <Stepper label="Uniformity" value={draft.uniformityPct} onChange={(v) => update({ uniformityPct: v })} min={0} max={100} suffix="%" />
 
-          <div className="flex items-center justify-between rounded-[var(--radius-control)] bg-paper p-4">
-            <div>
+          <div className="rounded-[var(--radius-control)] bg-paper p-4">
+            <div className="flex items-center justify-between gap-3">
               <p className="text-label text-muted">Against the Ross 308 curve</p>
-              <p className="mt-0.5 text-data text-[1.0625rem] text-ink">
-                {pctOfTarget}% of target · {num(draft.avgWeightG)} / {num(target)} g
-              </p>
+              <BenchmarkToggle label="" />
             </div>
-            <StatusPill level={level} size="sm" />
+            <div className="mt-2 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-data text-[1.0625rem] text-ink">
+                  {formatGap(vsBenchmark(draft.avgWeightG, target), compareMode)}
+                </p>
+                <p className="mt-0.5 text-label text-muted">
+                  {num(draft.avgWeightG)} / {num(target)} g · {pctOfTarget}% of target
+                </p>
+              </div>
+              <StatusPill level={level} size="sm" />
+            </div>
           </div>
 
           <Button size="lg" block onClick={handleSave}>

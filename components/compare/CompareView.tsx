@@ -3,9 +3,11 @@
 import { useMemo, useState } from "react";
 import type { ComparePoint, CompareData } from "@/lib/view";
 import { pct, grams, shortDate } from "@/lib/format";
+import { compactGap, vsBenchmarkFromPct } from "@/lib/weightCompare";
 import { Card, CardBody, CardEyebrow } from "@/components/ui/Card";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/Table";
 import { EstTag, EstFootnote } from "@/components/ui/Estimated";
+import { BenchmarkToggle, useWeightCompareMode } from "@/components/ui/BenchmarkToggle";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { cn } from "@/lib/cn";
 import { CompareChart, type CompareSeries } from "./CompareChart";
@@ -61,6 +63,7 @@ export function CompareView({ data }: { data: CompareData }) {
 
   const [selected, setSelected] = useState<Set<string>>(() => new Set(batches.slice(0, 3).map((b) => b.id)));
   const [metricKey, setMetricKey] = useState<MetricKey>("weight");
+  const [compareMode] = useWeightCompareMode();
   const metric = METRICS.find((m) => m.key === metricKey)!;
 
   const toggle = (id: string) =>
@@ -127,7 +130,10 @@ export function CompareView({ data }: { data: CompareData }) {
       {/* Overlay chart */}
       <Card>
         <CardBody className="space-y-4 pt-5">
-          <CardEyebrow>{metric.label} · aligned by day of cycle</CardEyebrow>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <CardEyebrow>{metric.label} · aligned by day of cycle</CardEyebrow>
+            {metric.key === "weight" ? <BenchmarkToggle /> : null}
+          </div>
           <div className="flex flex-wrap gap-2">
             {METRICS.map((m) => (
               <button
@@ -165,7 +171,7 @@ export function CompareView({ data }: { data: CompareData }) {
             <TR className="bg-transparent hover:bg-transparent">
               <TH>Batch</TH>
               <TH num>Weight</TH>
-              <TH num>vs Ross</TH>
+              <TH num>vs target</TH>
               <TH num>Cum mort</TH>
               <TH num>FCR<EstTag /></TH>
               <TH num>Days to target</TH>
@@ -185,7 +191,7 @@ export function CompareView({ data }: { data: CompareData }) {
                     </span>
                   </TD>
                   <TD num>{b.weightG ? grams(b.weightG) : "—"}</TD>
-                  <TD num>{b.vsRossPct ? `${b.vsRossPct}%` : "—"}</TD>
+                  <TD num>{b.weightG && b.vsRossPct ? compactGap(vsBenchmarkFromPct(b.weightG, b.vsRossPct), compareMode) : "—"}</TD>
                   <TD num>{pct(b.cumMortPct)}</TD>
                   <TD num>{b.fcr ? b.fcr.toFixed(2) : "—"}</TD>
                   <TD num>{b.daysToTarget} d</TD>

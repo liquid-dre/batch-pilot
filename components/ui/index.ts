@@ -6,3 +6,4 @@ export { Stepper } from "./Stepper";
 export { Table, THead, TBody, TR, TH, TD } from "./Table";
 export { Alert } from "./Alert";
 export { ToastProvider, useToast } from "./Toast";
+export { BenchmarkToggle, useWeightCompareMode } from "./BenchmarkToggle";

@@ -17,6 +17,7 @@ import type {
   Contract,
   Contractor,
   DailyEntry,
+  EditRecord,
   FeedDelivery,
   Manifest,
   PastCycle,
@@ -269,6 +270,15 @@ function buildSeries(seed: HouseSeed): DailyEntry[] {
 }
 
 export const DAILY_ENTRIES: DailyEntry[] = HOUSE_SEEDS.flatMap(buildSeries);
+
+// ---------------------------------------------------------------------------
+// Manager corrections audit trail (maker-checker seam, ROADMAP §5/§9).
+// Empty at seed — it grows as a manager corrects captured values. Mutable in
+// module memory like the houses list; becomes a Convex table later. The whole
+// trail is kept (re-editing a field appends a new record, never overwrites).
+// ---------------------------------------------------------------------------
+
+export const EDIT_LOG: EditRecord[] = [];
 
 // ---------------------------------------------------------------------------
 // Weights — multiple weigh-days per house. The latest weigh-in is the

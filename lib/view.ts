@@ -27,6 +27,8 @@ export interface HouseView {
   status?: Status;
   /** Latest weight as a % of the Ross 308 target for that day (e.g. 87). */
   vsRossPct?: number;
+  /** Ross 308 objective weight at the latest weigh day, grams (for the gap toggle). */
+  rossTargetWeightG?: number;
 }
 
 /** Lean per-house context the daily-update form needs (keeps the client bundle small). */
@@ -187,6 +189,12 @@ export interface HouseDayRow {
   feedAddedKg: number;
   tempC?: number;
   weigh?: WeighPoint;
+  /** The DailyEntry id, present only for days with a captured entry (the unit a
+   *  manager can correct). Weigh-only days have no entry to edit. */
+  entryId?: string;
+  /** Captured day/night split (present with `entryId`), for the edit panel. */
+  dayMortality?: number;
+  nightMortality?: number;
 }
 
 export interface HouseSeries {

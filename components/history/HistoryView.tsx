@@ -1,16 +1,23 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import type { EditableField, EditRecord } from "@/lib/types";
 import type { BatchDayRow, BatchHistory, HouseDayRow } from "@/lib/view";
+import { getBatchHistory, getEditLog, submitManagerEdit } from "@/lib/data";
+import { useCurrentUser } from "@/lib/auth";
 import { num, pct, kg, grams, shortDate } from "@/lib/format";
+import { compactGap, vsBenchmark } from "@/lib/weightCompare";
 import { Card, CardBody, CardEyebrow } from "@/components/ui/Card";
 import { Stepper } from "@/components/ui/Stepper";
 import { Button } from "@/components/ui/Button";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/Table";
 import { EstTag, EstFootnote } from "@/components/ui/Estimated";
+import { BenchmarkToggle, useWeightCompareMode } from "@/components/ui/BenchmarkToggle";
+import { useToast } from "@/components/ui/Toast";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { cn } from "@/lib/cn";
 import { HistoryChart, type ChartDatum } from "./HistoryChart";
+import { HouseHistoryTable } from "./HouseHistoryTable";
 
 type MetricKey = "dailyMortPct" | "cumPct" | "feedAddedKg" | "weight" | "fcr";
 
@@ -47,17 +54,52 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
   );
 }
 
-export function HistoryView({ data }: { data: BatchHistory }) {
-  const { maxDay, houses } = data;
+export function HistoryView({ data, editLog }: { data: BatchHistory; editLog: EditRecord[] }) {
+  const { user } = useCurrentUser();
+  const isManager = user.role === "manager";
+  const { toast } = useToast();
+  const [compareMode] = useWeightCompareMode();
+
+  // History + audit trail are held in state so a manager's correction (which
+  // mutates the seam's module memory) re-derives and re-renders in place.
+  const [history, setHistory] = useState<BatchHistory>(data);
+  const [edits, setEdits] = useState<EditRecord[]>(editLog);
+  const { maxDay, houses } = history;
 
   const [from, setFrom] = useState(1);
   const [to, setTo] = useState(maxDay);
-  const [houseSel, setHouseSel] = useState<Set<string>>(() => new Set(houses.map((h) => h.houseId)));
+  const [houseSel, setHouseSel] = useState<Set<string>>(() => new Set(data.houses.map((h) => h.houseId)));
   const [seriesId, setSeriesId] = useState<string>("batch"); // "batch" | houseId
   const [metricKey, setMetricKey] = useState<MetricKey>("cumPct");
 
   const metric = METRICS.find((m) => m.key === metricKey)!;
+  const isWeight = metric.key === "weight";
   const inRange = (day: number) => day >= from && day <= to;
+
+  const editsByEntry = useMemo(() => {
+    const m = new Map<string, EditRecord[]>();
+    for (const e of edits) {
+      const list = m.get(e.entityId) ?? [];
+      list.push(e);
+      m.set(e.entityId, list);
+    }
+    return m;
+  }, [edits]);
+
+  async function handleSave(entryId: string, changes: Partial<Record<EditableField, number | null>>) {
+    const { records } = await submitManagerEdit({
+      entityId: entryId,
+      editor: { id: user.id, name: user.name, role: user.role },
+      changes,
+    });
+    const [h, log] = await Promise.all([getBatchHistory(), getEditLog()]);
+    setHistory(h);
+    setEdits(log);
+    toast(`Correction saved · ${records.length} field${records.length === 1 ? "" : "s"}`, {
+      tone: "success",
+      description: "Recorded with your name and the previous value. The cumulative figures were recomputed.",
+    });
+  }
 
   const toggleHouse = (id: string) =>
     setHouseSel((prev) => {
@@ -72,7 +114,7 @@ export function HistoryView({ data }: { data: BatchHistory }) {
   const effectiveSeriesId = seriesId !== "batch" && !houseSel.has(seriesId) ? "batch" : seriesId;
 
   const bandAt = useMemo(() => {
-    const band = data.mortalityBand;
+    const band = history.mortalityBand;
     return (day: number) => {
       if (day <= band[0].day) return band[0].maxCumPct;
       for (let i = 1; i < band.length; i++) {
@@ -85,14 +127,15 @@ export function HistoryView({ data }: { data: BatchHistory }) {
       }
       return band[band.length - 1].maxCumPct;
     };
-  }, [data.mortalityBand]);
+  }, [history.mortalityBand]);
 
-  const rossByDay = useMemo(() => new Map(data.ross.map((r) => [r.day, r])), [data.ross]);
+  const rossByDay = useMemo(() => new Map(history.ross.map((r) => [r.day, r.weightG])), [history.ross]);
+  const rossPointByDay = useMemo(() => new Map(history.ross.map((r) => [r.day, r])), [history.ross]);
 
   const chartData: ChartDatum[] = useMemo(() => {
     const isBatch = effectiveSeriesId === "batch";
     const rows: (BatchDayRow | HouseDayRow)[] = isBatch
-      ? data.batch
+      ? history.batch
       : houses.find((h) => h.houseId === effectiveSeriesId)?.rows ?? [];
 
     const valueFor = (row: BatchDayRow | HouseDayRow): number | undefined => {
@@ -115,10 +158,10 @@ export function HistoryView({ data }: { data: BatchHistory }) {
       .map((r) => ({
         day: r.day,
         value: valueFor(r),
-        ross: metric.ross ? (metric.key === "weight" ? rossByDay.get(r.day)?.weightG : rossByDay.get(r.day)?.fcr ?? undefined) : undefined,
+        ross: metric.ross ? (metric.key === "weight" ? rossPointByDay.get(r.day)?.weightG : rossPointByDay.get(r.day)?.fcr ?? undefined) : undefined,
         band: metric.band ? bandAt(r.day) : undefined,
       }));
-  }, [effectiveSeriesId, metric, data.batch, houses, rossByDay, bandAt, from, to]);
+  }, [effectiveSeriesId, metric, history.batch, houses, rossPointByDay, bandAt, from, to]);
 
   const seriesLabel =
     effectiveSeriesId === "batch" ? "Batch" : houses.find((h) => h.houseId === effectiveSeriesId)?.houseName ?? "Batch";
@@ -128,7 +171,11 @@ export function HistoryView({ data }: { data: BatchHistory }) {
       <PageHeader
         eyebrow="History"
         title="Batch history"
-        intro="The full cycle, day by day. Set a day range and pick houses to filter every chart and table below."
+        intro={
+          isManager
+            ? "The full cycle, day by day. Set a day range and pick houses to filter every chart and table. As manager you can correct any captured value — each correction is recorded and the entry stays marked."
+            : "The full cycle, day by day. Set a day range and pick houses to filter every chart and table below."
+        }
       />
 
       {/* Filters */}
@@ -168,6 +215,7 @@ export function HistoryView({ data }: { data: BatchHistory }) {
             <CardEyebrow>
               {metric.label} · {seriesLabel} · day {from}–{to}
             </CardEyebrow>
+            {isWeight ? <BenchmarkToggle /> : null}
           </div>
 
           <div className="flex flex-wrap gap-2">
@@ -198,9 +246,13 @@ export function HistoryView({ data }: { data: BatchHistory }) {
             decimals={metric.decimals}
             showRoss={metric.ross}
             showBand={metric.band}
+            gapMode={isWeight ? compareMode : undefined}
           />
           {metric.ross ? (
-            <p className="text-label text-muted">Dashed line is the Ross 308 objective. Points are recorded weigh-ins.</p>
+            <p className="text-label text-muted">
+              Dashed line is the Ross 308 objective. Points are recorded weigh-ins.
+              {isWeight ? " The tooltip shows each day's gap to target." : ""}
+            </p>
           ) : metric.band ? (
             <p className="text-label text-muted">Dashed red line is the contractor cumulative-mortality ceiling.</p>
           ) : null}
@@ -211,23 +263,38 @@ export function HistoryView({ data }: { data: BatchHistory }) {
       {/* Batch-level table */}
       <section className="space-y-3">
         <h2 className="text-h2">Batch totals · per day</h2>
-        <BatchTable rows={data.batch.filter((r) => inRange(r.day))} />
+        <BatchTable rows={history.batch.filter((r) => inRange(r.day))} rossByDay={rossByDay} compareMode={compareMode} />
       </section>
 
-      {/* Per-house tables */}
+      {/* Per-house tables (manager: editable, with audit trail) */}
       {selectedHouses.map((h) => (
         <section key={h.houseId} className="space-y-3">
           <h2 className="text-h2">
             {h.houseName} <span className="text-muted text-h3 font-normal">· {num(h.placedCount)} placed</span>
           </h2>
-          <HouseTable rows={h.rows.filter((r) => inRange(r.day))} />
+          <HouseHistoryTable
+            rows={h.rows.filter((r) => inRange(r.day))}
+            rossByDay={rossByDay}
+            compareMode={compareMode}
+            canEdit={isManager}
+            editsByEntry={editsByEntry}
+            onSave={handleSave}
+          />
         </section>
       ))}
     </div>
   );
 }
 
-function BatchTable({ rows }: { rows: BatchDayRow[] }) {
+function BatchTable({
+  rows,
+  rossByDay,
+  compareMode,
+}: {
+  rows: BatchDayRow[];
+  rossByDay: Map<number, number>;
+  compareMode: ReturnType<typeof useWeightCompareMode>[0];
+}) {
   return (
     <Table>
       <THead>
@@ -240,62 +307,26 @@ function BatchTable({ rows }: { rows: BatchDayRow[] }) {
           <TH num>Cum %</TH>
           <TH num>Feed</TH>
           <TH num>Avg wt</TH>
-          <TH num>vs Ross</TH>
+          <TH num>vs target</TH>
         </TR>
       </THead>
       <TBody>
-        {rows.map((r) => (
-          <TR key={r.day}>
-            <TD num className="text-ink">{r.day}</TD>
-            <TD>{shortDate(r.date)}</TD>
-            <TD num>{num(r.mortality)}</TD>
-            <TD num>{num(r.culls)}</TD>
-            <TD num>{num(r.cumMort)}</TD>
-            <TD num>{pct(r.cumPct)}</TD>
-            <TD num>{kg(r.feedAddedKg)}</TD>
-            <TD num>{r.avgWeightG ? grams(r.avgWeightG) : "—"}</TD>
-            <TD num>{r.vsRossPct ? `${r.vsRossPct}%` : "—"}</TD>
-          </TR>
-        ))}
-      </TBody>
-    </Table>
-  );
-}
-
-function HouseTable({ rows }: { rows: HouseDayRow[] }) {
-  return (
-    <Table>
-      <THead>
-        <TR className="bg-transparent hover:bg-transparent">
-          <TH num>Day</TH>
-          <TH>Date</TH>
-          <TH num>Deaths</TH>
-          <TH num>Culls</TH>
-          <TH num>Cum mort</TH>
-          <TH num>Cum %</TH>
-          <TH num>Feed</TH>
-          <TH num>Temp</TH>
-          <TH num>Wt</TH>
-          <TH num>ADG</TH>
-          <TH num>Unif</TH>
-        </TR>
-      </THead>
-      <TBody>
-        {rows.map((r) => (
-          <TR key={r.day}>
-            <TD num className="text-ink">{r.day}</TD>
-            <TD>{shortDate(r.date)}</TD>
-            <TD num>{num(r.mortality)}</TD>
-            <TD num>{num(r.culls)}</TD>
-            <TD num>{num(r.cumMort)}</TD>
-            <TD num>{pct(r.cumPct)}</TD>
-            <TD num>{kg(r.feedAddedKg)}</TD>
-            <TD num>{r.tempC !== undefined ? `${r.tempC}°` : "—"}</TD>
-            <TD num>{r.weigh ? grams(r.weigh.avgWeightG) : "—"}</TD>
-            <TD num>{r.weigh ? `${r.weigh.adgG} g` : "—"}</TD>
-            <TD num>{r.weigh ? `${r.weigh.uniformityPct}%` : "—"}</TD>
-          </TR>
-        ))}
+        {rows.map((r) => {
+          const target = r.avgWeightG ? rossByDay.get(r.day) : undefined;
+          return (
+            <TR key={r.day}>
+              <TD num className="text-ink">{r.day}</TD>
+              <TD>{shortDate(r.date)}</TD>
+              <TD num>{num(r.mortality)}</TD>
+              <TD num>{num(r.culls)}</TD>
+              <TD num>{num(r.cumMort)}</TD>
+              <TD num>{pct(r.cumPct)}</TD>
+              <TD num>{kg(r.feedAddedKg)}</TD>
+              <TD num>{r.avgWeightG ? grams(r.avgWeightG) : "—"}</TD>
+              <TD num>{r.avgWeightG && target ? compactGap(vsBenchmark(r.avgWeightG, target), compareMode) : "—"}</TD>
+            </TR>
+          );
+        })}
       </TBody>
     </Table>
   );

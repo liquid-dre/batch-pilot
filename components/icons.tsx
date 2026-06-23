@@ -43,6 +43,9 @@ export {
   Inbox01 as IconEmpty,
   Eye as IconView,
   SwitchHorizontal01 as IconSwitch,
+  // Manager corrections (maker-checker) — pencil edits, person attribution
+  Edit05 as IconEdit,
+  User01 as IconUser,
 } from "@untitledui/icons";
 
 import type { FC, SVGProps } from "react";

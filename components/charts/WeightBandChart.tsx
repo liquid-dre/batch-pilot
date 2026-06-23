@@ -11,6 +11,7 @@ import {
   YAxis,
 } from "recharts";
 import type { WeightBandData } from "@/lib/view";
+import { compactGap, vsBenchmark, type WeightCompareMode } from "@/lib/weightCompare";
 
 const PALETTE = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "var(--chart-5)", "var(--chart-6)"];
 const MUTED = "var(--muted)";
@@ -24,29 +25,47 @@ interface TipItem {
   color?: string;
 }
 
-function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: TipItem[]; label?: number }) {
+function ChartTooltip({
+  active,
+  payload,
+  label,
+  compareMode,
+}: {
+  active?: boolean;
+  payload?: TipItem[];
+  label?: number;
+  compareMode: WeightCompareMode;
+}) {
   if (!active || !payload) return null;
   const rows = payload.filter((p) => !BAND_KEYS.has(String(p.dataKey)));
   if (rows.length === 0) return null;
+  // Ross objective for the day, to annotate each house's gap per the toggle.
+  const target = rows.find((p) => p.dataKey === "ross")?.value;
   return (
     <div className="rounded-[var(--radius-control)] border border-divider bg-surface px-3 py-2 shadow-card">
       <p className="text-label font-semibold text-ink">Day {label}</p>
       <ul className="mt-1 space-y-0.5">
-        {rows.map((p) => (
-          <li key={String(p.dataKey)} className="flex items-center gap-2 text-[0.8125rem]">
-            <span className="inline-block h-0.5 w-3 rounded-full" style={{ background: p.color }} />
-            <span className="text-muted">{p.name}</span>
-            <span className="ml-auto font-mono tabular-nums text-ink">
-              {typeof p.value === "number" ? `${p.value.toLocaleString("en-US")} g` : "—"}
-            </span>
-          </li>
-        ))}
+        {rows.map((p) => {
+          const isHouse = p.dataKey !== "ross" && typeof p.value === "number" && typeof target === "number";
+          return (
+            <li key={String(p.dataKey)} className="flex items-center gap-2 text-[0.8125rem]">
+              <span className="inline-block h-0.5 w-3 rounded-full" style={{ background: p.color }} />
+              <span className="text-muted">{p.name}</span>
+              <span className="ml-auto font-mono tabular-nums text-ink">
+                {typeof p.value === "number" ? `${p.value.toLocaleString("en-US")} g` : "—"}
+                {isHouse ? (
+                  <span className="ml-1.5 text-muted">{compactGap(vsBenchmark(p.value!, target!), compareMode)}</span>
+                ) : null}
+              </span>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
 }
 
-export function WeightBandChart({ data }: { data: WeightBandData }) {
+export function WeightBandChart({ data, compareMode = "difference" }: { data: WeightBandData; compareMode?: WeightCompareMode }) {
   const weightByHouseDay = data.houses.map((h) => new Map(h.points.map((p) => [p.day, p.weightG])));
 
   const rows = data.ross.map((r, i) => {
@@ -81,7 +100,7 @@ export function WeightBandChart({ data }: { data: WeightBandData }) {
               height={40}
             />
             <YAxis domain={[0, data.yMax]} tick={axisTick} stroke="var(--border)" tickLine={false} width={48} />
-            <Tooltip content={(p) => <ChartTooltip {...(p as unknown as { active?: boolean; payload?: TipItem[]; label?: number })} />} />
+            <Tooltip content={(p) => <ChartTooltip {...(p as unknown as { active?: boolean; payload?: TipItem[]; label?: number })} compareMode={compareMode} />} />
 
             {/* Shaded bands (stacked from 0): red < 90% · amber 90–97% · green ≥97% of Ross */}
             <Area type="monotone" dataKey="redBand" stackId="band" stroke="none" fill="var(--status-bad-tint)" isAnimationActive={false} legendType="none" />

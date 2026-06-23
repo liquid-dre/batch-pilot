@@ -1,5 +1,6 @@
 import type { HouseView } from "@/lib/view";
 import { grams, num, pct } from "@/lib/format";
+import { compactGap, vsBenchmark, type WeightCompareMode } from "@/lib/weightCompare";
 import { Card, CardBody, CardEyebrow } from "@/components/ui/Card";
 import { StatusPill } from "@/components/ui/StatusPill";
 
@@ -16,8 +17,10 @@ function Metric({ label, value, sub }: { label: string; value: string; sub?: str
 }
 
 /** Full house status card: colour + icon + word + shape, key metrics, cause & fix. */
-export function HouseStatusCard({ view }: { view: HouseView }) {
-  const { house, latest, weight, status, vsRossPct } = view;
+export function HouseStatusCard({ view, compareMode = "difference" }: { view: HouseView; compareMode?: WeightCompareMode }) {
+  const { house, latest, weight, status, rossTargetWeightG } = view;
+  // Weight gap vs the Ross objective, phrased per the session toggle.
+  const gap = weight && rossTargetWeightG ? compactGap(vsBenchmark(weight.avgWeightG, rossTargetWeightG), compareMode) : undefined;
   return (
     <Card as="article" className="h-full">
       <CardBody className="flex h-full flex-col gap-4 pt-5">
@@ -33,7 +36,7 @@ export function HouseStatusCard({ view }: { view: HouseView }) {
         <dl className="grid grid-cols-3 gap-3">
           <Metric label="Mortality" value={latest ? pct(latest.cumPct) : "—"} />
           <Metric label="On site" value={latest ? num(latest.birdsRemaining) : "—"} />
-          <Metric label="Weight" value={weight ? grams(weight.avgWeightG) : "—"} sub={vsRossPct ? `${vsRossPct}%` : undefined} />
+          <Metric label="Weight" value={weight ? grams(weight.avgWeightG) : "—"} sub={gap} />
         </dl>
 
         {status && (status.cause || status.fix) ? (
