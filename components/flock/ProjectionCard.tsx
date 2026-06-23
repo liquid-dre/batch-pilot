@@ -1,5 +1,6 @@
 import type { BatchProjection } from "@/lib/types";
 import { grams, shortDate } from "@/lib/format";
+import { compactGap, vsBenchmark, type WeightCompareMode } from "@/lib/weightCompare";
 import { Card, CardBody, CardEyebrow } from "@/components/ui/Card";
 import { StatusPill } from "@/components/ui/StatusPill";
 
@@ -11,8 +12,15 @@ function countdown(days: number): { big: string; small: string } {
 }
 
 /** Projection vs the contractor kill date: countdown + plain-language verdict. */
-export function ProjectionCard({ projection }: { projection: BatchProjection }) {
+export function ProjectionCard({
+  projection,
+  compareMode = "difference",
+}: {
+  projection: BatchProjection;
+  compareMode?: WeightCompareMode;
+}) {
   const c = countdown(projection.daysToKill);
+  const gap = compactGap(vsBenchmark(projection.projectedAvgWeightG, projection.targetAvgWeightG), compareMode);
   return (
     <Card>
       <CardBody className="pt-5">
@@ -34,9 +42,8 @@ export function ProjectionCard({ projection }: { projection: BatchProjection }) 
           </div>
           <div className="text-right">
             <p className="text-label text-muted">Ross target</p>
-            <p className="mt-0.5 text-data text-[1.0625rem] text-ink">
-              {grams(projection.targetAvgWeightG)} · {projection.pctOfTarget}%
-            </p>
+            <p className="mt-0.5 text-data text-[1.0625rem] text-ink">{grams(projection.targetAvgWeightG)}</p>
+            <p className="mt-0.5 text-label text-muted">{gap}</p>
           </div>
         </div>
       </CardBody>

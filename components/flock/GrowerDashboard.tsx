@@ -10,6 +10,7 @@ import { num } from "@/lib/format";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardEyebrow } from "@/components/ui/Card";
 import { Alert } from "@/components/ui/Alert";
+import { BenchmarkToggle, useWeightCompareMode } from "@/components/ui/BenchmarkToggle";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { WeightBandChart } from "@/components/charts/WeightBandChart";
 import { weightGuidance } from "@/lib/guidance";
@@ -46,6 +47,7 @@ function countdownLabel(days: number): string {
 export function GrowerDashboard({ data }: { data: GrowerDashboardData }) {
   const router = useRouter();
   const { user } = useCurrentUser();
+  const [compareMode] = useWeightCompareMode();
   const firstName = user.name.split(" ")[0];
   const { overview, projection, alerts, houseViews, weightBand, efficiency, plannedBatch } = data;
   const { site, batch, rollup } = overview;
@@ -62,6 +64,12 @@ export function GrowerDashboard({ data }: { data: GrowerDashboardData }) {
   const weighDay = Math.max(0, ...houseViews.map((v) => v.weight?.day ?? 0));
   const eatingAtOrAboveTarget = efficiency.some((h) => h.fcr && h.fcr.level !== "green");
   const guidance = weightGuidance({ vsRossPct: avgVsRossPct, day: weighDay, eatingAtOrAboveTarget });
+
+  // Average actual vs target grams across weighed houses — drives the toggle on
+  // the guidance card so the gap can read as grams or a percentage.
+  const weighed = houseViews.filter((v) => v.weight && v.rossTargetWeightG);
+  const avgActualG = weighed.length ? Math.round(weighed.reduce((s, v) => s + v.weight!.avgWeightG, 0) / weighed.length) : 0;
+  const avgTargetG = weighed.length ? Math.round(weighed.reduce((s, v) => s + v.rossTargetWeightG!, 0) / weighed.length) : 0;
 
   return (
     <div className="mx-auto max-w-5xl space-y-8 px-4 py-8 sm:px-6 sm:py-10">
@@ -90,19 +98,24 @@ export function GrowerDashboard({ data }: { data: GrowerDashboardData }) {
         </Alert>
       ) : null}
 
-      <ProjectionCard projection={projection} />
+      <ProjectionCard projection={projection} compareMode={compareMode} />
 
       {/* Hero: actual weight per house vs the Ross curve, with the green/amber/red band */}
       <section className="space-y-3">
-        <h2 className="text-h2">Weight against the Ross curve</h2>
-        {guidance ? <WeightGuidanceCard guidance={guidance} /> : null}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-h2">Weight against the Ross curve</h2>
+          <BenchmarkToggle />
+        </div>
+        {guidance ? (
+          <WeightGuidanceCard guidance={guidance} actualG={avgActualG} targetG={avgTargetG} compareMode={compareMode} />
+        ) : null}
         <Card>
           <CardBody className="pt-5">
             <CardEyebrow>Every house · day of cycle</CardEyebrow>
             <p className="mt-2 mb-4 max-w-prose text-body text-slate">
               Each line is a house against the Ross 308 objective; the shaded bands are on track, at risk and behind.
             </p>
-            <WeightBandChart data={weightBand} />
+            <WeightBandChart data={weightBand} compareMode={compareMode} />
           </CardBody>
         </Card>
       </section>
@@ -128,7 +141,7 @@ export function GrowerDashboard({ data }: { data: GrowerDashboardData }) {
         <h2 className="text-h2">Every house</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {houseViews.map((view) => (
-            <HouseStatusCard key={view.house.id} view={view} />
+            <HouseStatusCard key={view.house.id} view={view} compareMode={compareMode} />
           ))}
         </div>
       </section>

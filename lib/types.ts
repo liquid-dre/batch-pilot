@@ -269,6 +269,46 @@ export interface FlockAlert {
 }
 
 // ---------------------------------------------------------------------------
+// Manager corrections — the attributed audit trail (maker-checker; ROADMAP §5/§9)
+// ---------------------------------------------------------------------------
+
+/** A captured field a manager is allowed to correct on a daily entry. */
+export type EditableField = "dayMortality" | "nightMortality" | "culls" | "feedAddedKg" | "tempC";
+
+/**
+ * One attributed correction to a captured value — the maker-checker audit trail.
+ * Supervisors capture; managers correct, and every correction is deliberate and
+ * recorded: who, when, and old→new. The edited entry stays visibly marked and
+ * the change remains viewable. This is the Clerk seam: today the editor is the
+ * demo manager from the auth stub; later it's the authed Clerk identity, and
+ * these records become a Convex table. Nothing is ever silently overwritten.
+ */
+export interface EditRecord {
+  id: ID;
+  /** Extensible — only daily entries are correctable today. */
+  entityType: "dailyEntry";
+  /** The corrected DailyEntry's id. */
+  entityId: ID;
+  placementId: ID;
+  houseId: ID;
+  houseName: string;
+  /** Day of cycle of the corrected entry. */
+  day: number;
+  field: EditableField;
+  /** Human label for the field, e.g. "Day mortality". */
+  fieldLabel: string;
+  oldValue: number | null;
+  newValue: number | null;
+  editedById: ID;
+  editedByName: string;
+  editedByRole: Role;
+  /** ISO timestamp of the correction. */
+  editedAt: string;
+  /** Optional reason the manager gave for the correction. */
+  note?: string;
+}
+
+// ---------------------------------------------------------------------------
 // Projections (formula-based & explainable; ML deferred — ROADMAP §9)
 // ---------------------------------------------------------------------------
 

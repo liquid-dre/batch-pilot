@@ -10,6 +10,8 @@ import {
   YAxis,
 } from "recharts";
 
+import { compactGap, vsBenchmark, type WeightCompareMode } from "@/lib/weightCompare";
+
 export interface ChartDatum {
   day: number;
   value?: number;
@@ -25,6 +27,8 @@ interface HistoryChartProps {
   decimals: number;
   showRoss?: boolean;
   showBand?: boolean;
+  /** When set (weight metric), the tooltip annotates the gap to target per mode. */
+  gapMode?: WeightCompareMode;
 }
 
 // Colours come from CSS tokens via var() (SVG stroke accepts them), so the
@@ -51,14 +55,22 @@ function ChartTooltip({
   label,
   unit,
   decimals,
+  gapMode,
 }: {
   active?: boolean;
   payload?: TipItem[];
   label?: number | string;
   unit: string;
   decimals: number;
+  gapMode?: WeightCompareMode;
 }) {
   if (!active || !payload || payload.length === 0) return null;
+  const value = payload.find((p) => p.dataKey === "value")?.value;
+  const target = payload.find((p) => p.dataKey === "ross")?.value;
+  const gap =
+    gapMode && typeof value === "number" && typeof target === "number"
+      ? compactGap(vsBenchmark(value, target), gapMode)
+      : undefined;
   return (
     <div className="rounded-[var(--radius-control)] border border-divider bg-surface px-3 py-2 shadow-card">
       <p className="text-label font-semibold text-ink">Day {label}</p>
@@ -73,11 +85,12 @@ function ChartTooltip({
           </li>
         ))}
       </ul>
+      {gap ? <p className="mt-1.5 border-t border-divider pt-1.5 text-[0.8125rem] text-muted">Gap to target: <span className="font-mono tabular-nums text-ink">{gap}</span></p> : null}
     </div>
   );
 }
 
-export function HistoryChart({ data, valueName, unit, decimals, showRoss, showBand }: HistoryChartProps) {
+export function HistoryChart({ data, valueName, unit, decimals, showRoss, showBand, gapMode }: HistoryChartProps) {
   return (
     <div className="h-[320px] w-full">
       <ResponsiveContainer width="100%" height="100%">
@@ -97,7 +110,7 @@ export function HistoryChart({ data, valueName, unit, decimals, showRoss, showBa
             cursor={{ stroke: "var(--border)", strokeWidth: 1 }}
             content={(props) => {
               const { active, payload, label } = props as unknown as { active?: boolean; payload?: TipItem[]; label?: number };
-              return <ChartTooltip active={active} payload={payload} label={label} unit={unit} decimals={decimals} />;
+              return <ChartTooltip active={active} payload={payload} label={label} unit={unit} decimals={decimals} gapMode={gapMode} />;
             }}
           />
           {showBand ? (

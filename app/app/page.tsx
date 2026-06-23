@@ -53,8 +53,9 @@ export default async function Page() {
         getLatestWeight(house.id),
         getHouseStatus(house.id),
       ]);
-      const vsRossPct = weight ? Math.round((weight.avgWeightG / ross308At(weight.day).weightG) * 100) : undefined;
-      return { house, placement: placement!, latest, weight, status, vsRossPct };
+      const rossTargetWeightG = weight ? ross308At(weight.day).weightG : undefined;
+      const vsRossPct = weight && rossTargetWeightG ? Math.round((weight.avgWeightG / rossTargetWeightG) * 100) : undefined;
+      return { house, placement: placement!, latest, weight, status, vsRossPct, rossTargetWeightG };
     }),
   );
 
