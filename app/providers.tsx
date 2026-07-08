@@ -2,16 +2,20 @@
 
 import { AuthProvider } from "@/lib/auth";
 import { ToastProvider } from "@/components/ui/Toast";
+import { ConvexClientProvider } from "@/components/providers/ConvexClientProvider";
 
 /**
- * Client provider tree mounted once in the root layout. Kept as a thin wrapper
- * so the layout itself stays a Server Component. `usePlan()` reads from
- * `AuthProvider` and needs no provider of its own.
+ * Client provider tree mounted once in the root layout. `ConvexClientProvider`
+ * is outermost so `AuthProvider` (which reads the signed-in user from Convex)
+ * and every screen's data hooks have the client + auth context. `usePlan()`
+ * reads from `AuthProvider` and needs no provider of its own.
  */
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <AuthProvider>
-      <ToastProvider>{children}</ToastProvider>
-    </AuthProvider>
+    <ConvexClientProvider>
+      <AuthProvider>
+        <ToastProvider>{children}</ToastProvider>
+      </AuthProvider>
+    </ConvexClientProvider>
   );
 }

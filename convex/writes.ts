@@ -1,5 +1,6 @@
 import { mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { getAuthUserId } from "@convex-dev/auth/server";
 import { dailyTotals, EDITABLE_FIELD_LABELS, toApp } from "./lib";
 import type { Doc, Id } from "./_generated/dataModel";
 
@@ -165,7 +166,9 @@ export const submitWeights = mutation({
 export const submitManagerEdit = mutation({
   args: {
     entityId: v.string(),
-    editor: v.object({ id: v.string(), name: v.string(), role: v.string() }),
+    // Fallback attribution for the demo / no-auth path. When a user is signed
+    // in, the server-resolved identity below wins so an edit can't be spoofed.
+    editor: v.optional(v.object({ id: v.string(), name: v.string(), role: v.string() })),
     changes: v.object({
       dayMortality: v.optional(v.union(v.number(), v.null())),
       nightMortality: v.optional(v.union(v.number(), v.null())),
@@ -193,6 +196,15 @@ export const submitManagerEdit = mutation({
     const houseName = house?.name ?? houseId;
     const editedAt = new Date().toISOString();
 
+    // Prefer the authenticated identity (attribution can't be spoofed by the
+    // client); fall back to the passed editor for the demo / pre-auth path.
+    const authUserId = await getAuthUserId(ctx);
+    const authUser = authUserId ? await ctx.db.get(authUserId) : null;
+    const editor = authUser
+      ? { id: authUser._id as string, name: authUser.name ?? "", role: (authUser.role as string) ?? "manager" }
+      : input.editor;
+    if (!editor) throw new Error("No editor identity for the correction");
+
     const logCount = (await ctx.db.query("editLog").collect()).length;
     const patch: Record<string, number | undefined> = {};
     const records: Doc<"editLog">[] = [];
@@ -216,9 +228,9 @@ export const submitManagerEdit = mutation({
         fieldLabel: EDITABLE_FIELD_LABELS[field] ?? field,
         oldValue: old,
         newValue: next,
-        editedById: input.editor.id,
-        editedByName: input.editor.name,
-        editedByRole: input.editor.role,
+        editedById: editor.id,
+        editedByName: editor.name,
+        editedByRole: editor.role,
         editedAt,
         note: input.note,
       };

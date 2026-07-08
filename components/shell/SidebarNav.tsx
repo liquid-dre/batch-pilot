@@ -9,7 +9,11 @@ import { cn } from "@/lib/cn";
 import { Logo, LogoMark } from "@/components/brand/Logo";
 import { IconChevronDown, IconCollapse, IconExpand, IconSwitch, IconInfo } from "@/components/icons";
 import { RoleSwitcher } from "./RoleSwitcher";
+import { SignOutButton } from "./SignOutButton";
 import { NAV, NavGlyph, isActive, type NavSection } from "./nav-config";
+
+/** True once a Convex deployment is connected — enables real sign-out. */
+const CONVEX_CONNECTED = Boolean(process.env.NEXT_PUBLIC_CONVEX_URL);
 
 const Chevron = ({ open }: { open: boolean }) => (
   <IconChevronDown
@@ -77,7 +81,8 @@ export function SidebarNav({ collapsed, onToggleCollapse, onNavigate }: SidebarN
       {/* Role switcher + demo-data note */}
       <div className={cn("shrink-0 space-y-3 border-t border-divider", collapsed ? "px-2 py-3" : "px-4 py-4")}>
         {collapsed ? <RoleRail /> : <RoleSwitcher />}
-        <DemoNote collapsed={collapsed} />
+        {CONVEX_CONNECTED && !collapsed ? <SignOutButton /> : null}
+        {CONVEX_CONNECTED ? null : <DemoNote collapsed={collapsed} />}
       </div>
     </div>
   );

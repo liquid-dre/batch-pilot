@@ -1,24 +1,24 @@
 "use client";
 
 /**
- * Convex realtime provider (ROADMAP §5 / §9 — the database seam).
+ * Convex client + auth provider (ROADMAP §5 / §9 — Convex owns the backend).
  *
- * Wraps the app in a `ConvexProvider` so client components can subscribe to
- * reactive queries (`useQuery`) and call mutations (`useMutation`). The client
- * is created once from `NEXT_PUBLIC_CONVEX_URL`.
+ * `ConvexAuthNextjsProvider` gives client components both realtime data hooks
+ * (`useQuery`/`useMutation`) and the auth actions (`useAuthActions`), all backed
+ * by Convex — no third-party auth service.
  *
- * Guarded on purpose: until the deployment env var is set (i.e. before
- * `npx convex dev` has run locally), this is a transparent pass-through, so the
- * app keeps running on the `lib/data/` mock during the migration. The moment the
- * URL is present, every Convex hook goes live — no other change needed.
+ * Guarded on purpose: until `NEXT_PUBLIC_CONVEX_URL` is set (before the first
+ * local `npx convex dev`), this is a transparent pass-through so the app keeps
+ * running on the mock seam + demo role switcher. The moment the URL is present,
+ * data and auth both go live.
  */
-import { useMemo } from "react";
-import { ConvexProvider, ConvexReactClient } from "convex/react";
+import { ConvexAuthNextjsProvider } from "@convex-dev/auth/nextjs";
+import { ConvexReactClient } from "convex/react";
+
+const url = process.env.NEXT_PUBLIC_CONVEX_URL;
+const convex = url ? new ConvexReactClient(url) : null;
 
 export function ConvexClientProvider({ children }: { children: React.ReactNode }) {
-  const url = process.env.NEXT_PUBLIC_CONVEX_URL;
-  const client = useMemo(() => (url ? new ConvexReactClient(url) : null), [url]);
-
-  if (!client) return <>{children}</>;
-  return <ConvexProvider client={client}>{children}</ConvexProvider>;
+  if (!convex) return <>{children}</>;
+  return <ConvexAuthNextjsProvider client={convex}>{children}</ConvexAuthNextjsProvider>;
 }

@@ -1,4 +1,5 @@
 import { defineSchema, defineTable } from "convex/server";
+import { authTables } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 
 /**
@@ -21,6 +22,32 @@ const amount = v.object({ amount: v.number(), unit: v.string() });
 const treatment = v.object({ name: v.string(), amount: v.number(), unit: v.string() });
 
 export default defineSchema({
+  // --- Convex Auth (ROADMAP §9 — auth now lives entirely in Convex) ----------
+  // `authTables` provides users / authAccounts / authSessions / etc. We override
+  // `users` to carry BatchPilot's own fields — the role picked at sign-up and
+  // the tenant scope (siteId for growers, contractorId for contractors) — while
+  // keeping the auth-required fields and the email/phone indexes the library
+  // looks users up by. This is what makes "Convex handles everything backend"
+  // true: identity and app data live in one place, no third-party auth service.
+  ...authTables,
+  users: defineTable({
+    // Auth-managed fields (kept as the library expects).
+    name: v.optional(v.string()),
+    image: v.optional(v.string()),
+    email: v.optional(v.string()),
+    emailVerificationTime: v.optional(v.number()),
+    phone: v.optional(v.string()),
+    phoneVerificationTime: v.optional(v.number()),
+    isAnonymous: v.optional(v.boolean()),
+    // BatchPilot profile.
+    role: v.optional(v.string()), // "supervisor" | "manager" | "contractor"
+    org: v.optional(v.string()),
+    siteId: v.optional(v.string()),
+    contractorId: v.optional(v.string()),
+  })
+    .index("email", ["email"])
+    .index("phone", ["phone"]),
+
   contractors: defineTable({
     extId: v.string(),
     name: v.string(),

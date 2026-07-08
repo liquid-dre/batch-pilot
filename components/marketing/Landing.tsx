@@ -18,14 +18,32 @@ export function Landing() {
   const router = useRouter();
   const { setRole } = useCurrentUser();
 
+  // When a Convex deployment is connected, the CTAs go to real sign-up/sign-in
+  // (the role rides along as `intent`). Before that, they set the demo role and
+  // jump straight into the app — the no-backend prototype flow.
+  const connected = Boolean(process.env.NEXT_PUBLIC_CONVEX_URL);
+
   const enter = (role: Role) => {
-    setRole(role);
-    router.push("/app");
+    if (connected) {
+      router.push(`/signin?intent=${role}`);
+    } else {
+      setRole(role);
+      router.push("/app");
+    }
+  };
+
+  const login = () => {
+    if (connected) {
+      router.push("/signin");
+    } else {
+      setRole("manager");
+      router.push("/app");
+    }
   };
 
   return (
     <div className="flex min-h-full flex-col bg-paper">
-      <Hero onEnter={enter} />
+      <Hero onEnter={enter} onLogin={login} />
       <ValueProps />
       <Registers onEnter={enter} />
       <ClosingBand onEnter={enter} />
@@ -36,7 +54,7 @@ export function Landing() {
 
 /* ---------------------------------------------------------------- Hero ---- */
 
-function Hero({ onEnter }: { onEnter: (r: Role) => void }) {
+function Hero({ onEnter, onLogin }: { onEnter: (r: Role) => void; onLogin: () => void }) {
   return (
     <section className="relative isolate overflow-hidden bg-brand-900 text-white">
       {/* soft depth + oversized chevron motif (decorative, on-brand) */}
@@ -53,7 +71,7 @@ function Hero({ onEnter }: { onEnter: (r: Role) => void }) {
         </span>
         <button
           type="button"
-          onClick={() => onEnter("manager")}
+          onClick={onLogin}
           className="rounded-[var(--radius-control)] px-4 py-2 text-label font-semibold text-brand-100 transition-colors duration-[var(--dur-fast)] hover:text-white"
         >
           Log in

@@ -31,7 +31,30 @@ and the runbook.
   running on the mock seam until you connect a deployment. The moment the URL is
   present, Convex hooks go live.
 
-## Step 1 — provision the deployment (you, locally)
+## Authentication — Convex Auth (email + password)
+
+Auth runs **inside Convex** via `@convex-dev/auth` — no Clerk, no third-party
+service. Users, sessions and password hashes live in Convex tables:
+
+- **`convex/schema.ts`** — `...authTables` plus a custom `users` table carrying
+  BatchPilot's `role` / `org` / `siteId` / `contractorId`.
+- **`convex/auth.ts`** — the `Password` provider. Its `profile` callback stores
+  the role chosen at sign-up and scopes a new account to the demo tenant
+  (growers → Murray Downs, contractor → Irvine's).
+- **`convex/http.ts`**, **`convex/auth.config.ts`**, **`convex/users.ts`**
+  (`currentUser`).
+- App side: `ConvexAuthNextjsServerProvider` (root layout) + `ConvexClientProvider`
+  (client, now `ConvexAuthNextjsProvider`) + **`middleware.ts`** gating `/app`.
+  The **`/signin`** route is the real email+password sign-in / sign-up with the
+  grower(Supervisor/Manager)/contractor picker. `useCurrentUser()` keeps its
+  shape: it returns the signed-in Convex user when connected, and falls back to
+  the demo role switcher when `NEXT_PUBLIC_CONVEX_URL` is unset.
+
+Making an account: go to `/signin`, choose **Create account**, pick Supervisor /
+Manager / Contractor, enter name + email + password. Manager corrections are
+attributed to the authenticated user server-side (`getAuthUserId`).
+
+## Step 1 — provision the deployment + auth (you, locally)
 
 The remote agent container can't do Convex's interactive browser login, so run
 this on your machine, on this branch:
@@ -42,12 +65,17 @@ npx convex dev          # logs in, creates the dev deployment, and:
                         #  • writes CONVEX_DEPLOYMENT + NEXT_PUBLIC_CONVEX_URL to .env.local
                         #  • generates convex/_generated/  (commit this)
                         #  • pushes schema + functions and keeps syncing
+
+# In another terminal, one time — sets the auth JWT keys + SITE_URL on the deployment:
+npx @convex-dev/auth
 ```
 
 `convex/_generated/` does not exist in the repo yet — it can only be generated
 against a real deployment. Once `npx convex dev` creates it, **commit it**; the
-Convex-consuming code won't typecheck without it (that's why CI/`npm run build`
-should run after this step, not before).
+Convex-consuming code (now including `lib/auth.tsx`, `middleware.ts`, `/signin`)
+won't typecheck without it, so run `npm run build` **after** this step, not
+before. Until `NEXT_PUBLIC_CONVEX_URL` is set the app still runs on the mock seam
+with the demo role switcher and `/app` stays open.
 
 ## Step 2 — seed the demo data
 
