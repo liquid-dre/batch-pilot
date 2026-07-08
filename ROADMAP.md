@@ -291,7 +291,16 @@ Ross weight curve — that under-performance is the hero story, keep it).
 ## 9. Explicitly deferred (post-MVP) — and the seam each will use
 
 - **Auth → Clerk** — seam: `<AuthProvider>` / `useCurrentUser()`; the boundary is `app/app/layout.tsx` and the landing CTAs (`components/marketing/Landing.tsx`) become real sign-in / sign-up. The login screen already offers the three profiles (Supervisor / Foreman, Manager, Contractor); each Clerk session resolves to one `Role` and `isGrowerRole()` gates the grower register. The **maker-checker** correction trail (`EditRecord` via `submitManagerEdit` / `getEditLog`) attributes each edit to the manager — today the auth-stub user, later the authed Clerk identity (and a Convex audit table)
-- **Database + realtime → Convex** — seam: `lib/data/*`
+- **Database + realtime → Convex** — seam: `lib/data/*`. **In progress** (branch
+  `claude/convex-integration-setup-g02tm5`): backend scaffolded — `convex/schema.ts`
+  (every operational entity, app id kept as indexed `extId`), `convex/seed.ts` +
+  `convex/seedData.json` (a byte-identical snapshot of the mock demo),
+  `convex/reads.ts` (`getDataset`, one reactive query) and `convex/writes.ts`
+  (daily / feed / weights / manager-edit / saveHouses / confirmAllocation
+  mutations, re-deriving the cumulative chain). `<ConvexClientProvider>` wraps
+  `/app` and is a no-op until `NEXT_PUBLIC_CONVEX_URL` is set. Runbook + the
+  screen-by-screen realtime conversion recipe: **`docs/CONVEX.md`**. Static
+  reference (Ross curve, vaccination schedule, demo users) stays in code.
 - **Payments → Stripe** — seam: `usePlan()`
 - **WhatsApp ingestion → Twilio** — 1:1 messaging to a BatchPilot number, tolerant parser + echo-back
   (the data model is already channel-agnostic for this)

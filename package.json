@@ -8,10 +8,13 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "convex:dev": "convex dev",
+    "convex:seed": "convex run seed:seed"
   },
   "dependencies": {
     "@untitledui/icons": "^0.0.22",
+    "convex": "^1.42.1",
     "next": "16.2.9",
     "react": "19.2.4",
     "react-dom": "19.2.4",
