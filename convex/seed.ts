@@ -45,7 +45,9 @@ export const seed = internalMutation({
       await Promise.all(rows.map((r) => ctx.db.delete(r._id)));
     }
 
-    const d = seedData as Record<string, Array<Record<string, unknown>>>;
+    // `benchmark` is an object (not an array), so go through `unknown` — seed
+    // only iterates the array tables below and never touches `benchmark`.
+    const d = seedData as unknown as Record<string, Array<Record<string, unknown>>>;
     const insert = (table: (typeof TABLES)[number], rows: Array<Record<string, unknown>>, remap = true) =>
       Promise.all(rows.map((r) => ctx.db.insert(table, (remap ? withExtId(r) : r) as never)));
 

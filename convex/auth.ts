@@ -23,13 +23,15 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
       profile(params) {
         const role = (params.role as string) || "supervisor";
         const isContractor = role === "contractor";
+        const name = (params.name as string) || "";
+        // Convex `Value` has no `undefined`, so only include keys we actually
+        // have. Optional users fields simply stay absent for the other role.
         return {
           email: params.email as string,
-          name: (params.name as string) || undefined,
           role,
           org: (params.org as string) || (isContractor ? "Irvine's" : "Murray Downs"),
-          siteId: isContractor ? undefined : DEMO_SITE_ID,
-          contractorId: isContractor ? DEMO_CONTRACTOR_ID : undefined,
+          ...(name ? { name } : {}),
+          ...(isContractor ? { contractorId: DEMO_CONTRACTOR_ID } : { siteId: DEMO_SITE_ID }),
         };
       },
     }),
