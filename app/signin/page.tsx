@@ -3,7 +3,6 @@
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthActions } from "@convex-dev/auth/react";
-import type { Role } from "@/lib/types";
 import { LogoMark } from "@/components/brand/Logo";
 import { cn } from "@/lib/cn";
 
@@ -18,11 +17,11 @@ import { cn } from "@/lib/cn";
  */
 
 type Mode = "signIn" | "signUp";
+type JoinAs = "contractor" | "invited";
 
-const ROLE_OPTIONS: { role: Role; label: string; hint: string }[] = [
-  { role: "supervisor", label: "Supervisor / Foreman", hint: "Capture the daily numbers" },
-  { role: "manager", label: "Manager", hint: "Oversee performance" },
-  { role: "contractor", label: "Contractor / Supplier", hint: "Portfolio across growers" },
+const JOIN_OPTIONS: { value: JoinAs; label: string; hint: string }[] = [
+  { value: "invited", label: "I was invited to a farm", hint: "Supervisor or manager — your role comes from your invite" },
+  { value: "contractor", label: "I run the contractor / supply side", hint: "Create farms and invite growers" },
 ];
 
 function SignInInner() {
@@ -30,9 +29,9 @@ function SignInInner() {
   const params = useSearchParams();
   const { signIn } = useAuthActions();
 
-  const intent = params.get("intent") as Role | null;
+  const intent = params.get("intent");
   const [mode, setMode] = useState<Mode>(intent ? "signUp" : "signIn");
-  const [role, setRole] = useState<Role>(intent ?? "supervisor");
+  const [joinAs, setJoinAs] = useState<JoinAs>(intent === "contractor" ? "contractor" : "invited");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,7 +47,9 @@ function SignInInner() {
     };
     if (mode === "signUp") {
       payload.name = String(form.get("name") ?? "");
-      payload.role = role;
+      // Contractors self-serve; invited growers get their real role from the
+      // invite the auth hook matches, so they sign up as "pending".
+      payload.role = joinAs === "contractor" ? "contractor" : "pending";
     }
     try {
       await signIn("password", payload);
@@ -137,21 +138,21 @@ function SignInInner() {
 
             {mode === "signUp" && (
               <fieldset className="flex flex-col gap-2">
-                <legend className="mb-1 text-label font-medium text-slate">I am a…</legend>
-                {ROLE_OPTIONS.map((o) => (
+                <legend className="mb-1 text-label font-medium text-slate">How are you joining?</legend>
+                {JOIN_OPTIONS.map((o) => (
                   <label
-                    key={o.role}
+                    key={o.value}
                     className={cn(
                       "flex cursor-pointer items-center gap-3 rounded-[var(--radius-control)] border p-3 transition-colors",
-                      role === o.role ? "border-brand-500 bg-brand-50" : "border-border hover:bg-paper",
+                      joinAs === o.value ? "border-brand-500 bg-brand-50" : "border-border hover:bg-paper",
                     )}
                   >
                     <input
                       type="radio"
-                      name="role"
-                      value={o.role}
-                      checked={role === o.role}
-                      onChange={() => setRole(o.role)}
+                      name="joinAs"
+                      value={o.value}
+                      checked={joinAs === o.value}
+                      onChange={() => setJoinAs(o.value)}
                       className="size-4 accent-brand-700"
                     />
                     <span className="flex flex-col">

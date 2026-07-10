@@ -245,4 +245,20 @@ export default defineSchema({
   })
     .index("by_siteId", ["siteId"])
     .index("by_contractor", ["contractorId"]),
+
+  // --- Onboarding invites (multi-tenant) -------------------------------------
+  // A contractor invites supervisor(s) to a farm; a supervisor invites
+  // manager(s) to the same farm. When someone signs up with an invited email,
+  // the auth hook (convex/auth.ts) matches this row and stamps their role +
+  // siteId, then marks it accepted. Email is stored lowercased for matching.
+  invites: defineTable({
+    email: v.string(),
+    role: v.string(), // "supervisor" | "manager"
+    siteId: v.string(),
+    invitedByUserId: v.string(),
+    status: v.string(), // "pending" | "accepted"
+    createdAt: v.string(),
+  })
+    .index("by_email", ["email"])
+    .index("by_site", ["siteId"]),
 });

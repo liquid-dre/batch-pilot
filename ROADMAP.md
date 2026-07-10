@@ -304,6 +304,17 @@ Ross weight curve — that under-performance is the hero story, keep it).
   connected, and falls back to the demo role switcher when `NEXT_PUBLIC_CONVEX_URL`
   is unset. The **maker-checker** trail is now attributed to the authenticated
   user server-side (`getAuthUserId` in `submitManagerEdit`), no longer spoofable.
+  **Multi-tenant onboarding — stage 1 (identity loop):** no demo tenant is
+  assigned any more (a fresh account is blank). A contractor signs up self-serve
+  (their own org); supervisors/managers are **invite-only**. `convex/tenancy.ts`
+  (`createFarm`, `inviteManagers`, `myWorkspace`) + an `invites` table + the auth
+  `afterUserCreatedOrUpdated` hook match a sign-up email to its invite and stamp
+  role + farm. `components/onboarding/Onboarding.tsx` is the `/app` home when
+  Convex is connected: contractor creates farms + invites supervisors, supervisor
+  invites managers, each lands on their own (blank) farm. `npx convex run seed:clear`
+  blanks the demo. **Stage 2** converts the analytics/capture/setup screens to
+  per-farm Convex reads (houses + cycle + capture), which today still show the
+  mock demo on routes other than the home.
 - **Database + realtime → Convex** — seam: `lib/data/*`. **In progress** (branch
   `claude/convex-integration-setup-g02tm5`): backend scaffolded — `convex/schema.ts`
   (every operational entity, app id kept as indexed `extId`), `convex/seed.ts` +

@@ -32,7 +32,9 @@ interface SidebarNavProps {
 export function SidebarNav({ collapsed, onToggleCollapse, onNavigate }: SidebarNavProps) {
   const { role } = useCurrentUser();
   const pathname = usePathname();
-  const sections = NAV[role];
+  // A freshly-invited user can be "pending" (no farm yet) — no nav until they're
+  // placed on a farm; the onboarding home guides them.
+  const sections = NAV[role] ?? [];
 
   return (
     <div className="flex h-full flex-col bg-surface">
