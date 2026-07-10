@@ -66,6 +66,17 @@ export const submitDailyUpdate = mutation({
     medications: v.optional(v.array(treatment)),
   },
   handler: async (ctx, input) => {
+    // Tenant guard: a signed-in grower may only capture into their own farm's
+    // houses. (No-op on the mock/no-auth path.)
+    const authId = await getAuthUserId(ctx);
+    if (authId) {
+      const u = await ctx.db.get(authId);
+      if (u?.siteId) {
+        const h = await ctx.db.query("houses").withIndex("by_extId", (q: any) => q.eq("extId", input.houseId)).first();
+        if (!h || h.siteId !== u.siteId) throw new Error("House is not in your farm");
+      }
+    }
+
     const { placement, daily } = await placementContext(ctx, input.houseId);
     const placementId = placement?.extId ?? input.houseId;
     const placed = placement?.placedCount ?? 0;

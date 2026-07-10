@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { cn } from "@/lib/cn";
+import { CapturePanel, ReviewPanel } from "./FarmData";
 
 /**
  * Onboarding hub (stage 1 — the multi-tenant identity loop). Rendered as the
@@ -166,6 +167,7 @@ function SupervisorOnboarding({ workspace }: { workspace: any }) {
   return (
     <Shell title={workspace.farm.name} subtitle={`Supervisor · ${workspace.email}`}>
       <FarmCard farm={workspace.farm} />
+      <CapturePanel />
 
       <form onSubmit={onInvite} className="mt-6 rounded-[var(--radius-card)] bg-surface p-5 shadow-card">
         <h3 className="text-h3">Invite your manager(s)</h3>
@@ -214,8 +216,9 @@ function ManagerOnboarding({ workspace }: { workspace: any }) {
   return (
     <Shell title={workspace.farm.name} subtitle={`Manager · ${workspace.email}`}>
       <FarmCard farm={workspace.farm} />
+      <ReviewPanel />
       <FarmSetup workspace={workspace} />
-      <NextStepNote>The analytics dashboard for this farm arrives next.</NextStepNote>
+      <NextStepNote>The full analytics dashboard (projections, benchmark curve, alerts) arrives next.</NextStepNote>
     </Shell>
   );
 }

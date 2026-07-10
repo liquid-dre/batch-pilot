@@ -315,9 +315,12 @@ Ross weight curve — that under-performance is the hero story, keep it).
   blanks the demo. **Stage 2a (done):** the grower configures the farm on Convex
   from the onboarding home — houses (`setHouses`) + a growing cycle
   (`startCycle`: batch + per-house placements), with farm-scoped unique ids.
-  **Stage 2b (next):** supervisor daily capture + the manager dashboard/analytics
-  reading per-farm Convex data; routes other than the home still show the mock
-  demo until then.
+  **Stage 2b (done):** supervisor daily capture (`writes.submitDailyUpdate`,
+  tenant-guarded) + a live manager review panel, both on the reactive
+  `farm.farmData` query — a saved round shows up live on the manager's screen.
+  **Stage 2c (next):** the full analytics dashboard (projections, weight-vs-Ross
+  curve, alerts, efficiency) and the contractor portfolio, per farm; the nav
+  routes other than the home still show the mock demo until then.
 - **Database + realtime → Convex** — seam: `lib/data/*`. **In progress** (branch
   `claude/convex-integration-setup-g02tm5`): backend scaffolded — `convex/schema.ts`
   (every operational entity, app id kept as indexed `extId`), `convex/seed.ts` +
