@@ -36,6 +36,23 @@ function withExtId({ id, ...rest }: Record<string, unknown>) {
   return { extId: id as string, ...rest };
 }
 
+/**
+ * Wipe every operational table (leaves the auth tables / user accounts intact).
+ *   npx convex run seed:clear
+ * Use to blank the demo data before onboarding real farms. To also remove test
+ * accounts, clear the `users` / `auth*` tables from the Convex dashboard.
+ */
+export const clear = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    for (const table of TABLES) {
+      const rows = await ctx.db.query(table).collect();
+      await Promise.all(rows.map((r) => ctx.db.delete(r._id)));
+    }
+    return { cleared: TABLES.length };
+  },
+});
+
 export const seed = internalMutation({
   args: {},
   handler: async (ctx) => {
