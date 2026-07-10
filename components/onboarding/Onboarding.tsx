@@ -201,7 +201,8 @@ function SupervisorOnboarding({ workspace }: { workspace: any }) {
         )}
       </form>
 
-      <NextStepNote>Setting up houses and today's capture arrives next (stage 2).</NextStepNote>
+      <FarmSetup workspace={workspace} />
+      <NextStepNote>Today&apos;s daily capture for this farm arrives next.</NextStepNote>
     </Shell>
   );
 }
@@ -213,8 +214,211 @@ function ManagerOnboarding({ workspace }: { workspace: any }) {
   return (
     <Shell title={workspace.farm.name} subtitle={`Manager · ${workspace.email}`}>
       <FarmCard farm={workspace.farm} />
-      <NextStepNote>Dashboard, analytics and house setup for this farm arrive next (stage 2).</NextStepNote>
+      <FarmSetup workspace={workspace} />
+      <NextStepNote>The analytics dashboard for this farm arrives next.</NextStepNote>
     </Shell>
+  );
+}
+
+/* --------------------------------------------------------------- FarmSetup -- */
+// Houses + growing cycle for the farm (grower-configured). The cycle form reads
+// the *saved* houses, so houses must be saved before a cycle can start.
+
+function FarmSetup({ workspace }: { workspace: any }) {
+  const houses: any[] = workspace.houses ?? [];
+  const cycle = workspace.cycle ?? null;
+  return (
+    <div className="mt-6 flex flex-col gap-6">
+      <HousesEditor initial={houses} />
+      <CycleSection houses={houses} cycle={cycle} />
+    </div>
+  );
+}
+
+function HousesEditor({ initial }: { initial: any[] }) {
+  const setHouses = useMutation(api.tenancy.setHouses);
+  const [rows, setRows] = useState<{ id?: string; name: string; capacity: string }[]>(
+    initial.length
+      ? initial.map((h) => ({ id: h.id, name: h.name, capacity: String(h.capacity) }))
+      : [{ name: "House 1", capacity: "" }],
+  );
+  const [pending, setPending] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const total = rows.reduce((s, r) => s + (Number(r.capacity) || 0), 0);
+
+  function update(i: number, patch: Partial<{ name: string; capacity: string }>) {
+    setRows(rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
+    setSaved(false);
+  }
+  function add() {
+    setRows([...rows, { name: `House ${rows.length + 1}`, capacity: "" }]);
+    setSaved(false);
+  }
+  function remove(i: number) {
+    setRows(rows.filter((_, idx) => idx !== i));
+    setSaved(false);
+  }
+  async function save() {
+    setPending(true);
+    try {
+      await setHouses({
+        houses: rows.map((r) => ({ id: r.id, name: r.name.trim(), capacity: Number(r.capacity) || 0 })),
+      });
+      setSaved(true);
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <div className="rounded-[var(--radius-card)] bg-surface p-5 shadow-card">
+      <div className="flex items-baseline justify-between">
+        <h3 className="text-h3">Houses</h3>
+        <span className="font-mono text-label text-muted">total {total.toLocaleString()}</span>
+      </div>
+      <div className="mt-4 flex flex-col gap-2">
+        {rows.map((r, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <input
+              value={r.name}
+              onChange={(e) => update(i, { name: e.target.value })}
+              placeholder="Name"
+              className="h-11 flex-1 rounded-[var(--radius-control)] border border-border bg-surface px-3 text-body text-ink outline-none focus-visible:border-brand-500"
+            />
+            <input
+              value={r.capacity}
+              onChange={(e) => update(i, { capacity: e.target.value.replace(/[^0-9]/g, "") })}
+              inputMode="numeric"
+              placeholder="Capacity"
+              className="h-11 w-32 rounded-[var(--radius-control)] border border-border bg-surface px-3 text-right font-mono text-body text-ink outline-none focus-visible:border-brand-500"
+            />
+            <button
+              type="button"
+              onClick={() => remove(i)}
+              aria-label={`Remove ${r.name || "house"}`}
+              className="flex size-11 shrink-0 items-center justify-center rounded-[var(--radius-control)] text-muted hover:bg-paper hover:text-status-bad"
+            >
+              ✕
+            </button>
+          </div>
+        ))}
+      </div>
+      <div className="mt-3 flex items-center gap-3">
+        <button type="button" onClick={add} className="text-label font-semibold text-brand-700 hover:text-brand-600">
+          + Add house
+        </button>
+        <button
+          type="button"
+          onClick={save}
+          disabled={pending}
+          className="ml-auto inline-flex h-11 items-center justify-center rounded-[var(--radius-control)] bg-brand-700 px-5 text-label font-semibold text-white hover:bg-brand-600 active:scale-[0.98] disabled:opacity-60"
+        >
+          {pending ? "Saving…" : saved ? "Saved ✓" : "Save houses"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function CycleSection({ houses, cycle }: { houses: any[]; cycle: any }) {
+  const startCycle = useMutation(api.tenancy.startCycle);
+  const [cycleNo, setCycleNo] = useState("1");
+  const [breed, setBreed] = useState("Ross 308");
+  const [placingDate, setPlacingDate] = useState("");
+  const [killDate, setKillDate] = useState("");
+  const [counts, setCounts] = useState<Record<string, string>>({});
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  if (cycle) {
+    return (
+      <div className="rounded-[var(--radius-card)] bg-surface p-5 shadow-card">
+        <h3 className="text-h3">Cycle {cycle.cycleNo}</h3>
+        <dl className="mt-3 grid grid-cols-2 gap-y-1.5 text-label">
+          <dt className="text-muted">Breed</dt><dd className="text-right font-mono text-ink">{cycle.breed}</dd>
+          <dt className="text-muted">Placed</dt><dd className="text-right font-mono text-ink">{cycle.placed.toLocaleString()}</dd>
+          <dt className="text-muted">Houses</dt><dd className="text-right font-mono text-ink">{cycle.houseCount}</dd>
+          <dt className="text-muted">Placed on</dt><dd className="text-right font-mono text-ink">{cycle.placingDate}</dd>
+          <dt className="text-muted">Kill date</dt><dd className="text-right font-mono text-ink">{cycle.killDate}</dd>
+        </dl>
+      </div>
+    );
+  }
+
+  if (!houses.length) {
+    return <EmptyHint>Add and save your houses first, then start a cycle.</EmptyHint>;
+  }
+
+  async function start(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (!placingDate || !killDate) {
+      setError("Enter the placing and kill dates.");
+      return;
+    }
+    setPending(true);
+    try {
+      await startCycle({
+        cycleNo: Number(cycleNo) || 1,
+        breed,
+        placingDate,
+        killDate,
+        houses: houses.map((h) => ({ houseId: h.id, placedCount: Number(counts[h.id]) || 0 })),
+      });
+    } catch {
+      setError("Could not start the cycle. Try again.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <form onSubmit={start} className="rounded-[var(--radius-card)] bg-surface p-5 shadow-card">
+      <h3 className="text-h3">Start a cycle</h3>
+      <div className="mt-4 grid grid-cols-2 gap-3">
+        <label className="flex flex-col gap-1.5">
+          <span className="text-label font-medium text-slate">Cycle no.</span>
+          <input value={cycleNo} onChange={(e) => setCycleNo(e.target.value.replace(/[^0-9]/g, ""))} inputMode="numeric" className="h-11 rounded-[var(--radius-control)] border border-border bg-surface px-3 font-mono text-body text-ink outline-none focus-visible:border-brand-500" />
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-label font-medium text-slate">Breed</span>
+          <input value={breed} onChange={(e) => setBreed(e.target.value)} className="h-11 rounded-[var(--radius-control)] border border-border bg-surface px-3 text-body text-ink outline-none focus-visible:border-brand-500" />
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-label font-medium text-slate">Placing date</span>
+          <input type="date" value={placingDate} onChange={(e) => setPlacingDate(e.target.value)} className="h-11 rounded-[var(--radius-control)] border border-border bg-surface px-3 text-body text-ink outline-none focus-visible:border-brand-500" />
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-label font-medium text-slate">Kill date</span>
+          <input type="date" value={killDate} onChange={(e) => setKillDate(e.target.value)} className="h-11 rounded-[var(--radius-control)] border border-border bg-surface px-3 text-body text-ink outline-none focus-visible:border-brand-500" />
+        </label>
+      </div>
+
+      <p className="mt-4 mb-1.5 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-hint">Birds placed per house</p>
+      <div className="flex flex-col gap-2">
+        {houses.map((h) => (
+          <div key={h.id} className="flex items-center gap-2">
+            <span className="flex-1 text-label text-ink">{h.name}</span>
+            <input
+              value={counts[h.id] ?? ""}
+              onChange={(e) => setCounts({ ...counts, [h.id]: e.target.value.replace(/[^0-9]/g, "") })}
+              inputMode="numeric"
+              placeholder={`max ${h.capacity.toLocaleString()}`}
+              className="h-11 w-40 rounded-[var(--radius-control)] border border-border bg-surface px-3 text-right font-mono text-body text-ink outline-none focus-visible:border-brand-500"
+            />
+          </div>
+        ))}
+      </div>
+
+      {error && <p role="alert" className="mt-3 text-label text-status-bad">{error}</p>}
+      <button
+        type="submit"
+        disabled={pending}
+        className="mt-4 inline-flex h-[52px] items-center justify-center rounded-[var(--radius-control)] bg-brand-700 px-6 text-[1.0625rem] font-semibold text-white hover:bg-brand-600 active:scale-[0.98] disabled:opacity-60"
+      >
+        {pending ? "Starting…" : "Start cycle"}
+      </button>
+    </form>
   );
 }
 

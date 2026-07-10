@@ -132,23 +132,159 @@ export const myWorkspace = query({
         ? await ctx.db.query("sites").withIndex("by_extId", (q) => q.eq("extId", siteId)).first()
         : null;
       let managers: { email: string; status: string }[] = [];
+      let houses: { id: string; name: string; capacity: number }[] = [];
+      let cycle: { cycleNo: number; breed: string; placingDate: string; killDate: string; placed: number; houseCount: number } | null = null;
       if (site) {
         const invites = await ctx.db
           .query("invites")
           .withIndex("by_site", (q) => q.eq("siteId", site.extId))
           .collect();
         managers = invites.filter((i) => i.role === "manager").map((i) => ({ email: i.email, status: i.status }));
+
+        const houseRows = await ctx.db.query("houses").withIndex("by_site", (q) => q.eq("siteId", site.extId)).collect();
+        const byId = new Map(houseRows.map((h) => [h.extId, h]));
+        // Preserve the site's house order.
+        houses = (site.houseIds ?? [])
+          .map((hid) => byId.get(hid))
+          .filter((h): h is NonNullable<typeof h> => Boolean(h))
+          .map((h) => ({ id: h.extId, name: h.name, capacity: h.capacity }));
+
+        const batch = await ctx.db.query("batches").withIndex("by_site", (q) => q.eq("siteId", site.extId)).first();
+        if (batch) {
+          const placements = await ctx.db
+            .query("placements")
+            .withIndex("by_batch", (q) => q.eq("batchId", batch.extId))
+            .collect();
+          cycle = {
+            cycleNo: batch.cycleNo,
+            breed: batch.breed,
+            killDate: batch.killDate,
+            placingDate: placements[0]?.placingDate ?? "",
+            placed: placements.reduce((s, p) => s + p.placedCount, 0),
+            houseCount: placements.length,
+          };
+        }
       }
       return {
         role,
         name,
         email,
-        farm: site ? { id: site.extId, name: site.name, farmCode: site.farmCode, houseCount: (site.houseIds ?? []).length } : null,
+        farm: site ? { id: site.extId, name: site.name, farmCode: site.farmCode, houseCount: houses.length } : null,
         managers,
+        houses,
+        cycle,
       };
     }
 
     // Invited but not yet matched to a farm.
     return { role, name, email, farm: null, managers: [] };
+  },
+});
+
+/** Whole days from ISO `a` to ISO `b` (b − a). */
+function daysBetween(a: string, b: string): number {
+  const [ay, am, ad] = a.split("-").map(Number);
+  const [by, bm, bd] = b.split("-").map(Number);
+  return Math.round((Date.UTC(by, bm - 1, bd) - Date.UTC(ay, am - 1, ad)) / 86_400_000);
+}
+
+/** The signed-in grower + their farm id, or throws. Houses/cycle are grower-set. */
+async function requireFarm(ctx: any) {
+  const userId = await getAuthUserId(ctx);
+  if (!userId) throw new Error("Not signed in");
+  const user = await ctx.db.get(userId);
+  const role = user?.role as string;
+  if (!user || !user.siteId || (role !== "supervisor" && role !== "manager")) {
+    throw new Error("Only a farm's grower can configure it");
+  }
+  const site = await ctx.db.query("sites").withIndex("by_extId", (q: any) => q.eq("extId", user.siteId)).first();
+  if (!site) throw new Error("Farm not found");
+  return { userId, user, site, siteId: user.siteId as string };
+}
+
+/** Grower: replace the farm's house list (house extIds are farm-scoped/unique). */
+export const setHouses = mutation({
+  args: { houses: v.array(v.object({ id: v.optional(v.string()), name: v.string(), capacity: v.number() })) },
+  handler: async (ctx, { houses }) => {
+    const { site, siteId } = await requireFarm(ctx);
+    const existing = await ctx.db.query("houses").withIndex("by_site", (q) => q.eq("siteId", siteId)).collect();
+
+    const valid = houses.filter((h) => h.name.trim() !== "" && Number.isFinite(h.capacity) && h.capacity > 0);
+    const keepIds = new Set(valid.map((h) => h.id).filter(Boolean));
+    await Promise.all(existing.filter((h) => !keepIds.has(h.extId)).map((h) => ctx.db.delete(h._id)));
+
+    // Monotonic per-farm suffix; the full extId is `${siteId}_h${n}` so it's
+    // globally unique across farms.
+    let seq = existing.reduce((m, h) => {
+      const n = parseInt(h.extId.split("_h")[1] ?? "", 10);
+      return Number.isFinite(n) ? Math.max(m, n) : m;
+    }, 0);
+
+    const orderedIds: string[] = [];
+    for (const h of valid) {
+      const name = h.name.trim();
+      const capacity = Math.round(h.capacity);
+      if (h.id) {
+        const row = existing.find((e) => e.extId === h.id);
+        if (row) await ctx.db.patch(row._id, { name, capacity });
+        else await ctx.db.insert("houses", { extId: h.id, siteId, name, capacity });
+        orderedIds.push(h.id);
+      } else {
+        seq += 1;
+        const extId = `${siteId}_h${seq}`;
+        await ctx.db.insert("houses", { extId, siteId, name, capacity });
+        orderedIds.push(extId);
+      }
+    }
+    await ctx.db.patch(site._id, { houseIds: orderedIds });
+    return { count: orderedIds.length };
+  },
+});
+
+/** Grower: start the farm's growing cycle (one active cycle per farm for now). */
+export const startCycle = mutation({
+  args: {
+    cycleNo: v.number(),
+    breed: v.string(),
+    placingDate: v.string(),
+    killDate: v.string(),
+    houses: v.array(v.object({ houseId: v.string(), placedCount: v.number() })),
+  },
+  handler: async (ctx, args) => {
+    const { site, siteId } = await requireFarm(ctx);
+    const contractorId = (site.contractorIds ?? [])[0] ?? "";
+
+    const existing = await ctx.db.query("batches").withIndex("by_site", (q) => q.eq("siteId", siteId)).first();
+    if (existing) throw new Error("This farm already has a cycle");
+    if (!args.placingDate || !args.killDate) throw new Error("Placing and kill dates are required");
+
+    const batchExtId = `${siteId}_b${args.cycleNo}`;
+    await ctx.db.insert("batches", {
+      extId: batchExtId,
+      siteId,
+      contractorId,
+      cycleNo: args.cycleNo,
+      breed: args.breed || "Ross 308",
+      killDate: args.killDate,
+      focPct: 0,
+      contractId: "",
+    });
+
+    const today = new Date().toISOString().slice(0, 10);
+    const dayCount = Math.max(0, daysBetween(args.placingDate, today));
+    let n = 0;
+    for (const h of args.houses) {
+      if (!h.houseId || h.placedCount <= 0) continue;
+      n += 1;
+      await ctx.db.insert("placements", {
+        extId: `${batchExtId}_p${n}`,
+        batchId: batchExtId,
+        houseId: h.houseId,
+        placedCount: Math.round(h.placedCount),
+        placingDate: args.placingDate,
+        dayCount,
+      });
+    }
+    return { batchId: batchExtId, placements: n };
   },
 });

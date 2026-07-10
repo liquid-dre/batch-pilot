@@ -312,9 +312,12 @@ Ross weight curve — that under-performance is the hero story, keep it).
   role + farm. `components/onboarding/Onboarding.tsx` is the `/app` home when
   Convex is connected: contractor creates farms + invites supervisors, supervisor
   invites managers, each lands on their own (blank) farm. `npx convex run seed:clear`
-  blanks the demo. **Stage 2** converts the analytics/capture/setup screens to
-  per-farm Convex reads (houses + cycle + capture), which today still show the
-  mock demo on routes other than the home.
+  blanks the demo. **Stage 2a (done):** the grower configures the farm on Convex
+  from the onboarding home — houses (`setHouses`) + a growing cycle
+  (`startCycle`: batch + per-house placements), with farm-scoped unique ids.
+  **Stage 2b (next):** supervisor daily capture + the manager dashboard/analytics
+  reading per-farm Convex data; routes other than the home still show the mock
+  demo until then.
 - **Database + realtime → Convex** — seam: `lib/data/*`. **In progress** (branch
   `claude/convex-integration-setup-g02tm5`): backend scaffolded — `convex/schema.ts`
   (every operational entity, app id kept as indexed `extId`), `convex/seed.ts` +
