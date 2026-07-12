@@ -40,39 +40,43 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
     // Runs once, right after a new user row is created (before token issue).
     async afterUserCreatedOrUpdated(ctx, { userId, existingUserId }) {
       if (existingUserId) return; // only on first creation
-      const user = await ctx.db.get(userId);
+      // The auth callback's ctx is a generic AnyDataModel context, so it doesn't
+      // know our custom indexes — access the db untyped here (our own functions
+      // stay fully typed via _generated).
+      const db: any = ctx.db;
+      const user = await db.get(userId);
       if (!user) return;
 
       const email = ((user.email as string | undefined) ?? "").toLowerCase();
       const invite = email
-        ? await ctx.db
+        ? await db
             .query("invites")
-            .withIndex("by_email", (q) => q.eq("email", email))
-            .filter((q) => q.eq(q.field("status"), "pending"))
+            .withIndex("by_email", (q: any) => q.eq("email", email))
+            .filter((q: any) => q.eq(q.field("status"), "pending"))
             .first()
         : null;
 
       if (invite) {
-        const site = await ctx.db
+        const site = await db
           .query("sites")
-          .withIndex("by_extId", (q) => q.eq("extId", invite.siteId))
+          .withIndex("by_extId", (q: any) => q.eq("extId", invite.siteId))
           .first();
-        await ctx.db.patch(userId, {
+        await db.patch(userId, {
           role: invite.role,
           siteId: invite.siteId,
           org: site?.name ?? "",
         });
-        await ctx.db.patch(invite._id, { status: "accepted" });
+        await db.patch(invite._id, { status: "accepted" });
         return;
       }
 
       if ((user.role as string) === "contractor") {
         const contractorExtId = `ct_${userId}`;
-        await ctx.db.insert("contractors", {
+        await db.insert("contractors", {
           extId: contractorExtId,
           name: (user.org as string) || (user.name as string) || "My company",
         });
-        await ctx.db.patch(userId, { contractorId: contractorExtId });
+        await db.patch(userId, { contractorId: contractorExtId });
         return;
       }
       // Invited-but-unmatched: leave role "pending", no tenant.
