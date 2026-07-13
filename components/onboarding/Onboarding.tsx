@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { cn } from "@/lib/cn";
+import { Button } from "@/components/ui/Button";
+import { IconCheck, IconSend, IconPlus } from "@/components/icons";
 import { CapturePanel, ReviewPanel } from "./FarmData";
 
 /**
@@ -102,13 +104,9 @@ function ContractorOnboarding({ workspace }: { workspace: any }) {
           <span className="text-[0.8125rem] text-muted">Separate multiple emails with commas or new lines. They join when they sign up with that email.</span>
         </label>
         {error && <p role="alert" className="mt-3 text-label text-status-bad">{error}</p>}
-        <button
-          type="submit"
-          disabled={pending}
-          className="mt-4 inline-flex h-[52px] items-center justify-center rounded-[var(--radius-control)] bg-brand-700 px-6 text-[1.0625rem] font-semibold text-white hover:bg-brand-600 active:scale-[0.98] disabled:opacity-60"
-        >
-          {pending ? "Creating…" : "Create farm & invite"}
-        </button>
+        <Button type="submit" size="lg" block loading={pending} affordance={IconCheck} className="mt-4">
+          Create farm &amp; invite
+        </Button>
       </form>
     </Shell>
   );
@@ -164,13 +162,9 @@ function ContractorFarmCard({ farm }: { farm: any }) {
           placeholder="Invite another supervisor"
           className="h-10 min-w-0 flex-1 rounded-[var(--radius-control)] border border-border bg-surface px-3 text-label text-ink outline-none focus-visible:border-brand-500"
         />
-        <button
-          type="submit"
-          disabled={inviting}
-          className="h-10 shrink-0 rounded-[var(--radius-control)] bg-brand-700 px-4 text-label font-semibold text-white hover:bg-brand-600 active:scale-[0.98] disabled:opacity-60"
-        >
-          {inviting ? "…" : "Invite"}
-        </button>
+        <Button type="submit" size="sm" affordance={IconSend} loading={inviting} className="shrink-0">
+          Invite
+        </Button>
       </form>
     </div>
   );
@@ -226,13 +220,9 @@ function SupervisorOnboarding({ workspace }: { workspace: any }) {
           />
         </label>
         {error && <p role="alert" className="mt-3 text-label text-status-bad">{error}</p>}
-        <button
-          type="submit"
-          disabled={pending}
-          className="mt-4 inline-flex h-[52px] items-center justify-center rounded-[var(--radius-control)] bg-brand-700 px-6 text-[1.0625rem] font-semibold text-white hover:bg-brand-600 active:scale-[0.98] disabled:opacity-60"
-        >
-          {pending ? "Inviting…" : "Send invite"}
-        </button>
+        <Button type="submit" size="lg" block affordance={IconSend} loading={pending} className="mt-4">
+          Send invite
+        </Button>
 
         {managers.length > 0 && (
           <ul className="mt-5 flex flex-col gap-1 border-t border-divider pt-4">
@@ -350,17 +340,12 @@ function HousesEditor({ initial }: { initial: any[] }) {
         ))}
       </div>
       <div className="mt-3 flex items-center gap-3">
-        <button type="button" onClick={add} className="text-label font-semibold text-brand-700 hover:text-brand-600">
-          + Add house
-        </button>
-        <button
-          type="button"
-          onClick={save}
-          disabled={pending}
-          className="ml-auto inline-flex h-11 items-center justify-center rounded-[var(--radius-control)] bg-brand-700 px-5 text-label font-semibold text-white hover:bg-brand-600 active:scale-[0.98] disabled:opacity-60"
-        >
-          {pending ? "Saving…" : saved ? "Saved ✓" : "Save houses"}
-        </button>
+        <Button type="button" variant="secondary" size="sm" affordance={IconPlus} onClick={add}>
+          Add house
+        </Button>
+        <Button type="button" affordance={IconCheck} loading={pending} onClick={save} className="ml-auto">
+          {saved ? "Saved" : "Save houses"}
+        </Button>
       </div>
     </div>
   );
@@ -457,13 +442,9 @@ function CycleSection({ houses, cycle }: { houses: any[]; cycle: any }) {
       </div>
 
       {error && <p role="alert" className="mt-3 text-label text-status-bad">{error}</p>}
-      <button
-        type="submit"
-        disabled={pending}
-        className="mt-4 inline-flex h-[52px] items-center justify-center rounded-[var(--radius-control)] bg-brand-700 px-6 text-[1.0625rem] font-semibold text-white hover:bg-brand-600 active:scale-[0.98] disabled:opacity-60"
-      >
-        {pending ? "Starting…" : "Start cycle"}
-      </button>
+      <Button type="submit" size="lg" block affordance={IconCheck} loading={pending} className="mt-4">
+        Start cycle
+      </Button>
     </form>
   );
 }
@@ -539,14 +520,9 @@ function PendingState({ email }: { email: string }) {
         You haven&apos;t been added to a farm yet. Ask your contractor or supervisor to invite <strong>{email}</strong>,
         then join below.
       </EmptyHint>
-      <button
-        type="button"
-        onClick={join}
-        disabled={pending}
-        className="mt-4 inline-flex h-[52px] items-center justify-center rounded-[var(--radius-control)] bg-brand-700 px-6 text-[1.0625rem] font-semibold text-white hover:bg-brand-600 active:scale-[0.98] disabled:opacity-60"
-      >
-        {pending ? "Checking…" : "I've been invited — join"}
-      </button>
+      <Button type="button" size="lg" affordance={IconCheck} loading={pending} onClick={join} className="mt-4">
+        I&apos;ve been invited — join
+      </Button>
       {msg && <p className="mt-3 text-label text-muted">{msg}</p>}
     </Shell>
   );

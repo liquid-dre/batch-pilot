@@ -3,6 +3,7 @@
 import type { Amount, TreatmentEntry } from "@/lib/types";
 import { Input } from "@/components/ui/Input";
 import { Stepper } from "@/components/ui/Stepper";
+import { Button } from "@/components/ui/Button";
 import { IconChevronDown, IconPlus, IconTrash, IconVaccine } from "@/components/icons";
 import { cn } from "@/lib/cn";
 
@@ -109,13 +110,9 @@ export function TreatmentsPanel({
           {value.charcoalEnabled ? (
             <Stepper label="Charcoal used" value={value.charcoalKg} onChange={(v) => set({ charcoalKg: v })} step={1} max={500} suffix="kg" />
           ) : (
-            <button
-              type="button"
-              onClick={() => set({ charcoalEnabled: true, charcoalKg: 1 })}
-              className="text-label font-medium text-brand-600 hover:text-brand-700"
-            >
-              + Add charcoal
-            </button>
+            <Button type="button" variant="ghost" size="sm" affordance={IconPlus} onClick={() => set({ charcoalEnabled: true, charcoalKg: 1 })}>
+              Add charcoal
+            </Button>
           )}
 
           <TreatmentList
@@ -197,14 +194,15 @@ function TreatmentList({
           </div>
         </div>
       ))}
-      <button
+      <Button
         type="button"
+        variant="ghost"
+        size="sm"
+        affordance={IconPlus}
         onClick={() => onChange([...rows, newTreatmentRow(defaultUnit)])}
-        className="inline-flex items-center gap-1.5 text-label font-medium text-brand-600 hover:text-brand-700"
       >
-        <IconPlus className="size-4" />
         Add {heading.replace(" used", "").toLowerCase().replace(/s$/, "")}
-      </button>
+      </Button>
     </div>
   );
 }

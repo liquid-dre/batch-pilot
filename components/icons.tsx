@@ -41,6 +41,12 @@ export {
   Trash01 as IconTrash,
   Check as IconCheck,
   ArrowRight as IconArrowRight,
+  // Button affordances — the dot expands into the glyph that fits the action
+  ArrowLeft as IconArrowLeft,
+  RefreshCcw01 as IconRefresh,
+  Send01 as IconSend,
+  LogIn01 as IconLogin,
+  LogOut01 as IconLogout,
   Inbox01 as IconEmpty,
   Eye as IconView,
   SwitchHorizontal01 as IconSwitch,

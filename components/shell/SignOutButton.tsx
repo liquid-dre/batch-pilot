@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthActions } from "@convex-dev/auth/react";
+import { Button } from "@/components/ui/Button";
+import { IconLogout } from "@/components/icons";
 
 /**
  * Sign out of Convex Auth and return to the landing page. Only rendered when a
@@ -20,9 +22,13 @@ export function SignOutButton() {
   const [pending, setPending] = useState(false);
 
   return (
-    <button
+    <Button
       type="button"
-      disabled={pending}
+      variant="secondary"
+      size="sm"
+      block
+      loading={pending}
+      affordance={IconLogout}
       onClick={() => {
         setPending(true);
         // Fire the revoke, but don't block the screen change on it.
@@ -30,9 +36,8 @@ export function SignOutButton() {
         // `replace` so the authed /app page doesn't linger in history.
         router.replace("/");
       }}
-      className="w-full rounded-[var(--radius-control)] border border-divider px-3 py-2 text-label font-semibold text-slate transition-colors hover:bg-paper disabled:opacity-60"
     >
       {pending ? "Signing out…" : "Sign out"}
-    </button>
+    </Button>
   );
 }

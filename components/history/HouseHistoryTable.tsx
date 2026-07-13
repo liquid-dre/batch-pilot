@@ -9,7 +9,7 @@ import { num, pct, kg, grams, shortDate } from "@/lib/format";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/Table";
 import { Button } from "@/components/ui/Button";
 import { Stepper } from "@/components/ui/Stepper";
-import { IconEdit, IconUser } from "@/components/icons";
+import { IconEdit, IconUser, IconCheck, IconArrowLeft } from "@/components/icons";
 import { cn } from "@/lib/cn";
 
 export interface HouseHistoryTableProps {
@@ -265,10 +265,10 @@ function EditPanel({
         <Stepper label="Temperature (0 = none)" value={draft.tempC} min={0} max={45} step={1} decimals={1} suffix="°C" blankZero onChange={(v) => onChange({ tempC: v })} />
       </div>
       <div className="flex flex-wrap items-center gap-3">
-        <Button size="default" onClick={onSave} disabled={saving}>
+        <Button size="default" affordance={IconCheck} onClick={onSave} disabled={saving}>
           {saving ? "Saving correction…" : "Save correction"}
         </Button>
-        <Button size="default" variant="ghost" onClick={onCancel} disabled={saving}>
+        <Button size="default" variant="ghost" affordance={IconArrowLeft} onClick={onCancel} disabled={saving}>
           Cancel
         </Button>
       </div>

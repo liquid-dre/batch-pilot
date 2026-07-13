@@ -16,6 +16,7 @@ import { BenchmarkToggle, useWeightCompareMode } from "@/components/ui/Benchmark
 import { notify } from "@/components/ui/notify";
 import { correctionSavedToast, SAVING, saveFailedToast } from "@/lib/copy";
 import { PageHeader } from "@/components/shell/PageHeader";
+import { IconRefresh } from "@/components/icons";
 import { cn } from "@/lib/cn";
 import { HistoryChart, type ChartDatum } from "./HistoryChart";
 import { HouseHistoryTable } from "./HouseHistoryTable";
@@ -225,6 +226,7 @@ export function HistoryView({
             <Stepper label="To day" value={to} min={from} max={maxDay} onChange={setTo} />
             <Button
               variant="ghost"
+              affordance={IconRefresh}
               className="h-14"
               onClick={() => {
                 setFrom(1);

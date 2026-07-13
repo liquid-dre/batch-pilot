@@ -12,6 +12,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { EstTag, EstFootnote } from "@/components/ui/Estimated";
 import {
   IconFilter,
+  IconRefresh,
   IconDrag,
   IconSortNone,
   IconSortAsc,
@@ -225,13 +226,14 @@ export function PreviousBatchesTable({ rows }: { rows: BatchArchiveRow[] }) {
         </p>
         <div className="flex flex-wrap items-center gap-2">
           {layoutChanged ? (
-            <Button size="sm" variant="ghost" onClick={() => setState({ ...state, order: DEFAULT_ORDER })}>
+            <Button size="sm" variant="ghost" affordance={IconRefresh} onClick={() => setState({ ...state, order: DEFAULT_ORDER })}>
               Reset columns
             </Button>
           ) : null}
           <Button
             size="sm"
             variant={showFilters ? "secondary" : "ghost"}
+            affordance={null}
             icon={<IconFilter />}
             aria-pressed={showFilters}
             aria-expanded={showFilters}
@@ -263,13 +265,9 @@ export function PreviousBatchesTable({ rows }: { rows: BatchArchiveRow[] }) {
               <IconClose className="size-3.5" aria-hidden />
             </button>
           ))}
-          <button
-            type="button"
-            onClick={clearAll}
-            className="text-label font-semibold text-brand-700 underline-offset-4 hover:underline"
-          >
+          <Button size="sm" variant="ghost" affordance={IconRefresh} onClick={clearAll}>
             Clear all
-          </button>
+          </Button>
         </div>
       ) : null}
 
@@ -407,7 +405,7 @@ export function PreviousBatchesTable({ rows }: { rows: BatchArchiveRow[] }) {
             title="No batches match these filters"
             body="Loosen or clear a filter to see your previous batches again."
             action={
-              <Button size="sm" variant="secondary" onClick={clearAll}>
+              <Button size="sm" variant="secondary" affordance={IconRefresh} onClick={clearAll}>
                 Clear all filters
               </Button>
             }

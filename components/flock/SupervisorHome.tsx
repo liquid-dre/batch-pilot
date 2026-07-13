@@ -225,7 +225,7 @@ export function SupervisorHome({ data }: { data: SupervisorCaptureData }) {
               highlightVaccines={Boolean(house.vaccination)}
             />
 
-            <Button size="lg" block onClick={handleSave} disabled={submitting}>
+            <Button size="lg" block affordance={IconCheck} onClick={handleSave} disabled={submitting}>
               {submitting ? "Saving…" : `Save ${house.name} · day ${house.day}`}
             </Button>
           </CardBody>

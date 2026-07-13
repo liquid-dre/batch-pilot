@@ -12,6 +12,7 @@ import { Alert } from "@/components/ui/Alert";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { notify } from "@/components/ui/notify";
 import { PageHeader } from "@/components/shell/PageHeader";
+import { IconCheck } from "@/components/icons";
 import { cn } from "@/lib/cn";
 
 const FEED_TYPES = ["Broiler Starter Crumble", "Broiler Grower Pellet", "Broiler Finisher Pellet"];
@@ -129,7 +130,7 @@ export function FeedDeliveryForm({ deliveries, today }: { deliveries: FeedDelive
             {flagged ? " Flag this with the driver before they leave." : " Within tolerance."}
           </Alert>
 
-          <Button size="lg" block onClick={handleSave} disabled={saving}>
+          <Button size="lg" block affordance={IconCheck} onClick={handleSave} disabled={saving}>
             Save delivery
           </Button>
         </CardBody>

@@ -14,6 +14,7 @@ import { notify } from "@/components/ui/notify";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { formatGap, vsBenchmark } from "@/lib/weightCompare";
 import { weightsSavedToast, SAVING, saveFailedToast } from "@/lib/copy";
+import { IconCheck } from "@/components/icons";
 import { cn } from "@/lib/cn";
 
 export interface WeightFormHouse {
@@ -141,7 +142,7 @@ export function WeightsForm({ houses }: { houses: WeightFormHouse[] }) {
             </div>
           </div>
 
-          <Button size="lg" block onClick={handleSave}>
+          <Button size="lg" block affordance={IconCheck} onClick={handleSave}>
             Save weights
           </Button>
         </CardBody>
