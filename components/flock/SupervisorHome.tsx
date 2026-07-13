@@ -7,6 +7,8 @@ import type { DailyEntry } from "@/lib/types";
 import { submitDailyUpdate } from "@/lib/data";
 import { grams, longDate, num, pct } from "@/lib/format";
 import { dailySaved, savedLabels } from "@/lib/copy";
+import { compareToStandard, type Standing } from "@/lib/standing";
+import { useTodaysCaptures } from "@/lib/captureStore";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody } from "@/components/ui/Card";
 import { Stepper } from "@/components/ui/Stepper";
@@ -72,7 +74,9 @@ export function SupervisorHome({ data }: { data: SupervisorCaptureData }) {
   const { houses } = data;
 
   const [drafts, setDrafts] = useState<Record<string, Draft>>(() => initialDrafts(houses));
-  const [saved, setSaved] = useState<Record<string, DailyEntry>>({});
+  // Today's saved entries live in a session store so the Home dashboard sees the
+  // round too (and it survives moving between the two screens).
+  const [saved, setSaved] = useTodaysCaptures(data.today);
   const [selectedId, setSelectedId] = useState(houses[0]?.id);
   const [submitting, setSubmitting] = useState(false);
 
@@ -105,7 +109,7 @@ export function SupervisorHome({ data }: { data: SupervisorCaptureData }) {
       feedAddedKg: draft.feedAddedKg,
       ...treatmentsPayload(draft.treatments),
     });
-    setSaved((prev) => ({ ...prev, [house.id]: entry }));
+    setSaved({ ...saved, [house.id]: entry });
     const c = dailySaved({ houseName: house.name, ...entry });
     toast(c.toastTitle, { tone: "success", description: c.toastDescription });
     setSubmitting(false);
@@ -262,12 +266,6 @@ function GuideRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-interface Standing {
-  level: "good" | "warn" | "bad";
-  word: string;
-  detail: string;
-}
-
 const STANDING_ICON: Record<Standing["level"], IconComponent> = {
   good: IconStatusGood,
   warn: IconStatusWarn,
@@ -336,18 +334,4 @@ function Computed({ label, value }: { label: string; value: string }) {
       <dd className="mt-0.5 text-data text-[1.0625rem] text-ink">{value}</dd>
     </div>
   );
-}
-
-/**
- * Where cumulative mortality sits against the day's contractor standard, in
- * plain, calm words (never alarming). Thresholds in percentage points.
- */
-function compareToStandard(cumPct: number, standardPct: number): Standing {
-  const diff = Number((cumPct - standardPct).toFixed(2));
-  const over = `${Math.abs(diff).toFixed(1)}% over standard`;
-  const under = `${Math.abs(diff).toFixed(1)}% under standard`;
-  if (diff <= -0.15) return { level: "good", word: "Below the day's standard", detail: under };
-  if (diff <= 0.15) return { level: "good", word: "On the day's standard", detail: "right on target" };
-  if (diff <= 0.5) return { level: "warn", word: "Slightly above the standard", detail: over };
-  return { level: "bad", word: "Above the day's standard", detail: over };
 }

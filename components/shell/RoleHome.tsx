@@ -3,13 +3,14 @@
 import { useCurrentUser } from "@/lib/auth";
 import type { PortfolioData, SupervisorCaptureData } from "@/lib/view";
 import { GrowerDashboard, type GrowerDashboardData } from "@/components/flock/GrowerDashboard";
-import { SupervisorHome } from "@/components/flock/SupervisorHome";
+import { SupervisorDashboard } from "@/components/flock/SupervisorDashboard";
 import { PortfolioDashboard } from "@/components/contractor/PortfolioDashboard";
 
 /**
  * The `/app` home, chosen by role. Each profile has one obvious starting screen:
- * the supervisor's single minimal capture screen, the manager's consolidated
- * oversight Dashboard, or the contractor's rankings Overview.
+ * the supervisor's calm Home dashboard (today's status + a capture CTA), the
+ * manager's consolidated oversight Dashboard, or the contractor's rankings
+ * Overview.
  */
 export function RoleHome({
   grower,
@@ -22,6 +23,6 @@ export function RoleHome({
 }) {
   const { role } = useCurrentUser();
   if (role === "contractor") return <PortfolioDashboard data={contractor.data} siteId={contractor.siteId} />;
-  if (role === "supervisor") return <SupervisorHome data={supervisor} />;
+  if (role === "supervisor") return <SupervisorDashboard data={supervisor} />;
   return <GrowerDashboard data={grower} />;
 }
