@@ -186,7 +186,7 @@ function TreatmentList({
           </div>
           <div className="flex items-end gap-3">
             <div className="flex-1">
-              <Stepper label="Amount" value={row.amount} onChange={(v) => setRow(row.id, { amount: v })} step={1} max={100000} />
+              <Stepper label="Amount" value={row.amount} onChange={(v) => setRow(row.id, { amount: v })} step={1} max={100000} blankZero />
             </div>
             <Input
               aria-label={`${heading} unit`}

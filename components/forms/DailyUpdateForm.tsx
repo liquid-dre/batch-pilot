@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import type { DailyEntry } from "@/lib/types";
 import type { DailyFormData, FormHouse } from "@/lib/view";
 import { submitDailyUpdate } from "@/lib/data";
-import { num, pct, kg } from "@/lib/format";
+import { num, pct } from "@/lib/format";
+import { dailySaved, savedLabels } from "@/lib/copy";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardEyebrow } from "@/components/ui/Card";
 import { Stepper } from "@/components/ui/Stepper";
@@ -97,7 +98,10 @@ export function DailyUpdateForm({ data }: { data: DailyFormData }) {
   function handleConfirm() {
     const nextSaved = new Set(saved).add(house.id);
     setSaved(nextSaved);
-    toast(`${house.name} saved`, { tone: "success", description: `Day ${house.nextDay} recorded.` });
+    const c = result
+      ? dailySaved({ houseName: house.name, ...result })
+      : { toastTitle: `${house.name} saved`, toastDescription: `Day ${house.nextDay} is in.` };
+    toast(c.toastTitle, { tone: "success", description: c.toastDescription });
     const nextPending = houses.find((h) => !nextSaved.has(h.id));
     if (nextPending) setSelectedId(nextPending.id);
     setResult(null);
@@ -165,15 +169,15 @@ export function DailyUpdateForm({ data }: { data: DailyFormData }) {
               <legend className="flex items-center gap-2 px-1 text-label font-semibold text-slate">
                 Mortality
               </legend>
-              <Stepper label="Day mortality" value={draft.dayMortality} onChange={(v) => update({ dayMortality: v })} max={2000} hint="Found dead during the day." />
-              <Stepper label="Night mortality" value={draft.nightMortality} onChange={(v) => update({ nightMortality: v })} max={2000} hint="Found dead overnight." />
+              <Stepper label="Day mortality" value={draft.dayMortality} onChange={(v) => update({ dayMortality: v })} max={2000} blankZero hint="Found dead during the day." />
+              <Stepper label="Night mortality" value={draft.nightMortality} onChange={(v) => update({ nightMortality: v })} max={2000} blankZero hint="Found dead overnight." />
               <div className="flex items-center justify-between rounded-[var(--radius-control)] bg-brand-50 px-3.5 py-2.5">
                 <span className="text-label text-slate">Total mortality</span>
                 <span className="text-data text-[1.0625rem] font-medium tabular-nums text-brand-700">{num(totalMort)}</span>
               </div>
             </fieldset>
 
-            <Stepper label="Culls" value={draft.culls} onChange={(v) => update({ culls: v })} max={2000} hint="Birds you removed yourself." />
+            <Stepper label="Culls" value={draft.culls} onChange={(v) => update({ culls: v })} max={2000} blankZero hint="Birds you removed yourself." />
             <Stepper label="Feed added" value={draft.feedAddedKg} onChange={(v) => update({ feedAddedKg: v })} step={25} max={6000} suffix="kg" hint="Hold + or − to move faster." />
 
             {draft.tempEnabled ? (
@@ -201,23 +205,18 @@ export function DailyUpdateForm({ data }: { data: DailyFormData }) {
           <CardBody className="space-y-5 pt-5">
             <div>
               <CardEyebrow>Check this is right</CardEyebrow>
-              <h2 className="mt-2 text-h2">
-                Got it — {house.name}, day {result.day}.
-              </h2>
-              <p className="mt-1.5 text-body-l text-slate">
-                {num(result.mortality)} dead ({num(result.dayMortality)} day · {num(result.nightMortality)} night), {num(result.culls)} culls, {kg(result.feedAddedKg)} feed
-                {result.tempC !== undefined ? `, ${result.tempC}°C` : ""}.
-              </p>
+              <h2 className="mt-2 text-h2">{dailySaved({ houseName: house.name, ...result }).headline}</h2>
+              <p className="mt-1.5 text-body-l text-slate">{dailySaved({ houseName: house.name, ...result }).recorded}</p>
               {result.charcoal || (result.vaccines && result.vaccines.length) || (result.medications && result.medications.length) ? (
                 <p className="mt-1.5 text-body text-muted">{treatmentsSummary(result)}</p>
               ) : null}
             </div>
 
             <dl className="grid grid-cols-2 gap-x-6 gap-y-4 rounded-[var(--radius-control)] bg-surface p-4">
-              <Computed label="Lost today" value={num(result.cullAndMort)} />
-              <Computed label="Total losses" value={`${num(result.cumMort)} · ${pct(result.cumPct)}`} />
-              <Computed label="Birds remaining" value={num(result.birdsRemaining)} />
-              <Computed label="Site mortality now" value={pct(siteAfter.pct)} />
+              <Computed label={savedLabels.lostToday} value={num(result.cullAndMort)} />
+              <Computed label={savedLabels.lostThisCycle} value={`${num(result.cumMort)} · ${pct(result.cumPct)}`} />
+              <Computed label={savedLabels.stillGoing} value={num(result.birdsRemaining)} />
+              <Computed label={savedLabels.siteMortality} value={pct(siteAfter.pct)} />
             </dl>
 
             <div className="flex flex-col gap-2.5 sm:flex-row-reverse">

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { dailySaved } from "@/lib/copy";
 
 /**
  * Stage 2b — the capture → review loop, both on the reactive `farm.farmData`
@@ -30,9 +31,9 @@ export function CapturePanel() {
 
 function CaptureHouseCard({ house, today }: { house: any; today: string }) {
   const submit = useMutation(api.writes.submitDailyUpdate);
-  const [dayM, setDayM] = useState("0");
-  const [nightM, setNightM] = useState("0");
-  const [culls, setCulls] = useState("0");
+  const [dayM, setDayM] = useState("");
+  const [nightM, setNightM] = useState("");
+  const [culls, setCulls] = useState("");
   const [feed, setFeed] = useState("");
   const [pending, setPending] = useState(false);
   const [saved, setSaved] = useState<string | null>(null);
@@ -54,10 +55,23 @@ function CaptureHouseCard({ house, today }: { house: any; today: string }) {
         culls: Number(culls) || 0,
         feedAddedKg: Number(feed) || 0,
       });
-      setSaved(`Day ${res.day} saved — cumulative deaths ${res.cumMort}, ${res.birdsRemaining.toLocaleString()} birds remaining.`);
-      setDayM("0");
-      setNightM("0");
-      setCulls("0");
+      setSaved(
+        dailySaved({
+          houseName: house.name,
+          day: res.day,
+          mortality: (Number(dayM) || 0) + (Number(nightM) || 0),
+          dayMortality: Number(dayM) || 0,
+          nightMortality: Number(nightM) || 0,
+          culls: Number(culls) || 0,
+          feedAddedKg: Number(feed) || 0,
+          cumMort: res.cumMort,
+          cumPct: res.cumPct ?? 0,
+          birdsRemaining: res.birdsRemaining,
+        }).banner,
+      );
+      setDayM("");
+      setNightM("");
+      setCulls("");
       setFeed("");
     } catch {
       setError("Could not save. Try again.");
@@ -106,8 +120,9 @@ function Field({ label, value, onChange, decimal }: { label: string; value: stri
       <input
         value={value}
         inputMode={decimal ? "decimal" : "numeric"}
+        placeholder="0"
         onChange={(e) => onChange(e.target.value.replace(decimal ? /[^0-9.]/g : /[^0-9]/g, ""))}
-        className="h-14 rounded-[var(--radius-control)] border border-border bg-surface px-3.5 text-right font-mono text-body-l text-ink outline-none focus-visible:border-brand-500"
+        className="h-14 rounded-[var(--radius-control)] border border-border bg-surface px-3.5 text-right font-mono text-body-l text-ink outline-none placeholder:text-hint focus-visible:border-brand-500"
       />
     </label>
   );

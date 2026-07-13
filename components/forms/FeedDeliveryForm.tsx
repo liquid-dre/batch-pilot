@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { FeedDelivery } from "@/lib/types";
 import { submitFeedDelivery } from "@/lib/data";
 import { kg, num, pct, shortDate } from "@/lib/format";
+import { feedSavedToast } from "@/lib/copy";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody } from "@/components/ui/Card";
 import { Stepper } from "@/components/ui/Stepper";
@@ -56,10 +57,8 @@ export function FeedDeliveryForm({ deliveries, today }: { deliveries: FeedDelive
       { id: `local-${prev.length}`, siteId: "site_nhunge", date: today, feedType, bagSizeKg, bagCount, netWeightKg },
       ...prev,
     ]);
-    toast("Delivery logged", {
-      tone: flagged ? "info" : "success",
-      description: flagged ? `${kg(Math.abs(diffKg))} ${diffKg > 0 ? "short" : "over"} flagged.` : "Matched the order.",
-    });
+    const t = feedSavedToast(flagged, diffKg);
+    toast(t.title, { tone: flagged ? "info" : "success", description: t.description });
     setSaving(false);
   }
 
