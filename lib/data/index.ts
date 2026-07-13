@@ -44,6 +44,9 @@ import type {
   CompareData,
   ComparePoint,
   ContractorGrowers,
+  DashboardCycleInfo,
+  DashboardMetric,
+  DashboardView,
   GrowerDetailData,
   GrowerPerf,
   GrowerTrendPoint,
@@ -52,8 +55,12 @@ import type {
   HouseSeries,
   HouseTrend,
   PortfolioData,
+  ProjectionLine,
+  ProjectionPoint,
   SupervisorCaptureData,
   WeightBandData,
+  WeightProjection,
+  YesterdayEntry,
 } from "@/lib/view";
 import {
   BATCH,
@@ -81,7 +88,16 @@ import {
 import { ROSS_308_CURVE, ROSS_308_OVERLAY, mortalityBandPctAt, ross308At } from "./ross308";
 import { addDays, daysBetween } from "@/lib/format";
 import { dailyTotals } from "@/lib/calc";
-import { DEFAULT_THRESHOLDS, evaluatePlacement, type EngineContext, type MetricStatus, type PlacementMetrics } from "@/lib/engine";
+import {
+  DEFAULT_THRESHOLDS,
+  evaluateFcr,
+  evaluateMortality,
+  evaluatePlacement,
+  evaluateWeight,
+  type EngineContext,
+  type MetricStatus,
+  type PlacementMetrics,
+} from "@/lib/engine";
 
 /** Benchmark context the status engine scores against (Ross 308 + overlay). */
 const ENGINE_CTX: EngineContext = { curve: ROSS_308_CURVE, overlay: ROSS_308_OVERLAY };
@@ -1616,4 +1632,204 @@ export async function getWeightBandData(): Promise<WeightBandData> {
     greenFrac: DEFAULT_THRESHOLDS.weight.green,
     amberFrac: DEFAULT_THRESHOLDS.weight.amber,
   });
+}
+
+// --- Rebuilt dashboard (supervisor + manager share one structure) ----------
+
+const mean = (xs: number[]): number => (xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : 0);
+
+/** Cumulative feed added per (surviving) bird for a placement, grams. */
+function cumFeedPerBirdG(placementId: string): number | undefined {
+  const daily = DAILY_ENTRIES.filter((e) => e.placementId === placementId).sort((a, b) => a.day - b.day);
+  const latest = daily[daily.length - 1];
+  if (!latest || !latest.birdsRemaining) return undefined;
+  const cumFeedKg = daily.reduce((s, e) => s + e.feedAddedKg, 0);
+  return (cumFeedKg * 1000) / latest.birdsRemaining;
+}
+
+/**
+ * Site-level per-metric on-track cards. Averages the houses' engine inputs and
+ * scores them with the SAME `lib/engine` evaluators the per-house surfaces use,
+ * so a card and a house pill never disagree. Feed is cumulative feed *added* per
+ * bird vs the Ross cumulative intake — an estimate (added ≠ consumed), banded
+ * symmetrically around the guideline rather than via the refill flag.
+ */
+export async function getDashboardMetrics(): Promise<DashboardMetric[]> {
+  const inputs = PLACEMENTS.map((p) => metricInputFor(p.id)).filter((x): x is PlacementMetrics => x != null);
+  const rollup = await getSiteRollup();
+
+  const weightG = mean(inputs.map((i) => i.weightG).filter((x): x is number => x != null));
+  const weightDay = Math.round(mean(inputs.map((i) => i.weightDay).filter((x): x is number => x != null)));
+  const fcr = mean(inputs.map((i) => i.fcr).filter((x): x is number => x != null));
+  const siteDay = Math.round(mean(inputs.map((i) => i.day)));
+  const cumMortPct = rollup.mortPct;
+  const feedPerBird = mean(PLACEMENTS.map((p) => cumFeedPerBirdG(p.id)).filter((x): x is number => x != null));
+
+  const weight = evaluateWeight(weightDay, weightG, ENGINE_CTX);
+  const mortality = evaluateMortality(siteDay, cumMortPct, ENGINE_CTX);
+  const fcrStatus = evaluateFcr(weightDay, fcr, ENGINE_CTX);
+
+  const metrics: DashboardMetric[] = [
+    {
+      key: "weight",
+      label: "Weight",
+      level: weight.level,
+      actual: Math.round(weightG),
+      target: ross308At(weightDay).weightG,
+      unit: "g",
+      targetWord: "target",
+      cause: weight.cause,
+      fix: weight.fix,
+    },
+    {
+      key: "mortality",
+      label: "Mortality",
+      level: mortality.level,
+      actual: Number(cumMortPct.toFixed(2)),
+      target: Number(mortalityBandPctAt(siteDay).toFixed(2)),
+      unit: "pp",
+      targetWord: "band",
+      cause: mortality.cause,
+      fix: mortality.fix,
+    },
+    {
+      key: "feed",
+      label: "Feed",
+      level: feedLevel(feedPerBird, ross308At(siteDay).cumIntakeG ?? feedPerBird),
+      actual: Math.round(feedPerBird),
+      target: Math.round(ross308At(siteDay).cumIntakeG ?? feedPerBird),
+      unit: "gPerBird",
+      targetWord: "guide",
+      estimated: true,
+    },
+    {
+      key: "fcr",
+      label: "FCR",
+      level: fcrStatus.level,
+      actual: Number(fcr.toFixed(2)),
+      target: Number((ross308At(weightDay).fcr ?? fcr).toFixed(2)),
+      unit: "ratio",
+      targetWord: "target",
+      estimated: true,
+      cause: fcrStatus.cause,
+      fix: fcrStatus.fix,
+    },
+  ];
+  return resolve(metrics);
+}
+
+/** Feed-vs-intake band (symmetric): within 10% = on track, within 25% = watch. */
+function feedLevel(actual: number, target: number): StatusLevel {
+  if (!target) return "green";
+  const off = Math.abs(actual - target) / target;
+  return off <= 0.1 ? "green" : off <= 0.25 ? "amber" : "red";
+}
+
+/** Yesterday's captured round per house (the mock's latest entry). */
+export async function getYesterdayEntries(): Promise<YesterdayEntry[]> {
+  const out: YesterdayEntry[] = [];
+  for (const house of SITE.houses) {
+    const latest = await getLatestDailyEntry(house.id);
+    if (!latest) continue;
+    out.push({
+      houseId: house.id,
+      houseName: house.name,
+      day: latest.day,
+      mortality: latest.mortality,
+      culls: latest.culls,
+      feedAddedKg: latest.feedAddedKg,
+      cumMort: latest.cumMort,
+      cumPct: latest.cumPct,
+      birdsRemaining: latest.birdsRemaining,
+    });
+  }
+  return resolve(out);
+}
+
+/** Actual weigh-ins + a projected forward line (current + ADG × days) to the kill day. */
+export async function getWeightProjection(): Promise<WeightProjection> {
+  const proj = await getProjection();
+  const killDay = proj.houses.length ? Math.max(...proj.houses.map((h) => h.killDay)) : 35;
+
+  const ross: ProjectionPoint[] = Array.from({ length: killDay + 1 }, (_, day) => ({
+    day,
+    weightG: ross308At(day).weightG,
+  }));
+
+  const houseLines: ProjectionLine[] = proj.houses.map((h) => {
+    const placement = PLACEMENTS.find((p) => p.houseId === h.houseId);
+    const actual: ProjectionPoint[] = placement
+      ? WEIGHT_ENTRIES.filter((w) => w.placementId === placement.id)
+          .sort((a, b) => a.day - b.day)
+          .map((w) => ({ day: w.day, weightG: w.avgWeightG }))
+      : [{ day: h.weightDay, weightG: h.currentWeightG }];
+    const projected: ProjectionPoint[] = [];
+    for (let d = h.weightDay; d <= h.killDay; d++) {
+      projected.push({ day: d, weightG: Math.round(h.currentWeightG + h.dailyGainG * (d - h.weightDay)) });
+    }
+    return { houseId: h.houseId, name: h.houseName, actual, projected };
+  });
+
+  // Site-average line: average the house actuals by day, then project forward
+  // from the last site point at the average daily gain.
+  const byDay = new Map<number, number[]>();
+  for (const line of houseLines) for (const p of line.actual) byDay.set(p.day, [...(byDay.get(p.day) ?? []), p.weightG]);
+  const siteActual: ProjectionPoint[] = [...byDay.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([day, ws]) => ({ day, weightG: Math.round(mean(ws)) }));
+  const siteWeighDay = Math.round(mean(proj.houses.map((h) => h.weightDay)));
+  const siteCurrent = Math.round(mean(proj.houses.map((h) => h.currentWeightG)));
+  const siteAdg = mean(proj.houses.map((h) => h.dailyGainG));
+  const siteProjected: ProjectionPoint[] = [];
+  for (let d = siteWeighDay; d <= killDay; d++) {
+    siteProjected.push({ day: d, weightG: Math.round(siteCurrent + siteAdg * (d - siteWeighDay)) });
+  }
+
+  const yMax = Math.ceil((ross308At(killDay).weightG * 1.05) / 500) * 500;
+  return resolve({
+    ross,
+    killDay,
+    yMax,
+    greenFrac: DEFAULT_THRESHOLDS.weight.green,
+    amberFrac: DEFAULT_THRESHOLDS.weight.amber,
+    site: { name: "Site average", actual: siteActual, projected: siteProjected },
+    houses: houseLines,
+  });
+}
+
+/** Cycle info for the dashboard header (day-of-cycle = latest captured + 1, per-house range). */
+export async function getDashboardCycleInfo(): Promise<DashboardCycleInfo> {
+  const proj = await getProjection();
+  const days: number[] = [];
+  for (const house of SITE.houses) {
+    const latest = await getLatestDailyEntry(house.id);
+    days.push((latest?.day ?? 0) + 1);
+  }
+  const placingDate = PLACEMENTS.reduce(
+    (min, p) => (p.placingDate < min ? p.placingDate : min),
+    PLACEMENTS[0]?.placingDate ?? BATCH.killDate,
+  );
+  return resolve({
+    siteName: SITE.name,
+    cycleNo: BATCH.cycleNo,
+    breed: BATCH.breed,
+    today: DEMO_TODAY,
+    dayLow: days.length ? Math.min(...days) : 0,
+    dayHigh: days.length ? Math.max(...days) : 0,
+    placingDate,
+    killDate: BATCH.killDate,
+    daysToKill: proj.daysToKill,
+    houseCount: SITE.houses.length,
+  });
+}
+
+/** The whole dashboard bundle — one call feeds both role dashboards. */
+export async function getDashboardView(): Promise<DashboardView> {
+  const [cycle, metrics, yesterday, projection] = await Promise.all([
+    getDashboardCycleInfo(),
+    getDashboardMetrics(),
+    getYesterdayEntries(),
+    getWeightProjection(),
+  ]);
+  return { cycle, metrics, yesterday, projection };
 }
