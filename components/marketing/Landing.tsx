@@ -5,6 +5,7 @@ import type { Role } from "@/lib/types";
 import { useCurrentUser } from "@/lib/auth";
 import { LogoMark } from "@/components/brand/Logo";
 import { Button } from "@/components/ui/Button";
+import { HeroEggpit } from "./HeroEggpit";
 import { IconLogin } from "@/components/icons";
 import { cn } from "@/lib/cn";
 
@@ -58,12 +59,17 @@ export function Landing() {
 
 function Hero({ onEnter, onLogin }: { onEnter: (r: Role) => void; onLogin: () => void }) {
   return (
-    <section className="relative isolate overflow-hidden bg-brand-900 text-white">
-      {/* soft depth + oversized chevron motif (decorative, on-brand) */}
+    <section className="relative isolate flex min-h-[38rem] flex-col overflow-hidden bg-brand-900 text-white sm:min-h-[42rem]">
+      {/* soft depth + oversized chevron motif — also the static fallback when the
+          WebGL eggs are gated off (mobile / low-power / reduced-motion). */}
       <div className="pointer-events-none absolute inset-0 -z-10">
         <div className="absolute -top-32 left-1/2 size-[42rem] -translate-x-1/2 rounded-full bg-brand-700/40 blur-3xl" />
+        {/* Decorative floating eggs (client-only, capability-gated, disposes on unmount). */}
+        <HeroEggpit />
         <LogoMark className="animate-float absolute -bottom-16 -right-10 h-[26rem] w-auto text-brand-100/[0.06]" />
       </div>
+      {/* Scrim: keeps the white headline/CTAs AA-legible if a pale egg drifts behind. */}
+      <div className="pointer-events-none absolute inset-0 -z-[5] bg-gradient-to-br from-brand-900/55 via-transparent to-brand-900/45" />
 
       {/* top nav */}
       <nav className="mx-auto flex max-w-6xl items-center justify-between px-4 py-5 sm:px-6">
@@ -77,7 +83,7 @@ function Hero({ onEnter, onLogin }: { onEnter: (r: Role) => void; onLogin: () =>
       </nav>
 
       {/* hero content */}
-      <div className="mx-auto max-w-6xl px-4 pb-24 pt-12 sm:px-6 sm:pb-32 sm:pt-20">
+      <div className="mx-auto max-w-6xl px-4 pb-24 pt-12 [text-shadow:0_1px_14px_rgba(12,9,13,0.55)] sm:px-6 sm:pb-32 sm:pt-20">
         <p
           className="animate-rise inline-flex items-center gap-2 rounded-[var(--radius-pill)] bg-white/10 px-3 py-1 text-label font-medium text-brand-100"
           style={{ animationDelay: "0ms" }}

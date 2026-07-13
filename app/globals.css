@@ -32,6 +32,16 @@
   /* Translucent near-black for hover washes (replaces off-token rgba navy). */
   --wash: rgba(12, 9, 13, 0.05);
 
+  /* Egg-shell palette — decorative only (the landing-hero WebGL "eggpit" reads
+     these at runtime, so no raw hex lives in the component). Earthy + low-chroma
+     (sat ≤ 51% vs status-warn's 100%) so a brown egg can never read as the
+     reserved amber/red/green status hues. */
+  --egg-white: #f7f3ea;       /* warm white shell */
+  --egg-cream: #efe4cf;       /* cream shell */
+  --egg-tan: #e2c9a6;         /* pale tan */
+  --egg-brown: #b0885f;       /* earthy tan-brown */
+  --egg-brown-deep: #7a5230;  /* deep chocolate-brown */
+
   /* Neutrals — warm grey (fixed) */
   --ink: #0c090d;
   --slate: #44474e;
