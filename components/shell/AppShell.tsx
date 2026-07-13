@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { motion, useReducedMotion } from "motion/react";
 import { usePersisted } from "@/lib/usePersisted";
 import { cn } from "@/lib/cn";
 import { Logo } from "@/components/brand/Logo";
@@ -18,6 +19,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const hamburgerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+
+  // Animate the rail width only after a real toggle. usePersisted corrects
+  // expanded→stored on hydration; gating on interaction keeps that correction
+  // (and reduced-motion) instant, so the rail never animates on page load.
+  const reduce = useReducedMotion();
+  const [interacted, setInteracted] = useState(false);
+  const widthTransition = !interacted || reduce ? { duration: 0 } : { duration: 0.24, ease: [0.16, 1, 0.3, 1] as const };
 
   // While the drawer is open: Escape closes it, body scroll is locked, focus
   // moves into the panel, and focus returns to the hamburger on close.
@@ -51,15 +59,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen">
-      {/* Desktop sidebar */}
-      <aside
-        className={cn(
-          "sticky top-0 hidden h-screen shrink-0 border-r border-divider transition-[width] duration-[var(--dur)] ease-[var(--ease-out)] md:block",
-          collapsed ? "w-[4.75rem]" : "w-64",
-        )}
+      {/* Desktop sidebar — width morphs between the full panel and the icon rail */}
+      <motion.aside
+        initial={false}
+        animate={{ width: collapsed ? 76 : 224 }}
+        transition={widthTransition}
+        className="sticky top-0 hidden h-screen shrink-0 border-r border-divider md:block"
       >
-        <SidebarNav collapsed={collapsed} onToggleCollapse={() => setCollapsed(!collapsed)} />
-      </aside>
+        <SidebarNav
+          collapsed={collapsed}
+          onToggleCollapse={() => {
+            setInteracted(true);
+            setCollapsed(!collapsed);
+          }}
+        />
+      </motion.aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Mobile top bar */}

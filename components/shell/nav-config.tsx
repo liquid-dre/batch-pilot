@@ -1,4 +1,5 @@
 import type { Role } from "@/lib/types";
+import { getAlerts } from "@/lib/data";
 import {
   IconDashboard,
   IconDailyUpdate,
@@ -40,11 +41,25 @@ export const NavGlyph = ({ icon, className }: { icon: NavIcon; className?: strin
   return <Glyph className={className} />;
 };
 
+/**
+ * A live notification-count source for an item's badge. Declarative on purpose —
+ * config names the *source*, the sidebar resolves the number through `lib/data`
+ * (a Convex reactive query later), so no count is ever hardcoded here.
+ */
+export type BadgeSource = "alerts";
+
+/** source → count resolver. Client-callable today (mock); becomes `useQuery`. */
+export const BADGE_FETCHERS: Record<BadgeSource, () => Promise<number>> = {
+  alerts: async () => (await getAlerts()).length,
+};
+
 export interface NavItem {
   key: string;
   label: string;
   href: string;
   icon: NavIcon;
+  /** Optional live count source (e.g. houses needing attention on Alerts). */
+  badge?: BadgeSource;
 }
 
 export interface NavSection {
@@ -61,7 +76,9 @@ const GROWER_SETUP: NavSection = {
     { key: "allocate", label: "Allocate a cycle", href: "/app/houses/allocate", icon: "allocate" },
   ],
 };
-const GROWER_ALERTS: NavSection = { items: [{ key: "alerts", label: "Alerts", href: "/app/alerts", icon: "alerts" }] };
+const GROWER_ALERTS: NavSection = {
+  items: [{ key: "alerts", label: "Alerts", href: "/app/alerts", icon: "alerts", badge: "alerts" }],
+};
 
 export const NAV: Record<Role, NavSection[]> = {
   // Supervisor / foreman — the data capturer. The nav is grouped the way a
