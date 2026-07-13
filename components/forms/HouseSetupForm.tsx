@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { House } from "@/lib/types";
 import { saveHouses } from "@/lib/data";
 import { num } from "@/lib/format";
+import { housesInvalidToast, housesSavedToast } from "@/lib/copy";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
@@ -53,14 +54,16 @@ export function HouseSetupForm({ houses }: { houses: House[] }) {
   async function handleSave() {
     setAttempted(true);
     if (!allValid) {
-      toast("Check the houses", { tone: "error", description: "Each house needs a name and a capacity." });
+      const t = housesInvalidToast();
+      toast(t.title, { tone: "error", description: t.description });
       return;
     }
     setSaving(true);
     const saved = await saveHouses(rows.map((r) => ({ id: r.id, name: r.name, capacity: r.capacity })));
     setRows(saved.map((h) => ({ key: h.id, id: h.id, name: h.name, capacity: h.capacity })));
     setSaving(false);
-    toast("Houses saved", { tone: "success", description: `${saved.length} houses · ${num(totalCapacity)} bird capacity.` });
+    const t = housesSavedToast(saved.length, totalCapacity);
+    toast(t.title, { tone: "success", description: t.description });
   }
 
   return (

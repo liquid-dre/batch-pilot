@@ -258,11 +258,11 @@ function EditPanel({
         <span className="text-label text-muted">Each change is recorded with your name and the old value.</span>
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <Stepper label="Day mortality" value={draft.dayMortality} min={0} max={9999} onChange={(v) => onChange({ dayMortality: v })} />
-        <Stepper label="Night mortality" value={draft.nightMortality} min={0} max={9999} onChange={(v) => onChange({ nightMortality: v })} />
-        <Stepper label="Culls" value={draft.culls} min={0} max={9999} onChange={(v) => onChange({ culls: v })} />
-        <Stepper label="Feed added" value={draft.feedAddedKg} min={0} max={99999} step={5} suffix="kg" onChange={(v) => onChange({ feedAddedKg: v })} />
-        <Stepper label="Temperature (0 = none)" value={draft.tempC} min={0} max={45} step={1} decimals={1} suffix="°C" onChange={(v) => onChange({ tempC: v })} />
+        <Stepper label="Day mortality" value={draft.dayMortality} min={0} max={9999} blankZero onChange={(v) => onChange({ dayMortality: v })} />
+        <Stepper label="Night mortality" value={draft.nightMortality} min={0} max={9999} blankZero onChange={(v) => onChange({ nightMortality: v })} />
+        <Stepper label="Culls" value={draft.culls} min={0} max={9999} blankZero onChange={(v) => onChange({ culls: v })} />
+        <Stepper label="Feed added" value={draft.feedAddedKg} min={0} max={99999} step={5} suffix="kg" blankZero onChange={(v) => onChange({ feedAddedKg: v })} />
+        <Stepper label="Temperature (0 = none)" value={draft.tempC} min={0} max={45} step={1} decimals={1} suffix="°C" blankZero onChange={(v) => onChange({ tempC: v })} />
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <Button size="default" onClick={onSave} disabled={saving}>

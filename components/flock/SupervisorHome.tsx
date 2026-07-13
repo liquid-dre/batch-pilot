@@ -5,7 +5,8 @@ import { useCurrentUser } from "@/lib/auth";
 import type { CaptureHouse, SupervisorCaptureData } from "@/lib/view";
 import type { DailyEntry } from "@/lib/types";
 import { submitDailyUpdate } from "@/lib/data";
-import { grams, kg, longDate, num, pct } from "@/lib/format";
+import { grams, longDate, num, pct } from "@/lib/format";
+import { dailySaved, savedLabels } from "@/lib/copy";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody } from "@/components/ui/Card";
 import { Stepper } from "@/components/ui/Stepper";
@@ -105,7 +106,8 @@ export function SupervisorHome({ data }: { data: SupervisorCaptureData }) {
       ...treatmentsPayload(draft.treatments),
     });
     setSaved((prev) => ({ ...prev, [house.id]: entry }));
-    toast(`${house.name} saved`, { tone: "success", description: `Day ${house.day} recorded.` });
+    const c = dailySaved({ houseName: house.name, ...entry });
+    toast(c.toastTitle, { tone: "success", description: c.toastDescription });
     setSubmitting(false);
     // Move to the next house still to record, so the round flows on its own.
     const nextPending = houses.find((h) => h.id !== house.id && !saved[h.id]);
@@ -178,8 +180,8 @@ export function SupervisorHome({ data }: { data: SupervisorCaptureData }) {
             {/* Mortality, split day vs night — they sum to the day's total. */}
             <fieldset className="space-y-4 rounded-[var(--radius-control)] border border-divider p-4">
               <legend className="px-1 text-label font-semibold text-slate">Birds found dead</legend>
-              <Stepper label="Day mortality" value={draft.dayMortality} onChange={(v) => update({ dayMortality: v })} max={2000} hint="Found dead during the day." />
-              <Stepper label="Night mortality" value={draft.nightMortality} onChange={(v) => update({ nightMortality: v })} max={2000} hint="Found dead overnight." />
+              <Stepper label="Day mortality" value={draft.dayMortality} onChange={(v) => update({ dayMortality: v })} max={2000} blankZero hint="Found dead during the day." />
+              <Stepper label="Night mortality" value={draft.nightMortality} onChange={(v) => update({ nightMortality: v })} max={2000} blankZero hint="Found dead overnight." />
               <div className="flex items-center justify-between rounded-[var(--radius-control)] bg-brand-50 px-3.5 py-2.5">
                 <span className="text-label text-slate">Total today</span>
                 <span className="text-data text-[1.0625rem] font-medium tabular-nums text-brand-700">{num(totalMort)}</span>
@@ -189,7 +191,7 @@ export function SupervisorHome({ data }: { data: SupervisorCaptureData }) {
               {totalMort > 0 ? <StandingLine standing={standing} /> : null}
             </fieldset>
 
-            <Stepper label="Culls" value={draft.culls} onChange={(v) => update({ culls: v })} max={2000} hint="Birds you removed yourself." />
+            <Stepper label="Culls" value={draft.culls} onChange={(v) => update({ culls: v })} max={2000} blankZero hint="Birds you removed yourself." />
             <Stepper
               label="Feed added"
               value={draft.feedAddedKg}
@@ -293,6 +295,7 @@ function StandingLine({ standing }: { standing: Standing }) {
 
 /** The confirmation after saving a house: what was recorded + the maths we did. */
 function SavedCard({ house, result, standing, allDone }: { house: CaptureHouse; result: DailyEntry; standing: Standing; allDone: boolean }) {
+  const c = dailySaved({ houseName: house.name, ...result });
   return (
     <Card key={`saved-${house.id}`} className="animate-rise bg-status-good-tint/40">
       <CardBody className="space-y-5 pt-5">
@@ -301,19 +304,17 @@ function SavedCard({ house, result, standing, allDone }: { house: CaptureHouse; 
             <IconStatusGood className="size-6" />
           </span>
           <div>
-            <h2 className="text-h2">{house.name} saved</h2>
-            <p className="mt-1 text-body-l text-slate">
-              Day {result.day}: {num(result.mortality)} dead ({num(result.dayMortality)} day · {num(result.nightMortality)} night), {num(result.culls)} culls, {kg(result.feedAddedKg)} feed.
-            </p>
+            <h2 className="text-h2">{c.headline}</h2>
+            <p className="mt-1 text-body-l text-slate">{c.recorded}</p>
           </div>
         </div>
 
         {/* The wedge: the cumulative maths done for them. */}
         <dl className="grid grid-cols-2 gap-x-6 gap-y-4 rounded-[var(--radius-control)] bg-surface p-4">
-          <Computed label="Lost today" value={num(result.cullAndMort)} />
-          <Computed label="Total losses" value={`${num(result.cumMort)} · ${pct(result.cumPct)}`} />
-          <Computed label="Birds remaining" value={num(result.birdsRemaining)} />
-          <Computed label="Vs standard" value={standing.word} />
+          <Computed label={savedLabels.lostToday} value={num(result.cullAndMort)} />
+          <Computed label={savedLabels.lostThisCycle} value={`${num(result.cumMort)} · ${pct(result.cumPct)}`} />
+          <Computed label={savedLabels.stillGoing} value={num(result.birdsRemaining)} />
+          <Computed label={savedLabels.vsStandard} value={standing.word} />
         </dl>
 
         <StandingLine standing={standing} />

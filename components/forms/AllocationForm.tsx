@@ -6,6 +6,7 @@ import type { House, PlannedBatch } from "@/lib/types";
 import { confirmAllocation, type Allocation } from "@/lib/data";
 import { useConfirmedAllocation } from "@/lib/allocationStore";
 import { num, shortDate } from "@/lib/format";
+import { allocationSavedToast } from "@/lib/copy";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardEyebrow } from "@/components/ui/Card";
 import { Stepper } from "@/components/ui/Stepper";
@@ -50,7 +51,8 @@ export function AllocationForm({ planned, houses, recommended }: AllocationFormP
   async function handleConfirm() {
     const result = await confirmAllocation(houses.map((h) => ({ houseId: h.id, count: counts[h.id] ?? 0 })));
     setConfirmed(result);
-    toast("Cycle allocated", { tone: "success", description: `${num(total)} birds across ${result.length} houses.` });
+    const t = allocationSavedToast(total, result.length);
+    toast(t.title, { tone: "success", description: t.description });
   }
 
   if (confirmed) {

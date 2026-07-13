@@ -13,6 +13,7 @@ import { BenchmarkToggle, useWeightCompareMode } from "@/components/ui/Benchmark
 import { useToast } from "@/components/ui/Toast";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { formatGap, vsBenchmark } from "@/lib/weightCompare";
+import { weightsSavedToast } from "@/lib/copy";
 import { cn } from "@/lib/cn";
 
 export interface WeightFormHouse {
@@ -66,10 +67,8 @@ export function WeightsForm({ houses }: { houses: WeightFormHouse[] }) {
   async function handleSave() {
     const r = await submitWeights({ houseId: house.id, day: house.day, ...draft });
     setSavedPct((prev) => ({ ...prev, [house.id]: r.pctOfTarget }));
-    toast(`${house.name} weights saved`, {
-      tone: r.pctOfTarget >= 98 ? "success" : "info",
-      description: `${grams(r.entry.avgWeightG)} · ${r.pctOfTarget}% of Ross target.`,
-    });
+    const t = weightsSavedToast(house.name, r.entry.avgWeightG, r.pctOfTarget);
+    toast(t.title, { tone: r.pctOfTarget >= 98 ? "success" : "info", description: t.description });
   }
 
   return (
