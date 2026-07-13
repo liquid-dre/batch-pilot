@@ -4,6 +4,7 @@ import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { LogoMark } from "@/components/brand/Logo";
+import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 
 /**
@@ -170,13 +171,9 @@ function SignInInner() {
               </p>
             )}
 
-            <button
-              type="submit"
-              disabled={pending}
-              className="mt-1 inline-flex h-[52px] items-center justify-center rounded-[var(--radius-control)] bg-brand-700 px-6 text-[1.0625rem] font-semibold text-white transition-transform duration-[var(--dur-fast)] ease-[var(--ease-out)] hover:bg-brand-600 active:scale-[0.98] disabled:opacity-60"
-            >
-              {pending ? "Please wait…" : mode === "signIn" ? "Log in" : "Create account"}
-            </button>
+            <Button type="submit" size="lg" block loading={pending} className="mt-1">
+              {mode === "signIn" ? "Log in" : "Create account"}
+            </Button>
           </form>
         </div>
 

@@ -13,7 +13,7 @@ import { Stepper } from "@/components/ui/Stepper";
 import { Alert } from "@/components/ui/Alert";
 import { notify } from "@/components/ui/notify";
 import { PageHeader } from "@/components/shell/PageHeader";
-import { IconCheck } from "@/components/icons";
+import { IconCheck, IconArrowLeft, IconPlus } from "@/components/icons";
 import { cn } from "@/lib/cn";
 import { TreatmentsPanel, type TreatmentsValue, emptyTreatments, treatmentsPayload } from "./treatments";
 
@@ -188,13 +188,9 @@ export function DailyUpdateForm({ data }: { data: DailyFormData }) {
             {draft.tempEnabled ? (
               <Stepper label="House temperature" value={draft.tempC} onChange={(v) => update({ tempC: v })} step={0.5} decimals={1} min={10} max={45} suffix="°C" />
             ) : (
-              <button
-                type="button"
-                onClick={() => update({ tempEnabled: true })}
-                className="text-label font-medium text-brand-600 hover:text-brand-700"
-              >
-                + Add temperature (optional)
-              </button>
+              <Button type="button" variant="ghost" size="sm" affordance={IconPlus} onClick={() => update({ tempEnabled: true })}>
+                Add temperature (optional)
+              </Button>
             )}
 
             {/* Optional consumables — collapsed by default to keep the round fast. */}
@@ -225,10 +221,10 @@ export function DailyUpdateForm({ data }: { data: DailyFormData }) {
             </dl>
 
             <div className="flex flex-col gap-2.5 sm:flex-row-reverse">
-              <Button size="lg" block className="sm:flex-1" onClick={handleConfirm}>
+              <Button size="lg" block affordance={IconCheck} className="sm:flex-1" onClick={handleConfirm}>
                 Confirm &amp; save
               </Button>
-              <Button size="lg" variant="ghost" block className="sm:w-auto" onClick={() => setView("entry")}>
+              <Button size="lg" variant="ghost" block affordance={IconArrowLeft} className="sm:w-auto" onClick={() => setView("entry")}>
                 Correct numbers
               </Button>
             </div>

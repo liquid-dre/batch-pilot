@@ -18,7 +18,7 @@ export function ContractorOnly({ children }: { children: React.ReactNode }) {
       <p className="text-body text-slate">
         Switch to the Contractor role to see the portfolio, schedules and benchmarks.
       </p>
-      <Button onClick={() => setRole("contractor")}>Switch to Contractor</Button>
+      <Button affordance={null} onClick={() => setRole("contractor")}>Switch to Contractor</Button>
     </div>
   );
 }

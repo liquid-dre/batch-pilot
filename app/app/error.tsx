@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { Button } from "@/components/ui/Button";
+import { IconRefresh } from "@/components/icons";
 
 /** App-section error boundary. Calm, plain-language, with a retry. */
 export default function AppError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
@@ -16,7 +17,7 @@ export default function AppError({ error, reset }: { error: Error & { digest?: s
       <p className="text-body text-slate">
         Something went wrong on our side. Your data is safe — try again in a moment.
       </p>
-      <Button onClick={reset}>Try again</Button>
+      <Button affordance={IconRefresh} onClick={reset}>Try again</Button>
     </div>
   );
 }

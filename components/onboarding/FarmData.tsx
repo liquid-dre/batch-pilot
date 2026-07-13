@@ -5,6 +5,8 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { dailySaved, SAVING, saveFailedToast } from "@/lib/copy";
 import { notify } from "@/components/ui/notify";
+import { Button } from "@/components/ui/Button";
+import { IconCheck } from "@/components/icons";
 
 /**
  * Stage 2b — the capture → review loop, both on the reactive `farm.farmData`
@@ -98,14 +100,9 @@ function CaptureHouseCard({ house, today }: { house: any; today: string }) {
       </div>
       <p className="mt-2 text-label text-muted">Deaths this round: <span className="font-mono text-ink">{total}</span></p>
 
-      <button
-        type="button"
-        onClick={save}
-        disabled={pending}
-        className="mt-4 inline-flex h-[52px] items-center justify-center rounded-[var(--radius-control)] bg-brand-700 px-6 text-[1.0625rem] font-semibold text-white hover:bg-brand-600 active:scale-[0.98] disabled:opacity-60"
-      >
-        {pending ? "Saving…" : `Save ${house.name}`}
-      </button>
+      <Button type="button" size="lg" block loading={pending} affordance={IconCheck} onClick={save} className="mt-4">
+        Save {house.name}
+      </Button>
     </div>
   );
 }

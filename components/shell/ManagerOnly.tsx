@@ -18,7 +18,7 @@ export function ManagerOnly({ children }: { children: React.ReactNode }) {
       <p className="text-body text-slate">
         The batch archive is part of the manager&apos;s oversight view. Switch to the Manager profile to browse previous batches.
       </p>
-      <Button onClick={() => setRole("manager")}>Switch to Manager</Button>
+      <Button affordance={null} onClick={() => setRole("manager")}>Switch to Manager</Button>
     </div>
   );
 }

@@ -13,7 +13,7 @@ import { Stepper } from "@/components/ui/Stepper";
 import { Alert } from "@/components/ui/Alert";
 import { notify } from "@/components/ui/notify";
 import { PageHeader } from "@/components/shell/PageHeader";
-import { IconStatusGood } from "@/components/icons";
+import { IconStatusGood, IconCheck, IconRefresh } from "@/components/icons";
 import { cn } from "@/lib/cn";
 
 interface AllocationFormProps {
@@ -106,6 +106,7 @@ export function AllocationForm({ planned, houses, recommended }: AllocationFormP
             variant="ghost"
             block
             className="sm:w-auto"
+            affordance={IconRefresh}
             onClick={() => {
               setCounts(Object.fromEntries(confirmed.map((h) => [h.houseId, h.count])));
               setConfirmed(null);
@@ -179,10 +180,10 @@ export function AllocationForm({ planned, houses, recommended }: AllocationFormP
             </span>
           </div>
           <div className="flex flex-col gap-2.5 sm:flex-row-reverse">
-            <Button size="lg" block className="sm:flex-1" onClick={handleConfirm} disabled={!balanced}>
+            <Button size="lg" block affordance={IconCheck} className="sm:flex-1" onClick={handleConfirm} disabled={!balanced}>
               Confirm allocation
             </Button>
-            <Button size="lg" variant="ghost" block className="sm:w-auto" onClick={() => setCounts(recMap)}>
+            <Button size="lg" variant="ghost" block affordance={IconRefresh} className="sm:w-auto" onClick={() => setCounts(recMap)}>
               Use recommended
             </Button>
           </div>

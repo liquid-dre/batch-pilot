@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import type { Role } from "@/lib/types";
 import { useCurrentUser } from "@/lib/auth";
 import { LogoMark } from "@/components/brand/Logo";
+import { Button } from "@/components/ui/Button";
+import { IconLogin } from "@/components/icons";
 import { cn } from "@/lib/cn";
 
 /**
@@ -69,13 +71,9 @@ function Hero({ onEnter, onLogin }: { onEnter: (r: Role) => void; onLogin: () =>
           <LogoMark className="h-6 w-7 text-white" />
           <span className="font-display text-[1.25rem] font-extrabold tracking-[-0.02em]">BatchPilot</span>
         </span>
-        <button
-          type="button"
-          onClick={onLogin}
-          className="rounded-[var(--radius-control)] px-4 py-2 text-label font-semibold text-brand-100 transition-colors duration-[var(--dur-fast)] hover:text-white"
-        >
+        <Button type="button" variant="ghost" inverse size="sm" affordance={IconLogin} onClick={onLogin}>
           Log in
-        </button>
+        </Button>
       </nav>
 
       {/* hero content */}
@@ -105,34 +103,29 @@ function Hero({ onEnter, onLogin }: { onEnter: (r: Role) => void; onLogin: () =>
         <div className="animate-rise mt-8" style={{ animationDelay: "210ms" }}>
           <p className="mb-2.5 text-label font-medium text-brand-100/80">Sign in to the grower app</p>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <button
-              type="button"
-              onClick={() => onEnter("supervisor")}
-              className="inline-flex h-[52px] items-center justify-center rounded-[var(--radius-control)] bg-surface px-7 text-[1.0625rem] font-semibold text-brand-700 shadow-[0_1px_2px_rgba(11,42,74,0.25)] transition-transform duration-[var(--dur-fast)] ease-[var(--ease-out)] hover:brightness-[0.97] active:scale-[0.98]"
-            >
+            <Button type="button" variant="primary" inverse size="lg" onClick={() => onEnter("supervisor")}>
               Supervisor / Foreman
-            </button>
-            <button
-              type="button"
-              onClick={() => onEnter("manager")}
-              className="inline-flex h-[52px] items-center justify-center rounded-[var(--radius-control)] border border-white/30 px-7 text-[1.0625rem] font-semibold text-white transition-colors duration-[var(--dur-fast)] ease-[var(--ease-out)] hover:bg-white/10 active:scale-[0.98]"
-            >
+            </Button>
+            <Button type="button" variant="secondary" inverse size="lg" onClick={() => onEnter("manager")}>
               Manager
-            </button>
+            </Button>
           </div>
           <p className="mt-2.5 text-label text-brand-100/70">
             Supervisor captures the daily numbers · Manager oversees performance.
           </p>
         </div>
 
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          inverse
+          size="sm"
           onClick={() => onEnter("contractor")}
-          className="animate-rise mt-5 inline-flex items-center gap-1 text-label font-medium text-brand-100 underline-offset-4 transition-colors hover:text-white hover:underline"
+          className="animate-rise mt-5"
           style={{ animationDelay: "280ms" }}
         >
-          Seeing this for a contractor? View the portfolio →
-        </button>
+          Seeing this for a contractor? View the portfolio
+        </Button>
 
         <p className="animate-rise mt-10 text-label text-brand-100/70" style={{ animationDelay: "340ms" }}>
           Grounded in real Ross 308 field data.
@@ -191,15 +184,15 @@ function Registers({ onEnter }: { onEnter: (r: Role) => void }) {
           title="Spacious, one-thumb screens for the house."
           body="Two profiles on one site: the supervisor captures the daily numbers on big steppers — no keyboard, no maths — while the manager watches performance, projections and the breed curve."
           actions={[
-            { label: "Supervisor / Foreman →", onClick: () => onEnter("supervisor") },
-            { label: "Manager →", onClick: () => onEnter("manager") },
+            { label: "Supervisor / Foreman", onClick: () => onEnter("supervisor") },
+            { label: "Manager", onClick: () => onEnter("manager") },
           ]}
         />
         <RegisterCard
           eyebrow="For contractors"
           title="A live portfolio of every flock you supply."
           body="Rank houses by EPEF, drill into any grower, plan the catch, and compare the whole network to the breed curve."
-          actions={[{ label: "Open the contractor view →", onClick: () => onEnter("contractor") }]}
+          actions={[{ label: "Open the contractor view", onClick: () => onEnter("contractor") }]}
         />
       </div>
     </section>
@@ -222,16 +215,11 @@ function RegisterCard({
       <p className="font-mono text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-brand-500">{eyebrow}</p>
       <h3 className="mt-3 text-h2 [text-wrap:balance]">{title}</h3>
       <p className="mt-3 flex-1 text-body-l text-slate">{body}</p>
-      <div className="mt-6 flex flex-wrap gap-x-6 gap-y-2">
+      <div className="mt-6 flex flex-wrap gap-3">
         {actions.map((a) => (
-          <button
-            key={a.label}
-            type="button"
-            onClick={a.onClick}
-            className="inline-flex w-fit items-center gap-1.5 text-label font-semibold text-brand-700 underline-offset-4 transition-colors hover:text-brand-600 hover:underline"
-          >
+          <Button key={a.label} type="button" variant="ghost" size="sm" onClick={a.onClick}>
             {a.label}
-          </button>
+          </Button>
         ))}
       </div>
     </div>
@@ -251,13 +239,9 @@ function ClosingBand({ onEnter }: { onEnter: (r: Role) => void }) {
             The demo runs on a real cycle. No sign-up — jump straight in.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => onEnter("supervisor")}
-          className="inline-flex h-[52px] shrink-0 items-center justify-center rounded-[var(--radius-control)] bg-surface px-7 text-[1.0625rem] font-semibold text-brand-700 transition-transform duration-[var(--dur-fast)] ease-[var(--ease-out)] hover:brightness-[0.97] active:scale-[0.98]"
-        >
+        <Button type="button" variant="primary" inverse size="lg" onClick={() => onEnter("supervisor")} className="shrink-0">
           Get started
-        </button>
+        </Button>
       </div>
     </section>
   );

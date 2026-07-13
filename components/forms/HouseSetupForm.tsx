@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/Input";
 import { Stepper } from "@/components/ui/Stepper";
 import { notify } from "@/components/ui/notify";
 import { PageHeader } from "@/components/shell/PageHeader";
-import { IconTrash } from "@/components/icons";
+import { IconTrash, IconCheck, IconPlus } from "@/components/icons";
 
 interface Row {
   key: string;
@@ -127,8 +127,8 @@ export function HouseSetupForm({ houses }: { houses: House[] }) {
           );
         })}
 
-        <Button variant="secondary" block onClick={addHouse}>
-          + Add a house
+        <Button variant="secondary" block affordance={IconPlus} onClick={addHouse}>
+          Add a house
         </Button>
       </div>
 
@@ -139,7 +139,7 @@ export function HouseSetupForm({ houses }: { houses: House[] }) {
             <p className="mt-0.5 text-data text-[1.5rem] font-medium text-ink">{num(totalCapacity)}</p>
             <p className="text-[0.8125rem] text-muted">{rows.length} houses</p>
           </div>
-          <Button size="lg" onClick={handleSave} disabled={saving || !hasRows}>
+          <Button size="lg" affordance={IconCheck} onClick={handleSave} disabled={saving || !hasRows}>
             Save houses
           </Button>
         </CardBody>

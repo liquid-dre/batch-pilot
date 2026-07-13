@@ -8,7 +8,6 @@ import { CycleInfo } from "@/components/dashboard/CycleInfo";
 import { OnTrackCards } from "@/components/dashboard/OnTrackCards";
 import { PreviousDayEntries } from "@/components/dashboard/PreviousDayEntries";
 import { ProjectionChart } from "@/components/dashboard/ProjectionChart";
-import { IconArrowRight } from "@/components/icons";
 
 /**
  * The supervisor's Home — the shared dashboard structure at the plain depth,
@@ -28,7 +27,6 @@ export function SupervisorDashboard({ data }: { data: DashboardView }) {
 
       <Button size="lg" block onClick={() => router.push("/app/capture")}>
         {ctaLabel}
-        <IconArrowRight className="size-5" />
       </Button>
 
       <OnTrackCards metrics={data.metrics} variant="supervisor" />

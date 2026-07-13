@@ -21,8 +21,8 @@ export function GrowerOnly({ children }: { children: React.ReactNode }) {
         Switch to a grower profile to add daily numbers, log feed and record weights.
       </p>
       <div className="flex flex-wrap items-center justify-center gap-2">
-        <Button onClick={() => setRole("supervisor")}>Supervisor / Foreman</Button>
-        <Button variant="secondary" onClick={() => setRole("manager")}>Manager</Button>
+        <Button affordance={null} onClick={() => setRole("supervisor")}>Supervisor / Foreman</Button>
+        <Button variant="secondary" affordance={null} onClick={() => setRole("manager")}>Manager</Button>
       </div>
     </div>
   );
