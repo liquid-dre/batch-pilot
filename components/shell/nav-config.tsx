@@ -28,6 +28,7 @@ const icons: Record<string, IconComponent> = {
   houses: IconHouses,
   allocate: IconAllocate,
   alerts: IconAlerts,
+  logbook: IconArchive,
   growers: IconGrowers,
   schedule: IconCollection,
   benchmark: IconBenchmark,
@@ -63,13 +64,22 @@ const GROWER_SETUP: NavSection = {
 const GROWER_ALERTS: NavSection = { items: [{ key: "alerts", label: "Alerts", href: "/app/alerts", icon: "alerts" }] };
 
 export const NAV: Record<Role, NavSection[]> = {
-  // Supervisor / foreman — the data capturer. The home is one calm capture
-  // screen (the daily round) and the nav stays deliberately tiny so the
-  // supervisor never feels overwhelmed: just the daily capture plus logging a
-  // feed delivery. Oversight (analytics, setup, alerts) lives with the Manager.
+  // Supervisor / foreman — the data capturer. The nav is grouped the way a
+  // supervisor thinks: do today's job (Home + Today's capture + Feed), then look
+  // back (Records). They capture and view only — never configure. Setup,
+  // starting a cycle, analytics-heavy comparison and corrections stay with the
+  // Manager so this non-technical role never feels flooded.
   supervisor: [
-    { items: [{ key: "home", label: "Today's capture", href: "/app", icon: "daily" }] },
+    { items: [{ key: "home", label: "Home", href: "/app", icon: "dashboard" }] },
+    { items: [{ key: "capture", label: "Today's capture", href: "/app/capture", icon: "daily" }] },
     { items: [{ key: "feed", label: "Feed deliveries", href: "/app/feed", icon: "feed" }] },
+    {
+      label: "Records",
+      items: [
+        { key: "history", label: "Cycle history", href: "/app/history", icon: "history" },
+        { key: "logbook", label: "House logbook", href: "/app/logbook", icon: "logbook" },
+      ],
+    },
   ],
   // Manager — oversight. Home is the consolidated dashboard; the nav is
   // analytics-first, with setup + alerts. Capture is the supervisor's job.
