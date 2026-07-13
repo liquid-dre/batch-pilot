@@ -29,6 +29,7 @@ const TABLES = [
   "editLog",
   "historicalBatches",
   "growerProfiles",
+  "invites",
 ] as const;
 
 /** The app's business `id` is stored as the indexed `extId` column (schema). */

@@ -2,13 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { Role } from "@/lib/types";
 import { useCurrentUser } from "@/lib/auth";
 import { usePersisted } from "@/lib/usePersisted";
 import { cn } from "@/lib/cn";
 import { Logo, LogoMark } from "@/components/brand/Logo";
-import { IconChevronDown, IconCollapse, IconExpand, IconSwitch, IconInfo } from "@/components/icons";
-import { RoleSwitcher } from "./RoleSwitcher";
+import { IconChevronDown, IconCollapse, IconExpand, IconInfo } from "@/components/icons";
 import { SignOutButton } from "./SignOutButton";
 import { NAV, NavGlyph, isActive, type NavSection } from "./nav-config";
 
@@ -80,9 +78,8 @@ export function SidebarNav({ collapsed, onToggleCollapse, onNavigate }: SidebarN
         </div>
       ) : null}
 
-      {/* Role switcher + demo-data note */}
+      {/* Account actions + demo-data note (no role switcher — role comes from auth) */}
       <div className={cn("shrink-0 space-y-3 border-t border-divider", collapsed ? "px-2 py-3" : "px-4 py-4")}>
-        {collapsed ? <RoleRail /> : <RoleSwitcher />}
         {CONVEX_CONNECTED && !collapsed ? <SignOutButton /> : null}
         {CONVEX_CONNECTED ? null : <DemoNote collapsed={collapsed} />}
       </div>
@@ -196,39 +193,3 @@ function RailSection({ section, pathname, onNavigate, withDivider }: { section: 
   );
 }
 
-/* ---- Rail-mode role toggle (compact) ---- */
-
-const RAIL_ROLES: { role: Role; label: string; glyph: string }[] = [
-  { role: "supervisor", label: "Supervisor", glyph: "S" },
-  { role: "manager", label: "Manager", glyph: "M" },
-  { role: "contractor", label: "Contractor", glyph: "C" },
-];
-
-function RoleRail() {
-  const { role, setRole } = useCurrentUser();
-  return (
-    <div role="radiogroup" aria-label="Switch viewpoint between supervisor, manager and contractor" className="flex flex-col items-center gap-1">
-      <IconSwitch className="mb-0.5 size-4 text-hint" aria-hidden />
-      {RAIL_ROLES.map(({ role: r, label, glyph }) => {
-        const active = role === r;
-        return (
-          <button
-            key={r}
-            type="button"
-            role="radio"
-            aria-checked={active}
-            aria-label={`Viewing as ${label}`}
-            title={`Viewing as ${label}`}
-            onClick={() => setRole(r)}
-            className={cn(
-              "flex size-9 items-center justify-center rounded-[var(--radius-pill)] text-label font-semibold transition-colors",
-              active ? "bg-brand-700 text-white" : "bg-brand-50 text-brand-700 hover:bg-brand-100",
-            )}
-          >
-            {glyph}
-          </button>
-        );
-      })}
-    </div>
-  );
-}

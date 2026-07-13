@@ -74,26 +74,7 @@ function ContractorOnboarding({ workspace }: { workspace: any }) {
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
           {farms.map((f) => (
-            <div key={f.id} className="rounded-[var(--radius-card)] bg-surface p-5 shadow-card">
-              <div className="flex items-baseline justify-between">
-                <h3 className="text-h3">{f.name}</h3>
-                <span className="font-mono text-label text-muted">{f.farmCode}</span>
-              </div>
-              <p className="mt-1 text-label text-muted">{f.houseCount} house(s) set up</p>
-              <p className="mt-4 mb-1.5 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-hint">Supervisors</p>
-              {f.supervisors.length === 0 ? (
-                <p className="text-label text-muted">None invited yet.</p>
-              ) : (
-                <ul className="flex flex-col gap-1">
-                  {f.supervisors.map((s: any) => (
-                    <li key={s.email} className="flex items-center justify-between text-label">
-                      <span className="text-ink">{s.email}</span>
-                      <StatusChip status={s.status} />
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
+            <ContractorFarmCard key={f.id} farm={f} />
           ))}
         </div>
       )}
@@ -130,6 +111,92 @@ function ContractorOnboarding({ workspace }: { workspace: any }) {
         </button>
       </form>
     </Shell>
+  );
+}
+
+function ContractorFarmCard({ farm }: { farm: any }) {
+  const renameFarm = useMutation(api.tenancy.renameFarm);
+  const inviteSupervisors = useMutation(api.tenancy.inviteSupervisors);
+  const [name, setName] = useState(farm.name);
+  const [savingName, setSavingName] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [inviting, setInviting] = useState(false);
+  const nameChanged = name.trim().length > 0 && name.trim() !== farm.name;
+
+  async function saveName() {
+    setSavingName(true);
+    try {
+      await renameFarm({ siteId: farm.id, name: name.trim() });
+    } finally {
+      setSavingName(false);
+    }
+  }
+  async function invite(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newEmail.trim()) return;
+    setInviting(true);
+    try {
+      await inviteSupervisors({ siteId: farm.id, emails: splitEmails(newEmail) });
+      setNewEmail("");
+    } finally {
+      setInviting(false);
+    }
+  }
+
+  return (
+    <div className="rounded-[var(--radius-card)] bg-surface p-5 shadow-card">
+      <div className="flex items-center gap-2">
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          aria-label="Farm name"
+          className="min-w-0 flex-1 rounded-[var(--radius-control)] border border-transparent bg-transparent px-1.5 py-0.5 font-display text-h3 text-ink outline-none hover:border-divider focus-visible:border-brand-500"
+        />
+        <span className="shrink-0 font-mono text-label text-muted">{farm.farmCode}</span>
+      </div>
+      {nameChanged && (
+        <button
+          type="button"
+          onClick={saveName}
+          disabled={savingName}
+          className="mt-1 text-label font-semibold text-brand-700 hover:text-brand-600 disabled:opacity-60"
+        >
+          {savingName ? "Saving…" : "Save name"}
+        </button>
+      )}
+      <p className="mt-1 text-label text-muted">{farm.houseCount} house(s) set up</p>
+
+      <p className="mt-4 mb-1.5 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-hint">Supervisors</p>
+      {farm.supervisors.length === 0 ? (
+        <p className="text-label text-muted">None invited yet.</p>
+      ) : (
+        <ul className="flex flex-col gap-1">
+          {farm.supervisors.map((s: any) => (
+            <li key={s.email} className="flex items-center justify-between text-label">
+              <span className="text-ink">{s.email}</span>
+              <StatusChip status={s.status} />
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <form onSubmit={invite} className="mt-3 flex gap-2">
+        <input
+          value={newEmail}
+          onChange={(e) => setNewEmail(e.target.value)}
+          type="email"
+          placeholder="Invite another supervisor"
+          className="h-10 min-w-0 flex-1 rounded-[var(--radius-control)] border border-border bg-surface px-3 text-label text-ink outline-none focus-visible:border-brand-500"
+        />
+        <button
+          type="submit"
+          disabled={inviting}
+          className="h-10 shrink-0 rounded-[var(--radius-control)] bg-brand-700 px-4 text-label font-semibold text-white hover:bg-brand-600 active:scale-[0.98] disabled:opacity-60"
+        >
+          {inviting ? "…" : "Invite"}
+        </button>
+      </form>
+    </div>
   );
 }
 
@@ -472,12 +539,39 @@ function NextStepNote({ children }: { children: React.ReactNode }) {
 }
 
 function PendingState({ email }: { email: string }) {
+  const claimInvite = useMutation(api.tenancy.claimInvite);
+  const [pending, setPending] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  async function join() {
+    setPending(true);
+    setMsg(null);
+    try {
+      const res: any = await claimInvite({});
+      if (!res.claimed) setMsg(`No pending invite found for ${email} yet. Ask to be invited, then try again.`);
+      // On success the workspace query re-fires and this screen is replaced.
+    } catch {
+      setMsg("Something went wrong. Try again.");
+    } finally {
+      setPending(false);
+    }
+  }
+
   return (
     <Shell title="No farm yet" subtitle={email}>
       <EmptyHint>
         You haven&apos;t been added to a farm yet. Ask your contractor or supervisor to invite <strong>{email}</strong>,
-        then refresh — you&apos;ll be placed automatically.
+        then join below.
       </EmptyHint>
+      <button
+        type="button"
+        onClick={join}
+        disabled={pending}
+        className="mt-4 inline-flex h-[52px] items-center justify-center rounded-[var(--radius-control)] bg-brand-700 px-6 text-[1.0625rem] font-semibold text-white hover:bg-brand-600 active:scale-[0.98] disabled:opacity-60"
+      >
+        {pending ? "Checking…" : "I've been invited — join"}
+      </button>
+      {msg && <p className="mt-3 text-label text-muted">{msg}</p>}
     </Shell>
   );
 }

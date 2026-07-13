@@ -60,6 +60,87 @@ export const createFarm = mutation({
   },
 });
 
+/** The signed-in contractor + a farm they own, or throws. */
+async function requireOwnedFarm(ctx: any, siteId: string) {
+  const userId = await getAuthUserId(ctx);
+  if (!userId) throw new Error("Not signed in");
+  const user = await ctx.db.get(userId);
+  if (!user || (user.role as string) !== "contractor" || !user.contractorId) {
+    throw new Error("Only a contractor can manage a farm");
+  }
+  const site = await ctx.db.query("sites").withIndex("by_extId", (q: any) => q.eq("extId", siteId)).first();
+  if (!site || !(site.contractorIds ?? []).includes(user.contractorId)) throw new Error("Farm not found");
+  return { userId, user, site };
+}
+
+/** Contractor: invite more supervisor(s) to an existing farm they own. */
+export const inviteSupervisors = mutation({
+  args: { siteId: v.string(), emails: v.array(v.string()) },
+  handler: async (ctx, { siteId, emails }) => {
+    const { userId } = await requireOwnedFarm(ctx, siteId);
+    const existing = await ctx.db.query("invites").withIndex("by_site", (q) => q.eq("siteId", siteId)).collect();
+    const already = new Set(existing.filter((i) => i.role === "supervisor").map((i) => i.email));
+    const createdAt = new Date().toISOString();
+    const seen = new Set<string>();
+    let invited = 0;
+    for (const raw of emails) {
+      const email = norm(raw);
+      if (!email || seen.has(email) || already.has(email)) continue;
+      seen.add(email);
+      await ctx.db.insert("invites", {
+        email,
+        role: "supervisor",
+        siteId,
+        invitedByUserId: userId as string,
+        status: "pending",
+        createdAt,
+      });
+      invited += 1;
+    }
+    return { invited };
+  },
+});
+
+/** Contractor: rename a farm they own. */
+export const renameFarm = mutation({
+  args: { siteId: v.string(), name: v.string() },
+  handler: async (ctx, { siteId, name }) => {
+    const { site } = await requireOwnedFarm(ctx, siteId);
+    const trimmed = name.trim();
+    if (!trimmed) throw new Error("Farm name is required");
+    await ctx.db.patch(site._id, { name: trimmed });
+    return { ok: true };
+  },
+});
+
+/**
+ * Claim a pending invite for the signed-in user's email. The auto-match in
+ * auth.ts only runs when an account is first created; this lets an existing
+ * account (e.g. one that was orphaned by a data reset, or invited after signing
+ * up) join a farm without re-registering.
+ */
+export const claimInvite = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not signed in");
+    const user = await ctx.db.get(userId);
+    if (!user) throw new Error("Not signed in");
+    const email = ((user.email as string | undefined) ?? "").toLowerCase();
+    if (!email) return { claimed: false as const };
+    const invite = await ctx.db
+      .query("invites")
+      .withIndex("by_email", (q) => q.eq("email", email))
+      .filter((q) => q.eq(q.field("status"), "pending"))
+      .first();
+    if (!invite) return { claimed: false as const };
+    const site = await ctx.db.query("sites").withIndex("by_extId", (q) => q.eq("extId", invite.siteId)).first();
+    await ctx.db.patch(userId, { role: invite.role, siteId: invite.siteId, org: site?.name ?? "" });
+    await ctx.db.patch(invite._id, { status: "accepted" });
+    return { claimed: true as const, role: invite.role };
+  },
+});
+
 /** Supervisor: invite manager(s) to their own farm. */
 export const inviteManagers = mutation({
   args: { emails: v.array(v.string()) },
