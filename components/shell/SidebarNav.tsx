@@ -131,7 +131,7 @@ export function SidebarNav({ collapsed, onToggleCollapse, onNavigate }: SidebarN
                 }}
                 aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
                 className={cn(
-                  "group flex h-10 items-center rounded-[var(--radius-control)] text-label font-medium text-muted transition-colors duration-[var(--dur-fast)] hover:bg-[rgba(11,42,74,0.05)] hover:text-slate active:scale-[0.98]",
+                  "group flex h-10 items-center rounded-[var(--radius-control)] text-label font-medium text-muted transition-colors duration-[var(--dur-fast)] hover:bg-wash hover:text-slate active:scale-[0.98]",
                   collapsed ? "mx-auto w-10 justify-center" : "w-full gap-2 px-3",
                 )}
               >
@@ -276,7 +276,7 @@ function NavRow({
         className={cn(
           "group relative my-0.5 flex h-11 items-center rounded-[var(--radius-control)] transition-colors duration-[var(--dur-fast)]",
           collapsed ? "justify-center" : "gap-3 px-3",
-          active ? "bg-brand-50 text-brand-700 font-semibold" : "text-slate hover:bg-[rgba(11,42,74,0.05)] hover:text-ink",
+          active ? "bg-brand-50 text-brand-700 font-semibold" : "text-slate hover:bg-wash hover:text-ink",
         )}
       >
         <span className="relative flex shrink-0">

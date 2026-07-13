@@ -4,8 +4,9 @@ import { IconInfo, IconStatusGood, IconStatusWarn, IconStatusBad, type IconCompo
 /**
  * Callout used for info / success / warning / error (brand-guidelines §6):
  * icon + bold title + plain line. Status variants reuse the reserved status
- * tints; info uses the brand tint. Full background tint + matching icon — no
- * side-stripe borders.
+ * tints; info uses the cyan accent tint (never the crimson brand tint, so an
+ * informational callout can't be mistaken for a red error). Full background tint
+ * + matching icon — no side-stripe borders.
  */
 
 type Tone = "info" | "success" | "warning" | "error";
@@ -20,7 +21,7 @@ interface AlertProps {
 }
 
 const TONES: Record<Tone, { wrap: string; fg: string; Icon: IconComponent }> = {
-  info: { wrap: "bg-brand-50", fg: "text-brand-700", Icon: IconInfo },
+  info: { wrap: "bg-accent-50", fg: "text-accent-700", Icon: IconInfo },
   success: { wrap: "bg-status-good-tint", fg: "text-status-good", Icon: IconStatusGood },
   warning: { wrap: "bg-status-warn-tint", fg: "text-status-warn", Icon: IconStatusWarn },
   error: { wrap: "bg-status-bad-tint", fg: "text-status-bad", Icon: IconStatusBad },

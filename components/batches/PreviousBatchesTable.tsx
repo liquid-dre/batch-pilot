@@ -382,7 +382,7 @@ export function PreviousBatchesTable({ rows }: { rows: BatchArchiveRow[] }) {
                     {col.cell(r)}
                   </td>
                 ))}
-                <td className="sticky right-0 bg-surface px-2 py-2 text-right shadow-[-8px_0_8px_-8px_rgba(11,42,74,0.12)] transition-colors duration-[var(--dur-fast)] group-hover:bg-brand-50/60">
+                <td className="sticky right-0 bg-surface px-2 py-2 text-right shadow-[-8px_0_8px_-8px_rgba(12,9,13,0.12)] transition-colors duration-[var(--dur-fast)] group-hover:bg-brand-50/60">
                   <button
                     type="button"
                     onClick={() => router.push(`/app/batches/${r.id}`)}

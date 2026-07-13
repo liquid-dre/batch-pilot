@@ -13,7 +13,7 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 }
 
 /* 52px tall to clear the glove-friendly tap minimum (brand-guidelines §6).
-   Focus ring is the brand-500 ring from globals.css :focus-visible. */
+   Focus ring is the cyan accent ring from globals.css :focus-visible. */
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   { label, hint, error, suffix, className, id, ...props },
   ref,
@@ -40,7 +40,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
             "rounded-[var(--radius-control)] border px-3.5",
             "placeholder:text-hint",
             "transition-colors duration-[var(--dur-fast)] ease-[var(--ease-out)]",
-            error ? "border-status-bad" : "border-border focus:border-brand-500",
+            error ? "border-status-bad" : "border-border focus:border-accent-600",
             suffix && "pr-12",
             className,
           )}

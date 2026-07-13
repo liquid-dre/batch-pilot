@@ -88,7 +88,7 @@ function SignInInner() {
                 }}
                 className={cn(
                   "flex-1 rounded-[calc(var(--radius-control)-3px)] px-3 py-2 text-label font-semibold transition-colors duration-[var(--dur)] ease-[var(--ease-out)]",
-                  mode === m ? "bg-brand-700 text-white shadow-[0_1px_2px_rgba(11,42,74,0.2)]" : "text-brand-700 hover:bg-brand-100",
+                  mode === m ? "bg-brand-700 text-white shadow-[0_1px_2px_rgba(12,9,13,0.2)]" : "text-brand-700 hover:bg-brand-100",
                 )}
               >
                 {m === "signIn" ? "Log in" : "Create account"}

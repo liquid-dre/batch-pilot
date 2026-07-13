@@ -33,7 +33,7 @@ export function Sparkline({ values, width = 132, height = 36, className }: Spark
   const [lastX, lastY] = points[points.length - 1];
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} className={cn("text-brand-500", className)} aria-hidden fill="none">
+    <svg viewBox={`0 0 ${width} ${height}`} className={cn("text-accent-700", className)} aria-hidden fill="none">
       <path d={area} className="fill-current opacity-[0.08]" stroke="none" />
       <path d={line} stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
       <circle cx={lastX} cy={lastY} r="2.4" className="fill-current" />
