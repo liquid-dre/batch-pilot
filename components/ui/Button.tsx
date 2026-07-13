@@ -41,7 +41,7 @@ const SIZE: Record<Size, { pill: string; dot: string; icon: string; only: string
    primary deepens; ghost washes in. */
 const VARIANT: Record<Variant, { pill: string; dot: string; icon: string }> = {
   primary: {
-    pill: "bg-brand-700 text-white hover:bg-brand-900 shadow-card",
+    pill: "bg-brand-700 text-white hover:bg-brand-800 shadow-card",
     dot: "bg-white group-disabled:bg-hint",
     icon: "text-brand-700",
   },

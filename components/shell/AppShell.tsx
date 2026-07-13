@@ -84,7 +84,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             onClick={() => setDrawerOpen(true)}
             aria-label="Open menu"
             aria-expanded={drawerOpen}
-            className="flex size-11 items-center justify-center rounded-[var(--radius-control)] text-slate transition-colors hover:bg-[rgba(11,42,74,0.05)] active:scale-95"
+            className="flex size-11 items-center justify-center rounded-[var(--radius-control)] text-slate transition-colors hover:bg-wash active:scale-95"
           >
             <IconMenu className="size-6" />
           </button>
@@ -121,7 +121,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             type="button"
             onClick={() => setDrawerOpen(false)}
             aria-label="Close menu"
-            className="absolute right-2 top-3 z-10 flex size-9 items-center justify-center rounded-[var(--radius-control)] text-muted hover:bg-[rgba(11,42,74,0.05)]"
+            className="absolute right-2 top-3 z-10 flex size-9 items-center justify-center rounded-[var(--radius-control)] text-muted hover:bg-wash"
           >
             <IconClose className="size-6" />
           </button>

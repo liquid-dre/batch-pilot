@@ -8,22 +8,38 @@
    Status colours, neutrals, type, spacing, radii and motion are fixed.
    ========================================================================== */
 :root {
-  /* Brand — Horizon (themeable) */
-  --brand-900: #0b2a4a;
-  --brand-700: #14487e;
-  --brand-600: #1a5b9c;
-  --brand-500: #2474c4;
-  --brand-100: #dceaf7;
-  --brand-50: #eef5fc;
+  /* Brand — crimson (themeable). Anchored on #e01a4f (the vivid signature, kept
+     as brand-600 for links/emphasis); brand-700 is a marginally deeper crimson
+     so primary buttons + text clear WCAG AA with headroom. brand-900 is a warm
+     near-black used for the sparing dark bands + deep ink. Every step AA-verified. */
+  --brand-900: #0c090d;   /* near-black — dark bands / deepest ink */
+  --brand-800: #a50f34;   /* deep — primary-button hover */
+  --brand-700: #d4164a;   /* primary — buttons, logo, active text (AA on white + tint) */
+  --brand-600: #e01a4f;   /* the vivid signature — links, emphasis */
+  --brand-500: #ef4c6d;   /* bright — hairlines / subtle accents (non-text) */
+  --brand-100: #fbd7e0;   /* light tint — selection, hover tints */
+  --brand-50: #fdeef2;    /* lightest tint — surfaces, active-nav, badges */
+
+  /* Accent — cyan (themeable). Support / data / focus / neutral-info, so "info"
+     never reads as red "error". #53b3cb is fills-only (fails text contrast); the
+     -700 step carries text + the focus ring. */
+  --accent-700: #12798f;  /* cyan text + focus ring (AA on white) */
+  --accent-600: #2b93ab;  /* cyan UI borders (AA-large) */
+  --accent-500: #53b3cb;  /* cyan fills / chart marks (non-text) */
+  --accent-100: #c9e8ee;  /* light cyan — focus halo */
+  --accent-50: #e8f5f8;   /* lightest cyan — info surfaces */
+
+  /* Translucent near-black for hover washes (replaces off-token rgba navy). */
+  --wash: rgba(12, 9, 13, 0.05);
 
   /* Neutrals — warm grey (fixed) */
-  --ink: #1b1e23;
+  --ink: #0c090d;
   --slate: #44474e;
   --muted: #6b6f76;
   --hint: #9499a1;
   --border: #c9cdd3;
   --divider: #e4e7ea;
-  --paper: #f4f2ed;
+  --paper: #faf8f4;
   --surface: #ffffff;
 
   /* Status — reserved, never used for branding */
@@ -34,22 +50,24 @@
   --status-warn-tint: #faf0dc;
   --status-bad-tint: #fae4e4;
 
-  /* Categorical chart series — distinct cool hues, deliberately clear of the
-     green/amber/red status colours. For multi-series comparison charts only. */
-  --chart-1: #14487e;
-  --chart-2: #2474c4;
-  --chart-3: #0e8c8b;
-  --chart-4: #5b6cce;
-  --chart-5: #8a6fb0;
-  --chart-6: #6b7280;
+  /* Categorical chart series — a vibrant, validated set (dataviz skill:
+     colour-blind-separable, ≥3:1 on surface, order leads with band-safe hues so a
+     single line over the green/amber/red status bands stays legible). Coral + gold
+     live HERE only — never as UI/brand, so they can't be mistaken for status. */
+  --chart-1: #0d8ba3;  /* teal */
+  --chart-2: #e01a4f;  /* crimson */
+  --chart-3: #7a5cc0;  /* violet */
+  --chart-4: #b8790f;  /* ochre / gold */
+  --chart-5: #4b5bd0;  /* indigo */
+  --chart-6: #f15946;  /* coral */
 
   /* Semantic aliases — referenced directly via var() (e.g. in Button + base
      styles). `surface` and `border` are intentionally NOT re-aliased here: they
      are exposed to components as the Tailwind utilities bg-surface / border-border
      (raw neutrals below), so re-aliasing them would collide with those tokens. */
   --color-primary: var(--brand-700);
-  --color-primary-hover: var(--brand-600);
-  --color-accent: var(--brand-500);
+  --color-primary-hover: var(--brand-800);
+  --color-accent: var(--accent-500);
   --color-bg: var(--paper);
   --color-text: var(--ink);
   --color-text-muted: var(--muted);
@@ -78,10 +96,11 @@
   /* Spacing */
   --space-unit: 4px;
 
-  /* Depth */
-  --shadow-card: 0 1px 2px rgba(11, 42, 74, 0.06), 0 4px 16px rgba(11, 42, 74, 0.05);
-  --shadow-raised: 0 2px 6px rgba(11, 42, 74, 0.08), 0 12px 32px rgba(11, 42, 74, 0.1);
-  --ring-focus: 0 0 0 3px var(--brand-100), 0 0 0 1.5px var(--brand-500);
+  /* Depth — shadows tinted with the near-black ink, not the old navy. */
+  --shadow-card: 0 1px 2px rgba(12, 9, 13, 0.06), 0 4px 16px rgba(12, 9, 13, 0.05);
+  --shadow-raised: 0 2px 6px rgba(12, 9, 13, 0.08), 0 12px 32px rgba(12, 9, 13, 0.1);
+  /* Focus ring on the cyan accent (dark step clears 3:1), not the brand crimson. */
+  --ring-focus: 0 0 0 3px var(--accent-100), 0 0 0 1.5px var(--accent-700);
 
   /* Motion */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
@@ -103,13 +122,24 @@
    text-brand-700, bg-status-good-tint, rounded-card, font-mono, shadow-card.
    -------------------------------------------------------------------------- */
 @theme inline {
-  /* Brand scale */
+  /* Brand scale (crimson) */
   --color-brand-900: var(--brand-900);
+  --color-brand-800: var(--brand-800);
   --color-brand-700: var(--brand-700);
   --color-brand-600: var(--brand-600);
   --color-brand-500: var(--brand-500);
   --color-brand-100: var(--brand-100);
   --color-brand-50: var(--brand-50);
+
+  /* Accent scale (cyan) */
+  --color-accent-700: var(--accent-700);
+  --color-accent-600: var(--accent-600);
+  --color-accent-500: var(--accent-500);
+  --color-accent-100: var(--accent-100);
+  --color-accent-50: var(--accent-50);
+
+  /* Translucent hover wash */
+  --color-wash: var(--wash);
 
   /* Neutrals */
   --color-ink: var(--ink);
@@ -197,10 +227,10 @@
    Type-scale helpers (semantic, so components don't reach for raw text-[..]).
    -------------------------------------------------------------------------- */
 @layer components {
-  .text-display { font-family: var(--font-display); font-size: var(--text-display); font-weight: 700; line-height: 1.1; letter-spacing: -0.025em; }
-  .text-h1 { font-family: var(--font-display); font-size: var(--text-h1); font-weight: 700; line-height: 1.15; letter-spacing: -0.02em; }
-  .text-h2 { font-family: var(--font-display); font-size: var(--text-h2); font-weight: 600; line-height: 1.2; letter-spacing: -0.015em; }
-  .text-h3 { font-family: var(--font-display); font-size: var(--text-h3); font-weight: 600; line-height: 1.3; }
+  .text-display { font-family: var(--font-display); font-size: var(--text-display); font-weight: 800; line-height: 1.08; letter-spacing: -0.03em; }
+  .text-h1 { font-family: var(--font-display); font-size: var(--text-h1); font-weight: 800; line-height: 1.12; letter-spacing: -0.025em; }
+  .text-h2 { font-family: var(--font-display); font-size: var(--text-h2); font-weight: 700; line-height: 1.2; letter-spacing: -0.02em; }
+  .text-h3 { font-family: var(--font-display); font-size: var(--text-h3); font-weight: 600; line-height: 1.3; letter-spacing: -0.01em; }
   .text-body-l { font-size: var(--text-body-l); font-weight: 400; line-height: 1.55; }
   .text-body { font-size: var(--text-body); font-weight: 400; line-height: 1.55; }
   .text-label { font-size: var(--text-label); font-weight: 500; line-height: 1.4; }

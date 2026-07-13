@@ -118,30 +118,41 @@ purposeful motion — expressed through the **BatchPilot brand**, never generic 
 - **Contractor screens:** denser and data-forward, but still clean and uncluttered.
 
 **Identity:** mark = two ascending chevrons; wordmark = **BatchPilot**; palette and type per the brand
-guideline PDF. Brand colour is **Horizon blue** and must stay clear of the green/amber/red status system.
+guideline. Brand colour is **crimson** (a confident accent on a light canvas), with a **cyan** accent for
+data/focus/info and **near-black** for type + sparing dark bands; it must stay clear of the green/amber/red
+status system. *(Horizon blue was retired — read as generic; see the vibrance changelog entry.)*
 
 **Define these in `globals.css` (raw scale + semantic aliases):**
 
 ```css
 :root{
-  /* Brand — Horizon (themeable) */
-  --brand-900:#0B2A4A; --brand-700:#14487E; --brand-600:#1A5B9C;
-  --brand-500:#2474C4; --brand-100:#DCEAF7; --brand-50:#EEF5FC;
+  /* Brand — crimson (themeable, AA-verified). #E01A4F is the signature (brand600). */
+  --brand-900:#0C090D; /* near-black bands/ink */ --brand-800:#A50F34; /* primary hover */
+  --brand-700:#D4164A; /* primary/buttons/logo */ --brand-600:#E01A4F; /* links/emphasis */
+  --brand-500:#EF4C6D; --brand-100:#FBD7E0; --brand-50:#FDEEF2;
+  /* Accent — cyan (themeable). -700 = text/focus, -500 = fills only. */
+  --accent-700:#12798F; --accent-600:#2B93AB; --accent-500:#53B3CB;
+  --accent-100:#C9E8EE; --accent-50:#E8F5F8;
+  --wash:rgba(12,9,13,.05); /* translucent hover wash (tokenised) */
   /* Neutrals — warm grey (fixed) */
-  --ink:#1B1E23; --slate:#44474E; --muted:#6B6F76; --hint:#9499A1;
-  --border:#C9CDD3; --divider:#E4E7EA; --paper:#F4F2ED; --surface:#FFFFFF;
-  /* Status — reserved, never used for branding */
+  --ink:#0C090D; --slate:#44474E; --muted:#6B6F76; --hint:#9499A1;
+  --border:#C9CDD3; --divider:#E4E7EA; --paper:#FAF8F4; --surface:#FFFFFF;
+  /* Status — reserved, never used for branding (danger/error stays here, NOT crimson) */
   --status-good:#1F7A3D; --status-warn:#C77800; --status-bad:#C62828;
   --status-good-tint:#E3F2E8; --status-warn-tint:#FAF0DC; --status-bad-tint:#FAE4E4;
+  /* Chart series — vibrant, dataviz-validated; coral+gold live here ONLY */
+  --chart-1:#0D8BA3; --chart-2:#E01A4F; --chart-3:#7A5CC0;
+  --chart-4:#B8790F; --chart-5:#4B5BD0; --chart-6:#F15946;
   /* Semantic aliases — components use THESE */
-  --color-primary:var(--brand-700); --color-primary-hover:var(--brand-600);
-  --color-accent:var(--brand-500); --color-bg:var(--paper); --color-surface:var(--surface);
+  --color-primary:var(--brand-700); --color-primary-hover:var(--brand-800);
+  --color-accent:var(--accent-500); --color-bg:var(--paper); --color-surface:var(--surface);
   --color-text:var(--ink); --color-text-muted:var(--muted); --color-border:var(--divider);
   /* Type */
   --font-display:'Plus Jakarta Sans'; --font-body:'IBM Plex Sans'; --font-mono:'IBM Plex Mono';
   /* Radii / spacing / motion */
   --radius-card:16px; --radius-control:10px; --radius-pill:999px;
-  --space-unit:4px; --shadow-card:0 1px 2px rgba(11,42,74,.06),0 4px 16px rgba(11,42,74,.05);
+  --space-unit:4px; --shadow-card:0 1px 2px rgba(12,9,13,.06),0 4px 16px rgba(12,9,13,.05);
+  --ring-focus:0 0 0 3px var(--accent-100),0 0 0 1.5px var(--accent-700);
   --ease-out:cubic-bezier(.16,1,.3,1); --dur-fast:140ms; --dur:220ms;
 }
 ```
@@ -152,7 +163,9 @@ tappable ≥ 16px.
 
 **Non-negotiable rules:**
 - Status = **colour + icon + word + shape** (`✓`/`△`/`!` and `●`/`▲`/`■`). Never colour alone.
-- Brand colour is never green/amber/red.
+- Brand crimson is kept **magenta-leaning and clear of the reserved status red/amber/green**; danger and
+  error UI use the **status** red, never the brand crimson, and info uses the cyan accent — so brand and
+  status never collide. Coral + gold are chart-only.
 - WCAG 2.1 AA contrast; grower tap targets ≥ 48px (use 52–64px); numbers in mono with tabular figures.
 - Numeric entry on grower screens uses a **big +/− stepper**, not a raw keyboard.
 
@@ -342,6 +355,14 @@ Ross weight curve — that under-performance is the hero story, keep it).
 - [x] **Accessible + reduced-motion + no load-flash** — `aria-current="page"` on the active item, `aria-expanded` on group disclosure, native keyboard nav + the global `:focus-visible` ring, rail tooltips reachable on hover **and** focus. `useReducedMotion()` (via `MotionConfig reducedMotion="always"`) strips movement while keeping legibility — the global CSS reset alone can't stop JS-driven Framer motion. Animation is gated on the user's **first toggle** (not a `setState`-in-effect mount flag, which the repo's lint forbids), so `usePersisted`'s hydration correction never animates a collapse on page load. Mobile is untouched: below `md` there's no rail — the hamburger still opens the off-canvas drawer.
 
 > **Sidebar decision.** Grilled how the reference's *flat-list* `layout` motion maps onto our *nested* IA before building. The answer was **one stable tree that morphs**, not a cross-fade of two trees and not a flattened rail: keeping the same DOM in both modes is exactly what lets Framer's `layout` glide items cleanly, and it honours "keep our IA." Two adaptations fall out of the rail having **no disclosure affordance** — it shows every item (reachability beats respecting a hidden-group preference you can't undo there), and group headings become hairlines rather than vanishing. Per emil-kowalski's rule that *frequent* list-navigation shouldn't be animated, the active highlight is a **static** background (it only glides when the rail itself collapses), avoiding motion on every nav click. Badges are wired **live** but only for roles that have one, and stay honest (no invented counts; hidden at zero). Standing headless caveat (Convex env gates the app here): covered by `tsc`, `npm run build`, lint (changed files) and the full unit suite (71 green); a browser pass (glide vs. snap, label fade, heading→hairline, brand mark swap, bottom Hide toggle, rail tooltips on hover+focus, manager Alerts pill/dot hidden-at-zero, reduced-motion instant, mobile drawer intact) follows once a Convex dev URL exists.
+
+**Vibrance pass — Horizon blue retired for a crimson + near-black + cyan system**
+- [x] **New brand system, tokens only** (`app/globals.css`) — the whole re-theme is a one-file change: re-pointed the `--brand-*` ramp to **crimson** (anchored on the vivid `#E01A4F`; `brand-700 #D4164A` primary, `brand-900 #0C090D` near-black for bands/ink) + a new **cyan `--accent-*`** ramp (data/focus/info) + a `--wash` token, vibrant **`--chart-1..6`**, brighter `--paper #FAF8F4`, deeper `--ink #0C090D`, cyan `--ring-focus`, and bolder type helpers (display/h1 → **800**, h2 → 700). Because components lean on `brand-*`/helper tokens, almost everything re-coloured with **no call-site edits**.
+- [x] **Every new step is AA-verified** — computed WCAG contrast for each real pairing: white-on-`brand-700` 5.2:1, `brand-700` on white 5.2:1 / on the `brand-50` tint (active-nav) 4.7:1, `ink` on `paper` ~18:1, cyan **`accent-700`** text/focus 5.0:1 (the light `#53B3CB` is fills-only at 2.4:1, so text/focus use the dark step). Chart palette run through the **dataviz validator** (colour-blind separation + ≥3:1 on surface all PASS), ordered to lead with band-safe hues so a line stays legible over the green/amber/red status bands.
+- [x] **Status stays reserved; crimson can't masquerade as error** — green/amber/red untouched; `Button` `danger` + all error UI stay on **status-red**; the `Alert` `info` variant moved from the (now-crimson) brand tint to the **cyan** accent tint; coral `#F15946` + gold live in **charts only**. Off-token `rgba(11,42,74,…)` washes/shadows tokenised (`--wash`, ink-tinted depth); `themeColor` + the dependency-free `global-error` crash screen retinted to the new palette.
+- [x] Docs updated: `docs/brand-guidelines.md §3` rewritten (blue retired), this changelog + the `§6` token block refreshed.
+
+> **Vibrance decision.** The user supplied a 5-swatch palette, but **three of the five sat in the reserved status red/amber hues** — so adopting it wholesale would have broken the "status stays reserved / accent stays clear of status / AA / colour-blind-safe" rules the user themselves set. Grilled that collision first and landed on a **guarded** system: the two status-safe swatches (near-black, cyan) + one warm signature (crimson, kept magenta-leaning and *never* used as error) become the UI; coral + gold are quarantined to charts where no status semantics apply. Blue was **retired** (the user found it generic), crimson made primary but held to a **confident accent on a light, white-dominant canvas** (crimson-drenched would read as constant alarm — wrong for a "calm, never alarmist" farm tool). Contrast wasn't eyeballed: the crimson/cyan steps were picked by **computing WCAG ratios** and the chart set by **running the dataviz validator**. Standing headless caveat (Convex env gates the app here): covered by `tsc`, `npm run build`, lint and the full unit suite (71 green); a browser pass (vibrant-not-dark, info-cyan vs error-red unmistakable, status pills unchanged, charts legible over bands, AA holds, bolder type) follows once a Convex dev URL exists.
 
 ---
 

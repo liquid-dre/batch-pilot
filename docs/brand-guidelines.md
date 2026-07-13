@@ -34,22 +34,42 @@ alone. Never: stretch/distort, recolour to status colours, rotate, or add shadow
 
 ## 3. Colour
 
-Brand colour is **Horizon blue** — the only colour that ever changes per white-label client, and it must
-stay clear of the green/amber/red status system.
+Brand colour is **crimson** (`#E01A4F`) — bold, warm and editorial. It carries the identity (primary
+actions, active/selected states, emphasis, the logo) but stays a **confident accent (~10–15% of the
+surface)** on a **light, white-dominant canvas** — never a wall of red, so the product still reads calm,
+not alarmist. A **cyan** accent handles the cooler, quieter work; **near-black** carries type and the few
+deliberate dark bands. The brand ramp is the only colour that changes per white-label client, and it must
+stay clear of the green/amber/red status system. *(Horizon blue is retired — it read as generic.)*
 
-**Brand — Horizon (themeable):** `brand900 #0B2A4A` · `brand700 #14487E` (primary) · `brand600 #1A5B9C`
-(hover) · `brand500 #2474C4` (accent/link) · `brand100 #DCEAF7` (tint) · `brand50 #EEF5FC` (surface).
+**Brand — crimson (themeable):** `brand900 #0C090D` (near-black — dark bands / deepest ink) · `brand800
+#A50F34` (primary hover) · `brand700 #D4164A` (primary — buttons, logo, active text) · `brand600 #E01A4F`
+(the vivid signature — links, emphasis) · `brand500 #EF4C6D` (bright hairlines/accents, non-text) ·
+`brand100 #FBD7E0` (tint) · `brand50 #FDEEF2` (surface/active-nav). Every step is WCAG-AA verified for its
+use (white-on-brand700, brand700-on-white/tint all ≥ 4.5:1).
 
-**Neutrals — warm grey (fixed):** Ink `#1B1E23` · Slate `#44474E` · Muted `#6B6F76` · Hint `#9499A1` ·
-Border `#C9CDD3` · Divider `#E4E7EA` · Paper `#F4F2ED` · Surface `#FFFFFF`. Body text is Ink on Paper
-(13.8:1 — readable in direct sun).
+**Accent — cyan (themeable):** `accent700 #12798F` (text + focus ring, AA on white) · `accent600 #2B93AB`
+(UI borders) · `accent500 #53B3CB` (fills / chart marks, non-text) · `accent100 #C9E8EE` (focus halo) ·
+`accent50 #E8F5F8` (info surfaces). **Cyan = data, focus, links-secondary and *info*** — so an
+informational callout can never be mistaken for a red error. The focus ring is cyan, not crimson.
+
+**Neutrals — warm grey (fixed):** Ink `#0C090D` (near-black) · Slate `#44474E` · Muted `#6B6F76` · Hint
+`#9499A1` · Border `#C9CDD3` · Divider `#E4E7EA` · Paper `#FAF8F4` (bright, airy) · Surface `#FFFFFF`. Body
+text is Ink on Paper (~18:1 — readable in direct sun).
 
 **Status — fixed & reserved (never used for branding):** Green `#1F7A3D` (on track) · Amber `#C77800`
 (at risk) · Red `#C62828` (needs attention). Each also has an AA-safe tint for badges. **Status is never
-communicated by colour alone** — always colour + icon (`✓`/`△`/`!`) + word + shape (`●`/`▲`/`■`).
+communicated by colour alone** — always colour + icon (`✓`/`△`/`!`) + word + shape (`●`/`▲`/`■`). Because
+the brand is now red-family, **danger/error UI stays on the reserved status-red, never the crimson brand**,
+and crimson is kept magenta-leaning + always paired with an action label so it can't read as "error".
 
-**Themeable:** brand scale, logo/name, accent. **Fixed:** status colours, neutrals, type, spacing, radius,
-icon style.
+**Chart series (vibrant, validated):** a colourful categorical set that draws the eye — teal `#0D8BA3` ·
+crimson `#E01A4F` · violet `#7A5CC0` · ochre `#B8790F` · indigo `#4B5BD0` · coral `#F15946`. Ordered to be
+colour-blind-separable and to lead with band-safe hues so a single line stays legible over the
+green/amber/red status bands. **Coral and gold live in charts ONLY** — never as UI/brand/status, so they
+can't be confused with the reserved amber/red.
+
+**Themeable:** brand (crimson) scale, accent (cyan) scale, logo/name, chart series. **Fixed:** status
+colours, neutrals, type, spacing, radius, icon style.
 
 ---
 
@@ -80,12 +100,12 @@ no tractors. Always ship a solid-colour offline fallback.
   minimum with room for gloves). Primary = brand700 on white; secondary = brand50/brand100; ghost; danger
   = red tint; disabled = divider/hint.
 - **Inputs:** 52–64px tall. Numeric entry on grower screens uses a **big +/− stepper**, not a keyboard
-  (low-literacy, gloved, in-sun). Focused state = brand500 ring.
+  (low-literacy, gloved, in-sun). Focused state = cyan accent ring.
 - **Status indicator (signature component):** card with `FLOCK · DAY` header, a pill (tint bg + status
   colour + icon + word + shape), and a plain-language line ("Feed is below target. Check the feeders.").
 - **Alerts:** info (brand tint), success (green tint), warning (amber tint), error (red tint); icon +
   bold title + plain line.
-- **Data table (contractor):** dark Horizon header row, mono tabular numbers, status pills, dense rows.
+- **Data table (contractor):** near-black header row, mono tabular numbers, status pills, dense rows.
 
 ---
 
