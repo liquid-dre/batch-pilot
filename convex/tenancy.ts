@@ -101,17 +101,9 @@ export const inviteSupervisors = mutation({
   },
 });
 
-/** Contractor: rename a farm they own. */
-export const renameFarm = mutation({
-  args: { siteId: v.string(), name: v.string() },
-  handler: async (ctx, { siteId, name }) => {
-    const { site } = await requireOwnedFarm(ctx, siteId);
-    const trimmed = name.trim();
-    if (!trimmed) throw new Error("Farm name is required");
-    await ctx.db.patch(site._id, { name: trimmed });
-    return { ok: true };
-  },
-});
+// A farm's name is set once at creation (`createFarm`) and is intentionally
+// immutable afterwards — there is deliberately no rename mutation, so a
+// contractor can't change it from the UI or by a direct call.
 
 /**
  * Claim a pending invite for the signed-in user's email. The auto-match in

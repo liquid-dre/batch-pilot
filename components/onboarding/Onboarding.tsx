@@ -115,22 +115,13 @@ function ContractorOnboarding({ workspace }: { workspace: any }) {
 }
 
 function ContractorFarmCard({ farm }: { farm: any }) {
-  const renameFarm = useMutation(api.tenancy.renameFarm);
+  // The farm name is set once at creation and is read-only thereafter for the
+  // contractor (there is no rename path — UI or mutation). Supervisors are still
+  // theirs to invite.
   const inviteSupervisors = useMutation(api.tenancy.inviteSupervisors);
-  const [name, setName] = useState(farm.name);
-  const [savingName, setSavingName] = useState(false);
   const [newEmail, setNewEmail] = useState("");
   const [inviting, setInviting] = useState(false);
-  const nameChanged = name.trim().length > 0 && name.trim() !== farm.name;
 
-  async function saveName() {
-    setSavingName(true);
-    try {
-      await renameFarm({ siteId: farm.id, name: name.trim() });
-    } finally {
-      setSavingName(false);
-    }
-  }
   async function invite(e: React.FormEvent) {
     e.preventDefault();
     if (!newEmail.trim()) return;
@@ -145,25 +136,10 @@ function ContractorFarmCard({ farm }: { farm: any }) {
 
   return (
     <div className="rounded-[var(--radius-card)] bg-surface p-5 shadow-card">
-      <div className="flex items-center gap-2">
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          aria-label="Farm name"
-          className="min-w-0 flex-1 rounded-[var(--radius-control)] border border-transparent bg-transparent px-1.5 py-0.5 font-display text-h3 text-ink outline-none hover:border-divider focus-visible:border-brand-500"
-        />
+      <div className="flex items-baseline justify-between gap-2">
+        <h3 className="min-w-0 truncate text-h3 text-ink">{farm.name}</h3>
         <span className="shrink-0 font-mono text-label text-muted">{farm.farmCode}</span>
       </div>
-      {nameChanged && (
-        <button
-          type="button"
-          onClick={saveName}
-          disabled={savingName}
-          className="mt-1 text-label font-semibold text-brand-700 hover:text-brand-600 disabled:opacity-60"
-        >
-          {savingName ? "Saving…" : "Save name"}
-        </button>
-      )}
       <p className="mt-1 text-label text-muted">{farm.houseCount} house(s) set up</p>
 
       <p className="mt-4 mb-1.5 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-hint">Supervisors</p>
