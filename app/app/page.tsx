@@ -25,8 +25,16 @@ import type { DashboardData, HouseView } from "@/lib/view";
 import type { GrowerDashboardData } from "@/components/flock/GrowerDashboard";
 import type { HouseEfficiency } from "@/components/flock/EfficiencyPanel";
 import { RoleHome } from "@/components/shell/RoleHome";
+import { Onboarding } from "@/components/onboarding/Onboarding";
 
 export default async function Page() {
+  // When Convex is connected, the home is the multi-tenant onboarding hub
+  // (real per-account data). The mock demo dashboards below only run in the
+  // no-backend prototype. Stage 2 converts the rest of the screens.
+  if (process.env.NEXT_PUBLIC_CONVEX_URL) {
+    return <Onboarding />;
+  }
+
   // The home assembles both role bundles; RoleHome picks by the active role.
   const [site, contractor, batch, rollup, houses, feed, catching, projection, alerts, weightBand, plannedBatch, portfolio, supervisor] =
     await Promise.all([

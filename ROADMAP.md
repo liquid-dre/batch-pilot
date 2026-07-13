@@ -290,8 +290,48 @@ Ross weight curve — that under-performance is the hero story, keep it).
 
 ## 9. Explicitly deferred (post-MVP) — and the seam each will use
 
-- **Auth → Clerk** — seam: `<AuthProvider>` / `useCurrentUser()`; the boundary is `app/app/layout.tsx` and the landing CTAs (`components/marketing/Landing.tsx`) become real sign-in / sign-up. The login screen already offers the three profiles (Supervisor / Foreman, Manager, Contractor); each Clerk session resolves to one `Role` and `isGrowerRole()` gates the grower register. The **maker-checker** correction trail (`EditRecord` via `submitManagerEdit` / `getEditLog`) attributes each edit to the manager — today the auth-stub user, later the authed Clerk identity (and a Convex audit table)
-- **Database + realtime → Convex** — seam: `lib/data/*`
+- **Auth → Convex Auth** (was Clerk) — seam: `<AuthProvider>` / `useCurrentUser()`.
+  **In progress** (same branch): auth runs entirely in Convex via
+  `@convex-dev/auth` (email + password), so there is no third-party auth service —
+  identity and app data share one backend. `convex/auth.ts` (Password provider,
+  role captured at sign-up), `convex/schema.ts` (`authTables` + a custom `users`
+  table carrying `role` / `siteId` / `contractorId`), `convex/http.ts`,
+  `convex/users.ts` (`currentUser`). App side: `ConvexAuthNextjsServerProvider`
+  (root layout) + `ConvexClientProvider` (client) + `middleware.ts` gating
+  `/app` → `/signin`; the `/signin` route is a real email+password sign-in /
+  sign-up with the grower(Supervisor/Manager)/contractor role picker.
+  `useCurrentUser()` keeps its shape — it returns the signed-in Convex user when
+  connected, and falls back to the demo role switcher when `NEXT_PUBLIC_CONVEX_URL`
+  is unset. The **maker-checker** trail is now attributed to the authenticated
+  user server-side (`getAuthUserId` in `submitManagerEdit`), no longer spoofable.
+  **Multi-tenant onboarding — stage 1 (identity loop):** no demo tenant is
+  assigned any more (a fresh account is blank). A contractor signs up self-serve
+  (their own org); supervisors/managers are **invite-only**. `convex/tenancy.ts`
+  (`createFarm`, `inviteManagers`, `myWorkspace`) + an `invites` table + the auth
+  `afterUserCreatedOrUpdated` hook match a sign-up email to its invite and stamp
+  role + farm. `components/onboarding/Onboarding.tsx` is the `/app` home when
+  Convex is connected: contractor creates farms + invites supervisors, supervisor
+  invites managers, each lands on their own (blank) farm. `npx convex run seed:clear`
+  blanks the demo. **Stage 2a (done):** the grower configures the farm on Convex
+  from the onboarding home — houses (`setHouses`) + a growing cycle
+  (`startCycle`: batch + per-house placements), with farm-scoped unique ids.
+  **Stage 2b (done):** supervisor daily capture (`writes.submitDailyUpdate`,
+  tenant-guarded) + a live manager review panel, both on the reactive
+  `farm.farmData` query — a saved round shows up live on the manager's screen.
+  **Stage 2c (next):** the full analytics dashboard (projections, weight-vs-Ross
+  curve, alerts, efficiency) and the contractor portfolio, per farm; the nav
+  routes other than the home still show the mock demo until then.
+- **Database + realtime → Convex** — seam: `lib/data/*`. **In progress** (branch
+  `claude/convex-integration-setup-g02tm5`): backend scaffolded — `convex/schema.ts`
+  (every operational entity, app id kept as indexed `extId`), `convex/seed.ts` +
+  `convex/seedData.json` (a byte-identical snapshot of the mock demo),
+  `convex/reads.ts` (`getDataset`, one reactive query) and `convex/writes.ts`
+  (daily / feed / weights / manager-edit / saveHouses / confirmAllocation
+  mutations, re-deriving the cumulative chain). `<ConvexClientProvider>` wraps
+  the app (root layout) and is a no-op until `NEXT_PUBLIC_CONVEX_URL` is set.
+  Runbook + the
+  screen-by-screen realtime conversion recipe: **`docs/CONVEX.md`**. Static
+  reference (Ross curve, vaccination schedule, demo users) stays in code.
 - **Payments → Stripe** — seam: `usePlan()`
 - **WhatsApp ingestion → Twilio** — 1:1 messaging to a BatchPilot number, tolerant parser + echo-back
   (the data model is already channel-agnostic for this)
