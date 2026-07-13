@@ -6,12 +6,12 @@ import type { House, PlannedBatch } from "@/lib/types";
 import { confirmAllocation, type Allocation } from "@/lib/data";
 import { useConfirmedAllocation } from "@/lib/allocationStore";
 import { num, shortDate } from "@/lib/format";
-import { allocationSavedToast } from "@/lib/copy";
+import { allocationSavedToast, SAVING, saveFailedToast } from "@/lib/copy";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardEyebrow } from "@/components/ui/Card";
 import { Stepper } from "@/components/ui/Stepper";
 import { Alert } from "@/components/ui/Alert";
-import { useToast } from "@/components/ui/Toast";
+import { notify } from "@/components/ui/notify";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { IconStatusGood } from "@/components/icons";
 import { cn } from "@/lib/cn";
@@ -34,7 +34,6 @@ function Summary({ label, value, sub }: { label: string; value: string; sub?: st
 
 export function AllocationForm({ planned, houses, recommended }: AllocationFormProps) {
   const router = useRouter();
-  const { toast } = useToast();
 
   const recMap = useMemo(() => Object.fromEntries(recommended.map((r) => [r.houseId, r.count])), [recommended]);
   const [counts, setCounts] = useState<Record<string, number>>(recMap);
@@ -49,10 +48,19 @@ export function AllocationForm({ planned, houses, recommended }: AllocationFormP
   const balanced = diff === 0;
 
   async function handleConfirm() {
-    const result = await confirmAllocation(houses.map((h) => ({ houseId: h.id, count: counts[h.id] ?? 0 })));
-    setConfirmed(result);
-    const t = allocationSavedToast(total, result.length);
-    toast(t.title, { tone: "success", description: t.description });
+    try {
+      const result = await notify.promise(
+        confirmAllocation(houses.map((h) => ({ houseId: h.id, count: counts[h.id] ?? 0 }))),
+        {
+          loading: SAVING,
+          success: (r) => allocationSavedToast(total, r.length),
+          error: saveFailedToast,
+        },
+      );
+      setConfirmed(result);
+    } catch {
+      /* error toast already shown */
+    }
   }
 
   if (confirmed) {

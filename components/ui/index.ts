@@ -5,5 +5,6 @@ export { Input } from "./Input";
 export { Stepper } from "./Stepper";
 export { Table, THead, TBody, TR, TH, TD } from "./Table";
 export { Alert } from "./Alert";
-export { ToastProvider, useToast } from "./Toast";
+export { notify } from "./notify";
+export { AppToaster } from "./Toaster";
 export { BenchmarkToggle, useWeightCompareMode } from "./BenchmarkToggle";

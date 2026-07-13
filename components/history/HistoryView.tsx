@@ -13,7 +13,8 @@ import { Button } from "@/components/ui/Button";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/Table";
 import { EstTag, EstFootnote } from "@/components/ui/Estimated";
 import { BenchmarkToggle, useWeightCompareMode } from "@/components/ui/BenchmarkToggle";
-import { useToast } from "@/components/ui/Toast";
+import { notify } from "@/components/ui/notify";
+import { correctionSavedToast, SAVING, saveFailedToast } from "@/lib/copy";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { cn } from "@/lib/cn";
 import { HistoryChart, type ChartDatum } from "./HistoryChart";
@@ -70,7 +71,6 @@ export function HistoryView({
   const { user } = useCurrentUser();
   const isManager = user.role === "manager";
   const canEdit = isManager && editable;
-  const { toast } = useToast();
   const [compareMode] = useWeightCompareMode();
 
   // History + audit trail are held in state so a manager's correction (which
@@ -113,18 +113,29 @@ export function HistoryView({
   }, [edits]);
 
   async function handleSave(entryId: string, changes: Partial<Record<EditableField, number | null>>) {
-    const { records } = await submitManagerEdit({
-      entityId: entryId,
-      editor: { id: user.id, name: user.name, role: user.role },
-      changes,
-    });
-    const [h, log] = await Promise.all([getBatchHistory(), getEditLog()]);
-    setHistory(h);
-    setEdits(log);
-    toast(`Correction saved · ${records.length} field${records.length === 1 ? "" : "s"}`, {
-      tone: "success",
-      description: "Recorded with your name and the previous value. The cumulative figures were recomputed.",
-    });
+    try {
+      // One toast covers the write + the two re-fetches (history + audit log).
+      const { h, log } = await notify.promise(
+        (async () => {
+          const { records } = await submitManagerEdit({
+            entityId: entryId,
+            editor: { id: user.id, name: user.name, role: user.role },
+            changes,
+          });
+          const [h, log] = await Promise.all([getBatchHistory(), getEditLog()]);
+          return { records, h, log };
+        })(),
+        {
+          loading: SAVING,
+          success: (r) => correctionSavedToast(r.records.length),
+          error: saveFailedToast,
+        },
+      );
+      setHistory(h);
+      setEdits(log);
+    } catch {
+      /* error toast already shown */
+    }
   }
 
   const toggleHouse = (id: string) =>

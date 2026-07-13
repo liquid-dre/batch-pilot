@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { dailySaved } from "@/lib/copy";
+import { dailySaved, SAVING, saveFailedToast } from "@/lib/copy";
+import { notify } from "@/components/ui/notify";
 
 /**
  * Stage 2b — the capture → review loop, both on the reactive `farm.farmData`
@@ -36,45 +37,44 @@ function CaptureHouseCard({ house, today }: { house: any; today: string }) {
   const [culls, setCulls] = useState("");
   const [feed, setFeed] = useState("");
   const [pending, setPending] = useState(false);
-  const [saved, setSaved] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   const total = (Number(dayM) || 0) + (Number(nightM) || 0);
 
   async function save() {
     setPending(true);
-    setSaved(null);
-    setError(null);
+    const dayMortality = Number(dayM) || 0;
+    const nightMortality = Number(nightM) || 0;
+    const cullsN = Number(culls) || 0;
+    const feedAddedKg = Number(feed) || 0;
     try {
-      const res: any = await submit({
-        houseId: house.houseId,
-        date: today,
-        day: house.dayToRecord,
-        dayMortality: Number(dayM) || 0,
-        nightMortality: Number(nightM) || 0,
-        culls: Number(culls) || 0,
-        feedAddedKg: Number(feed) || 0,
-      });
-      setSaved(
-        dailySaved({
-          houseName: house.name,
-          day: res.day,
-          mortality: (Number(dayM) || 0) + (Number(nightM) || 0),
-          dayMortality: Number(dayM) || 0,
-          nightMortality: Number(nightM) || 0,
-          culls: Number(culls) || 0,
-          feedAddedKg: Number(feed) || 0,
-          cumMort: res.cumMort,
-          cumPct: res.cumPct ?? 0,
-          birdsRemaining: res.birdsRemaining,
-        }).banner,
+      await notify.promise(
+        submit({ houseId: house.houseId, date: today, day: house.dayToRecord, dayMortality, nightMortality, culls: cullsN, feedAddedKg }),
+        {
+          loading: SAVING,
+          success: (res: any) => {
+            const c = dailySaved({
+              houseName: house.name,
+              day: res.day,
+              mortality: dayMortality + nightMortality,
+              dayMortality,
+              nightMortality,
+              culls: cullsN,
+              feedAddedKg,
+              cumMort: res.cumMort,
+              cumPct: res.cumPct ?? 0,
+              birdsRemaining: res.birdsRemaining,
+            });
+            return { title: c.toastTitle, description: c.toastDescription };
+          },
+          error: saveFailedToast,
+        },
       );
       setDayM("");
       setNightM("");
       setCulls("");
       setFeed("");
     } catch {
-      setError("Could not save. Try again.");
+      /* error toast already shown */
     } finally {
       setPending(false);
     }
@@ -97,9 +97,6 @@ function CaptureHouseCard({ house, today }: { house: any; today: string }) {
         <Field label="Feed added (kg)" value={feed} onChange={setFeed} decimal />
       </div>
       <p className="mt-2 text-label text-muted">Deaths this round: <span className="font-mono text-ink">{total}</span></p>
-
-      {saved && <p className="mt-3 rounded-[var(--radius-control)] bg-status-good-tint px-3 py-2 text-label text-status-good">{saved}</p>}
-      {error && <p role="alert" className="mt-3 text-label text-status-bad">{error}</p>}
 
       <button
         type="button"

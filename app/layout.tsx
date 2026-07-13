@@ -3,6 +3,7 @@ import { Plus_Jakarta_Sans, IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/googl
 import { ConvexAuthNextjsServerProvider } from "@convex-dev/auth/nextjs/server";
 import "./globals.css";
 import { Providers } from "./providers";
+import { AppToaster } from "@/components/ui/Toaster";
 
 /* Plus Jakarta Sans is a variable font — no explicit weights needed.
    The two IBM Plex families are static, so their weights are declared.
@@ -52,6 +53,7 @@ export default function RootLayout({
       >
         <body className="min-h-full">
           <Providers>{children}</Providers>
+          <AppToaster />
         </body>
       </html>
     </ConvexAuthNextjsServerProvider>
