@@ -394,3 +394,80 @@ export interface GrowerDetailData {
   houses: HouseTrend[];
   pastCycles: PastCycle[];
 }
+
+/* ----------------------------------------------- Rebuilt dashboard (both roles) --- */
+
+/** Cycle info for the dashboard header — cycle no, day-of-cycle range, key dates. */
+export interface DashboardCycleInfo {
+  siteName: string;
+  cycleNo: number;
+  breed: string;
+  today: string;
+  /** Current working day of cycle (latest captured + 1), per-house range. */
+  dayLow: number;
+  dayHigh: number;
+  placingDate: string;
+  killDate: string;
+  daysToKill: number;
+  houseCount: number;
+}
+
+/** One site-level on-track card: ahead/behind the Ross guideline, and by how much. */
+export interface DashboardMetric {
+  key: "weight" | "mortality" | "feed" | "fcr";
+  label: string;
+  level: StatusLevel;
+  /** The site figure and its Ross/contractor reference, in the metric's own unit. */
+  actual: number;
+  target: number;
+  unit: "g" | "pp" | "ratio" | "gPerBird";
+  /** What the reference is called ("target" / "band" / "guide"). */
+  targetWord: string;
+  /** Estimated from feed delivered, not measured consumption (FCR, feed). */
+  estimated?: boolean;
+  /** Manager depth — the engine's grower-voice guidance on amber/red. */
+  cause?: string;
+  fix?: string;
+}
+
+/** Yesterday's captured round for one house (read-only review). */
+export interface YesterdayEntry {
+  houseId: string;
+  houseName: string;
+  day: number;
+  mortality: number;
+  culls: number;
+  feedAddedKg: number;
+  cumMort: number;
+  cumPct: number;
+  birdsRemaining: number;
+}
+
+export interface ProjectionPoint {
+  day: number;
+  weightG: number;
+}
+/** Actual weigh-ins to date + a projected forward line (site or one house). */
+export interface ProjectionLine {
+  houseId?: string;
+  name: string;
+  actual: ProjectionPoint[];
+  projected: ProjectionPoint[];
+}
+export interface WeightProjection {
+  ross: ProjectionPoint[];
+  killDay: number;
+  yMax: number;
+  greenFrac: number;
+  amberFrac: number;
+  site: ProjectionLine;
+  houses: ProjectionLine[];
+}
+
+/** The whole dashboard bundle both role dashboards render from. */
+export interface DashboardView {
+  cycle: DashboardCycleInfo;
+  metrics: DashboardMetric[];
+  yesterday: YesterdayEntry[];
+  projection: WeightProjection;
+}
