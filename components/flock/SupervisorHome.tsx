@@ -6,13 +6,13 @@ import type { CaptureHouse, SupervisorCaptureData } from "@/lib/view";
 import type { DailyEntry } from "@/lib/types";
 import { submitDailyUpdate } from "@/lib/data";
 import { grams, longDate, num, pct } from "@/lib/format";
-import { dailySaved, savedLabels } from "@/lib/copy";
+import { dailySaved, savedLabels, SAVING, saveFailedToast } from "@/lib/copy";
 import { compareToStandard, type Standing } from "@/lib/standing";
 import { useTodaysCaptures } from "@/lib/captureStore";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody } from "@/components/ui/Card";
 import { Stepper } from "@/components/ui/Stepper";
-import { useToast } from "@/components/ui/Toast";
+import { notify } from "@/components/ui/notify";
 import {
   IconCheck,
   IconStatusGood,
@@ -68,7 +68,6 @@ function initialDrafts(houses: CaptureHouse[]): Record<string, Draft> {
 }
 
 export function SupervisorHome({ data }: { data: SupervisorCaptureData }) {
-  const { toast } = useToast();
   const { user } = useCurrentUser();
   const firstName = user.name.split(" ")[0];
   const { houses } = data;
@@ -99,23 +98,36 @@ export function SupervisorHome({ data }: { data: SupervisorCaptureData }) {
 
   async function handleSave() {
     setSubmitting(true);
-    const entry = await submitDailyUpdate({
-      houseId: house.id,
-      date: data.today,
-      day: house.day,
-      dayMortality: draft.dayMortality,
-      nightMortality: draft.nightMortality,
-      culls: draft.culls,
-      feedAddedKg: draft.feedAddedKg,
-      ...treatmentsPayload(draft.treatments),
-    });
-    setSaved({ ...saved, [house.id]: entry });
-    const c = dailySaved({ houseName: house.name, ...entry });
-    toast(c.toastTitle, { tone: "success", description: c.toastDescription });
-    setSubmitting(false);
-    // Move to the next house still to record, so the round flows on its own.
-    const nextPending = houses.find((h) => h.id !== house.id && !saved[h.id]);
-    if (nextPending) setSelectedId(nextPending.id);
+    try {
+      const entry = await notify.promise(
+        submitDailyUpdate({
+          houseId: house.id,
+          date: data.today,
+          day: house.day,
+          dayMortality: draft.dayMortality,
+          nightMortality: draft.nightMortality,
+          culls: draft.culls,
+          feedAddedKg: draft.feedAddedKg,
+          ...treatmentsPayload(draft.treatments),
+        }),
+        {
+          loading: SAVING,
+          success: (e) => {
+            const c = dailySaved({ houseName: house.name, ...e });
+            return { title: c.toastTitle, description: c.toastDescription };
+          },
+          error: saveFailedToast,
+        },
+      );
+      setSaved({ ...saved, [house.id]: entry });
+      // Move to the next house still to record, so the round flows on its own.
+      const nextPending = houses.find((h) => h.id !== house.id && !saved[h.id]);
+      if (nextPending) setSelectedId(nextPending.id);
+    } catch {
+      /* error toast already shown */
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (

@@ -6,12 +6,12 @@ import type { DailyEntry } from "@/lib/types";
 import type { DailyFormData, FormHouse } from "@/lib/view";
 import { submitDailyUpdate } from "@/lib/data";
 import { num, pct } from "@/lib/format";
-import { dailySaved, savedLabels } from "@/lib/copy";
+import { dailySaved, savedLabels, saveFailedToast } from "@/lib/copy";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardEyebrow } from "@/components/ui/Card";
 import { Stepper } from "@/components/ui/Stepper";
 import { Alert } from "@/components/ui/Alert";
-import { useToast } from "@/components/ui/Toast";
+import { notify } from "@/components/ui/notify";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { IconCheck } from "@/components/icons";
 import { cn } from "@/lib/cn";
@@ -48,7 +48,6 @@ const CheckGlyph = () => <IconCheck className="size-4" />;
 
 export function DailyUpdateForm({ data }: { data: DailyFormData }) {
   const router = useRouter();
-  const { toast } = useToast();
   const { houses, sitePlaced, siteCumMort } = data;
 
   const [drafts, setDrafts] = useState<Record<string, Draft>>(() => initialDrafts(houses));
@@ -79,20 +78,26 @@ export function DailyUpdateForm({ data }: { data: DailyFormData }) {
 
   async function handleReview() {
     setSubmitting(true);
-    const r = await submitDailyUpdate({
-      houseId: house.id,
-      date: data.today,
-      day: house.nextDay,
-      dayMortality: draft.dayMortality,
-      nightMortality: draft.nightMortality,
-      culls: draft.culls,
-      feedAddedKg: draft.feedAddedKg,
-      tempC: draft.tempEnabled ? draft.tempC : undefined,
-      ...treatmentsPayload(draft.treatments),
-    });
-    setResult(r);
-    setView("review");
-    setSubmitting(false);
+    try {
+      const r = await submitDailyUpdate({
+        houseId: house.id,
+        date: data.today,
+        day: house.nextDay,
+        dayMortality: draft.dayMortality,
+        nightMortality: draft.nightMortality,
+        culls: draft.culls,
+        feedAddedKg: draft.feedAddedKg,
+        tempC: draft.tempEnabled ? draft.tempC : undefined,
+        ...treatmentsPayload(draft.treatments),
+      });
+      setResult(r);
+      setView("review");
+    } catch {
+      const e = saveFailedToast();
+      notify.error(e.title, { description: e.description });
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   function handleConfirm() {
@@ -101,7 +106,7 @@ export function DailyUpdateForm({ data }: { data: DailyFormData }) {
     const c = result
       ? dailySaved({ houseName: house.name, ...result })
       : { toastTitle: `${house.name} saved`, toastDescription: `Day ${house.nextDay} is in.` };
-    toast(c.toastTitle, { tone: "success", description: c.toastDescription });
+    notify.success(c.toastTitle, { description: c.toastDescription });
     const nextPending = houses.find((h) => !nextSaved.has(h.id));
     if (nextPending) setSelectedId(nextPending.id);
     setResult(null);

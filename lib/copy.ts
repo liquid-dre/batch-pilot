@@ -103,3 +103,22 @@ export function housesInvalidToast() {
     description: "Each house needs a name and a capacity.",
   };
 }
+
+/** Loading label for the one-toast async saves. */
+export const SAVING = "Saving…";
+
+/** A save that failed on the backend (kept calm and plain). */
+export function saveFailedToast() {
+  return {
+    title: "Couldn't save",
+    description: "Something went wrong — try again.",
+  };
+}
+
+/** Manager correction saved (was inline in HistoryView; centralised here). */
+export function correctionSavedToast(fieldCount: number) {
+  return {
+    title: `Correction saved · ${fieldCount} field${fieldCount === 1 ? "" : "s"}`,
+    description: "Recorded with your name and the previous value. The cumulative figures were recomputed.",
+  };
+}

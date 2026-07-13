@@ -10,10 +10,10 @@ import { Card, CardBody, CardEyebrow } from "@/components/ui/Card";
 import { Stepper } from "@/components/ui/Stepper";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { BenchmarkToggle, useWeightCompareMode } from "@/components/ui/BenchmarkToggle";
-import { useToast } from "@/components/ui/Toast";
+import { notify } from "@/components/ui/notify";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { formatGap, vsBenchmark } from "@/lib/weightCompare";
-import { weightsSavedToast } from "@/lib/copy";
+import { weightsSavedToast, SAVING, saveFailedToast } from "@/lib/copy";
 import { cn } from "@/lib/cn";
 
 export interface WeightFormHouse {
@@ -49,7 +49,6 @@ function initialDrafts(houses: WeightFormHouse[]): Record<string, Draft> {
 }
 
 export function WeightsForm({ houses }: { houses: WeightFormHouse[] }) {
-  const { toast } = useToast();
   const [compareMode] = useWeightCompareMode();
   const [drafts, setDrafts] = useState<Record<string, Draft>>(() => initialDrafts(houses));
   const [selectedId, setSelectedId] = useState(houses[0]?.id);
@@ -65,10 +64,20 @@ export function WeightsForm({ houses }: { houses: WeightFormHouse[] }) {
     setDrafts((prev) => ({ ...prev, [selectedId]: { ...prev[selectedId], ...partial } }));
 
   async function handleSave() {
-    const r = await submitWeights({ houseId: house.id, day: house.day, ...draft });
-    setSavedPct((prev) => ({ ...prev, [house.id]: r.pctOfTarget }));
-    const t = weightsSavedToast(house.name, r.entry.avgWeightG, r.pctOfTarget);
-    toast(t.title, { tone: r.pctOfTarget >= 98 ? "success" : "info", description: t.description });
+    try {
+      const r = await notify.promise(submitWeights({ houseId: house.id, day: house.day, ...draft }), {
+        loading: SAVING,
+        success: (res) => {
+          const t = weightsSavedToast(house.name, res.entry.avgWeightG, res.pctOfTarget);
+          // Below the Ross target is a heads-up, not a plain success.
+          return { title: t.title, description: t.description, tone: res.pctOfTarget >= 98 ? "success" : "warning" };
+        },
+        error: saveFailedToast,
+      });
+      setSavedPct((prev) => ({ ...prev, [house.id]: r.pctOfTarget }));
+    } catch {
+      /* error toast already shown */
+    }
   }
 
   return (

@@ -5,12 +5,12 @@ import { useRouter } from "next/navigation";
 import type { House } from "@/lib/types";
 import { saveHouses } from "@/lib/data";
 import { num } from "@/lib/format";
-import { housesInvalidToast, housesSavedToast } from "@/lib/copy";
+import { housesInvalidToast, housesSavedToast, SAVING, saveFailedToast } from "@/lib/copy";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Stepper } from "@/components/ui/Stepper";
-import { useToast } from "@/components/ui/Toast";
+import { notify } from "@/components/ui/notify";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { IconTrash } from "@/components/icons";
 
@@ -25,7 +25,6 @@ const TrashIcon = () => <IconTrash className="size-5" />;
 
 export function HouseSetupForm({ houses }: { houses: House[] }) {
   const router = useRouter();
-  const { toast } = useToast();
   const tmp = useRef(0);
 
   const [rows, setRows] = useState<Row[]>(() =>
@@ -55,15 +54,25 @@ export function HouseSetupForm({ houses }: { houses: House[] }) {
     setAttempted(true);
     if (!allValid) {
       const t = housesInvalidToast();
-      toast(t.title, { tone: "error", description: t.description });
+      notify.error(t.title, { description: t.description });
       return;
     }
     setSaving(true);
-    const saved = await saveHouses(rows.map((r) => ({ id: r.id, name: r.name, capacity: r.capacity })));
-    setRows(saved.map((h) => ({ key: h.id, id: h.id, name: h.name, capacity: h.capacity })));
-    setSaving(false);
-    const t = housesSavedToast(saved.length, totalCapacity);
-    toast(t.title, { tone: "success", description: t.description });
+    try {
+      const saved = await notify.promise(
+        saveHouses(rows.map((r) => ({ id: r.id, name: r.name, capacity: r.capacity }))),
+        {
+          loading: SAVING,
+          success: (s) => housesSavedToast(s.length, totalCapacity),
+          error: saveFailedToast,
+        },
+      );
+      setRows(saved.map((h) => ({ key: h.id, id: h.id, name: h.name, capacity: h.capacity })));
+    } catch {
+      /* error toast already shown */
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (

@@ -4,13 +4,13 @@ import { useState } from "react";
 import type { FeedDelivery } from "@/lib/types";
 import { submitFeedDelivery } from "@/lib/data";
 import { kg, num, pct, shortDate } from "@/lib/format";
-import { feedSavedToast } from "@/lib/copy";
+import { feedSavedToast, SAVING, saveFailedToast } from "@/lib/copy";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody } from "@/components/ui/Card";
 import { Stepper } from "@/components/ui/Stepper";
 import { Alert } from "@/components/ui/Alert";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { useToast } from "@/components/ui/Toast";
+import { notify } from "@/components/ui/notify";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { cn } from "@/lib/cn";
 
@@ -34,8 +34,6 @@ function Chip({ active, children, onClick }: { active: boolean; children: React.
 }
 
 export function FeedDeliveryForm({ deliveries, today }: { deliveries: FeedDelivery[]; today: string }) {
-  const { toast } = useToast();
-
   const [feedType, setFeedType] = useState(FEED_TYPES[2]);
   const [bagSizeKg, setBagSizeKg] = useState(50);
   const [bagCount, setBagCount] = useState(300);
@@ -52,14 +50,25 @@ export function FeedDeliveryForm({ deliveries, today }: { deliveries: FeedDelive
 
   async function handleSave() {
     setSaving(true);
-    await submitFeedDelivery({ date: today, feedType, bagSizeKg, bagCount, netWeightKg });
-    setLog((prev) => [
-      { id: `local-${prev.length}`, siteId: "site_nhunge", date: today, feedType, bagSizeKg, bagCount, netWeightKg },
-      ...prev,
-    ]);
-    const t = feedSavedToast(flagged, diffKg);
-    toast(t.title, { tone: flagged ? "info" : "success", description: t.description });
-    setSaving(false);
+    try {
+      await notify.promise(submitFeedDelivery({ date: today, feedType, bagSizeKg, bagCount, netWeightKg }), {
+        loading: SAVING,
+        success: () => {
+          const t = feedSavedToast(flagged, diffKg);
+          // Saved fine, but a short/over load is a heads-up, not a plain success.
+          return { title: t.title, description: t.description, tone: flagged ? "warning" : "success" };
+        },
+        error: saveFailedToast,
+      });
+      setLog((prev) => [
+        { id: `local-${prev.length}`, siteId: "site_nhunge", date: today, feedType, bagSizeKg, bagCount, netWeightKg },
+        ...prev,
+      ]);
+    } catch {
+      /* error toast already shown */
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (

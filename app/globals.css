@@ -273,3 +273,44 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Sonner toasts — themed with our tokens (config in components/ui/Toaster, API
+   in components/ui/notify). Calm surface + a coloured status glyph (matching the
+   old toast look and StatusPill), not full per-type tints. Enter/exit motion is
+   neutralised by the reduced-motion reset above. */
+[data-sonner-toaster] {
+  --normal-bg: var(--surface);
+  --normal-text: var(--ink);
+  --normal-border: var(--divider);
+  --border-radius: var(--radius-control);
+  --gray1: var(--surface);
+  z-index: var(--z-toast);
+}
+[data-sonner-toast] {
+  font-family: var(--font-body);
+  box-shadow: var(--shadow-raised);
+}
+[data-sonner-toast] [data-title] {
+  font-weight: 600;
+  color: var(--ink);
+}
+[data-sonner-toast] [data-description] {
+  color: var(--muted);
+}
+[data-sonner-toast] [data-icon] {
+  color: var(--brand-700);
+}
+[data-sonner-toast][data-type="success"] [data-icon] {
+  color: var(--status-good);
+}
+[data-sonner-toast][data-type="warning"] [data-icon] {
+  color: var(--status-warn);
+}
+[data-sonner-toast][data-type="error"] [data-icon] {
+  color: var(--status-bad);
+}
+[data-sonner-toast] [data-close-button] {
+  color: var(--muted);
+  background: var(--surface);
+  border-color: var(--divider);
+}
