@@ -29,11 +29,15 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 /* Heights match the brand spec: Large 52 / Default 44 / Small 36 (grower screens
-   use `lg`). All pill-shaped now. Colours come from tokens, never hardcoded. */
-const SIZE: Record<Size, { pill: string; dot: string; icon: string; only: string }> = {
-  lg: { pill: "h-[52px] px-6 text-[1.0625rem] gap-2.5", dot: "size-7", icon: "size-4", only: "size-[52px]" },
-  default: { pill: "h-11 px-5 text-[0.9375rem] gap-2", dot: "size-6", icon: "size-3.5", only: "size-11" },
-  sm: { pill: "h-9 px-3.5 text-[0.875rem] gap-1.5", dot: "size-5", icon: "size-3", only: "size-9" },
+   use `lg`). All pill-shaped now. Colours come from tokens, never hardcoded.
+   The left padding is tighter than the right (the dot hugs the edge) and pulls
+   in further on hover — the reference's "lean". `dotPad` is the padding the
+   reveal dot wraps its glyph in (so the dot grows with the glyph); `dotSize` is
+   the fixed footprint used by the loading spinner. */
+const SIZE: Record<Size, { pill: string; dotPad: string; dotSize: string; icon: string; only: string }> = {
+  lg: { pill: "h-[52px] pl-4 pr-6 hover:pl-3 text-[1.0625rem] gap-2.5", dotPad: "p-1.5", dotSize: "size-7", icon: "group-hover:size-4", only: "size-[52px]" },
+  default: { pill: "h-11 pl-3.5 pr-5 hover:pl-2.5 text-[0.9375rem] gap-2", dotPad: "p-1", dotSize: "size-6", icon: "group-hover:size-3.5", only: "size-11" },
+  sm: { pill: "h-9 pl-3 pr-3.5 hover:pl-2 text-[0.875rem] gap-1.5", dotPad: "p-1", dotSize: "size-5", icon: "group-hover:size-3", only: "size-9" },
 };
 
 /* Per-variant pill / dot / revealed-icon colours — all semantic tokens. The
@@ -91,30 +95,37 @@ const INVERSE: Record<Variant, { pill: string; dot: string; icon: string }> = {
 
 const BASE = cn(
   "group relative inline-flex items-center justify-center font-medium select-none rounded-pill",
-  "transition-[background-color,color,border-color,box-shadow,transform] duration-[var(--dur)] ease-[var(--ease-out)]",
+  "transition-[background-color,color,border-color,box-shadow,transform,padding] duration-[var(--dur)] ease-[var(--ease-out)]",
   "active:scale-[0.98] focus-visible:rounded-pill",
   "disabled:pointer-events-none disabled:bg-divider disabled:text-hint disabled:shadow-none disabled:border-transparent",
 );
 
-/** The leading dot that reveals its glyph on hover. */
+/**
+ * The leading dot that EXPANDS into its glyph on hover (the reference move): at
+ * rest a small filled circle (padding around a zero-size glyph); on hover the
+ * glyph grows from nothing, slides in and fades up — so the dot grows into an
+ * arrow-circle and nudges the label. The glyph rotates -45° on press. Reduced
+ * motion snaps to the end-state (still legible) via the global reset.
+ */
 function Dot({ size, dotClass, iconClass, Icon }: { size: Size; dotClass: string; iconClass: string; Icon: IconComponent }) {
   const s = SIZE[size];
   return (
     <span
       aria-hidden
       className={cn(
-        "inline-flex shrink-0 items-center justify-center rounded-full group-hover:scale-110",
-        "transition-[background-color,transform] duration-[var(--dur)] ease-[var(--ease-out)]",
-        s.dot,
+        "inline-flex shrink-0 items-center justify-center rounded-full",
+        "transition-[background-color] duration-[var(--dur)] ease-[var(--ease-out)]",
+        s.dotPad,
         dotClass,
       )}
     >
       <Icon
         className={cn(
+          "size-0 -translate-x-2 opacity-0",
           s.icon,
+          "group-hover:translate-x-0 group-hover:opacity-100 group-active:-rotate-45",
+          "transition-[width,height,transform,opacity] duration-[var(--dur)] ease-[var(--ease-out)]",
           iconClass,
-          "opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0",
-          "transition-[opacity,transform] duration-[var(--dur)] ease-[var(--ease-out)]",
         )}
       />
     </span>
@@ -125,7 +136,7 @@ function Spinner({ size }: { size: Size }) {
   return (
     <span
       aria-hidden
-      className={cn("inline-block shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent", SIZE[size].dot)}
+      className={cn("inline-block shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent", SIZE[size].dotSize)}
     />
   );
 }
