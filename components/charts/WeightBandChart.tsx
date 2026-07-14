@@ -1,16 +1,8 @@
 "use client";
 
-import {
-  Area,
-  CartesianGrid,
-  ComposedChart,
-  Line,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import * as Recharts from "recharts";
 import type { WeightBandData } from "@/lib/view";
+import { ChartContainer, ChartTooltip, type ChartConfig } from "@/components/ui/chart";
 import { compactGap, vsBenchmark, type WeightCompareMode } from "@/lib/weightCompare";
 
 const PALETTE = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "var(--chart-5)", "var(--chart-6)"];
@@ -25,7 +17,9 @@ interface TipItem {
   color?: string;
 }
 
-function ChartTooltip({
+/** Specialised tooltip: drops the shaded-band series and annotates each house's
+ *  gap to the Ross objective. Card styling matches the shadcn primitive. */
+function BandTip({
   active,
   payload,
   label,
@@ -82,51 +76,56 @@ export function WeightBandChart({ data, compareMode = "difference" }: { data: We
     return row;
   });
 
+  // Config drives the per-house colour injected as `--color-<houseId>` by
+  // ChartContainer, keeping the vibrant chart palette config-driven.
+  const config: ChartConfig = {
+    ross: { label: "Ross 308 target", color: "var(--ink)" },
+    ...Object.fromEntries(data.houses.map((h, i) => [h.houseId, { label: h.houseName, color: PALETTE[i % PALETTE.length] }])),
+  };
+
   return (
     <div>
-      <div className="h-[340px] w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={rows} margin={{ top: 8, right: 12, bottom: 4, left: 0 }}>
-            <CartesianGrid stroke="var(--divider)" vertical={false} />
-            <XAxis
-              dataKey="day"
-              type="number"
-              domain={[1, data.maxDay]}
-              tick={axisTick}
-              stroke="var(--border)"
-              tickLine={false}
-              tickMargin={8}
-              label={{ value: "day of cycle", position: "insideBottom", offset: -2, fill: MUTED, fontSize: 11 }}
-              height={40}
+      <ChartContainer config={config} className="h-[340px]">
+        <Recharts.ComposedChart data={rows} margin={{ top: 8, right: 12, bottom: 4, left: 0 }}>
+          <Recharts.CartesianGrid stroke="var(--divider)" vertical={false} />
+          <Recharts.XAxis
+            dataKey="day"
+            type="number"
+            domain={[1, data.maxDay]}
+            tick={axisTick}
+            stroke="var(--border)"
+            tickLine={false}
+            tickMargin={8}
+            label={{ value: "day of cycle", position: "insideBottom", offset: -2, fill: MUTED, fontSize: 11 }}
+            height={40}
+          />
+          <Recharts.YAxis domain={[0, data.yMax]} tick={axisTick} stroke="var(--border)" tickLine={false} width={48} />
+          <ChartTooltip content={(p) => <BandTip {...(p as unknown as { active?: boolean; payload?: TipItem[]; label?: number })} compareMode={compareMode} />} />
+
+          {/* Shaded bands (stacked from 0): red < 90% · amber 90–97% · green ≥97% of Ross */}
+          <Recharts.Area type="monotone" dataKey="redBand" stackId="band" stroke="none" fill="var(--status-bad-tint)" isAnimationActive={false} legendType="none" />
+          <Recharts.Area type="monotone" dataKey="amberBand" stackId="band" stroke="none" fill="var(--status-warn-tint)" isAnimationActive={false} legendType="none" />
+          <Recharts.Area type="monotone" dataKey="greenBand" stackId="band" stroke="none" fill="var(--status-good-tint)" isAnimationActive={false} legendType="none" />
+
+          {/* Ross objective */}
+          <Recharts.Line type="monotone" dataKey="ross" name="Ross 308 target" stroke="var(--color-ross)" strokeWidth={2} strokeDasharray="5 4" dot={false} isAnimationActive={false} />
+
+          {/* Actual weigh-ins per house */}
+          {data.houses.map((h) => (
+            <Recharts.Line
+              key={h.houseId}
+              type="monotone"
+              dataKey={h.houseId}
+              name={h.houseName}
+              stroke={`var(--color-${h.houseId})`}
+              strokeWidth={2}
+              dot={{ r: 2.5 }}
+              connectNulls
+              isAnimationActive={false}
             />
-            <YAxis domain={[0, data.yMax]} tick={axisTick} stroke="var(--border)" tickLine={false} width={48} />
-            <Tooltip content={(p) => <ChartTooltip {...(p as unknown as { active?: boolean; payload?: TipItem[]; label?: number })} compareMode={compareMode} />} />
-
-            {/* Shaded bands (stacked from 0): red < 90% · amber 90–97% · green ≥97% of Ross */}
-            <Area type="monotone" dataKey="redBand" stackId="band" stroke="none" fill="var(--status-bad-tint)" isAnimationActive={false} legendType="none" />
-            <Area type="monotone" dataKey="amberBand" stackId="band" stroke="none" fill="var(--status-warn-tint)" isAnimationActive={false} legendType="none" />
-            <Area type="monotone" dataKey="greenBand" stackId="band" stroke="none" fill="var(--status-good-tint)" isAnimationActive={false} legendType="none" />
-
-            {/* Ross objective */}
-            <Line type="monotone" dataKey="ross" name="Ross 308 target" stroke="var(--ink)" strokeWidth={2} strokeDasharray="5 4" dot={false} isAnimationActive={false} />
-
-            {/* Actual weigh-ins per house */}
-            {data.houses.map((h, i) => (
-              <Line
-                key={h.houseId}
-                type="monotone"
-                dataKey={h.houseId}
-                name={h.houseName}
-                stroke={PALETTE[i % PALETTE.length]}
-                strokeWidth={2}
-                dot={{ r: 2.5 }}
-                connectNulls
-                isAnimationActive={false}
-              />
-            ))}
-          </ComposedChart>
-        </ResponsiveContainer>
-      </div>
+          ))}
+        </Recharts.ComposedChart>
+      </ChartContainer>
 
       {/* Legend: bands + houses */}
       <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-label">

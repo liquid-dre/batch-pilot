@@ -119,7 +119,7 @@ function MetricCard({
         {variant === "manager" ? (
           <Link
             href={historyHref}
-            className="inline-flex items-center gap-1 text-label font-medium text-brand-600 hover:text-brand-700"
+            className="inline-flex items-center gap-1 text-label font-medium text-brand-600 hover:text-brand-600"
           >
             See the day-by-day
             <IconArrowRight className="size-3.5" />

@@ -51,7 +51,7 @@ export function ProjectionChart({ projection, variant }: { projection: WeightPro
 
   const config: ChartConfig = {
     ross: { label: "Ross target" },
-    siteActual: { label: "Actual", color: "var(--brand-700)" },
+    siteActual: { label: "Actual", color: "var(--brand-600)" },
     siteProjected: { label: "Projected", color: "var(--brand-500)" },
     ...Object.fromEntries(houseMaps.map((h, i) => [`h${i}`, { label: h.name, color: HOUSE_COLORS[i % HOUSE_COLORS.length] }])),
   };
@@ -118,8 +118,8 @@ export function ProjectionChart({ projection, variant }: { projection: WeightPro
                 ))
               ) : (
                 <>
-                  <Recharts.Line dataKey="siteActual" stroke="var(--brand-700)" strokeWidth={2.5} dot={{ r: 2 }} connectNulls isAnimationActive={false} />
-                  <Recharts.Line dataKey="siteProjected" stroke="var(--brand-500)" strokeWidth={2.5} strokeDasharray="5 4" dot={false} connectNulls isAnimationActive={false} />
+                  <Recharts.Line dataKey="siteActual" stroke="var(--color-siteActual)" strokeWidth={2.5} dot={{ r: 2 }} connectNulls isAnimationActive={false} />
+                  <Recharts.Line dataKey="siteProjected" stroke="var(--color-siteProjected)" strokeWidth={2.5} strokeDasharray="5 4" dot={false} connectNulls isAnimationActive={false} />
                 </>
               )}
 

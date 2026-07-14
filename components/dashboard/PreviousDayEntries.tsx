@@ -42,7 +42,7 @@ export function PreviousDayEntries({
                 {variant === "manager" ? (
                   <Link
                     href={historyHref}
-                    className="inline-flex shrink-0 items-center gap-1 text-label font-medium text-brand-600 hover:text-brand-700"
+                    className="inline-flex shrink-0 items-center gap-1 text-label font-medium text-brand-600 hover:text-brand-600"
                   >
                     Correct
                     <IconArrowRight className="size-3.5" />

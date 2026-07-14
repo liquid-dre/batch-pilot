@@ -91,7 +91,7 @@ export function TreatmentsPanel({
           Treatments &amp; additives
           <span className="text-label font-normal text-muted">optional</span>
           {count > 0 ? (
-            <span className="inline-flex items-center rounded-[var(--radius-pill)] bg-brand-100 px-2 py-0.5 text-[0.75rem] font-semibold text-brand-700">
+            <span className="inline-flex items-center rounded-[var(--radius-pill)] bg-brand-100 px-2 py-0.5 text-[0.75rem] font-semibold text-brand-600">
               {count}
             </span>
           ) : null}
@@ -159,7 +159,7 @@ function TreatmentList({
   return (
     <div className={cn("space-y-3", highlight && "rounded-[var(--radius-control)] bg-brand-50 p-3 ring-1 ring-brand-100")}>
       <p className="flex items-center gap-1.5 text-label font-semibold text-slate">
-        {highlight ? <IconVaccine className="size-4 text-brand-700" /> : null}
+        {highlight ? <IconVaccine className="size-4 text-brand-600" /> : null}
         {heading}
       </p>
       {rows.map((row) => (

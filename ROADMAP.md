@@ -118,42 +118,48 @@ purposeful motion — expressed through the **BatchPilot brand**, never generic 
 - **Contractor screens:** denser and data-forward, but still clean and uncluttered.
 
 **Identity:** mark = two ascending chevrons; wordmark = **BatchPilot**; palette and type per the brand
-guideline. Brand colour is **crimson** (a confident accent on a light canvas), with a **cyan** accent for
-data/focus/info and **near-black** for type + sparing dark bands; it must stay clear of the green/amber/red
-status system. *(Horizon blue was retired — read as generic; see the vibrance changelog entry.)*
+guideline. The system is **monochrome (black-and-white) + ONE vibrant azure accent**, shipped in **two
+modes — light (default) and dark (near-black greyscale), with a persisted toggle**. Azure is reserved for
+major CTAs, links, the focus ring and active/selected states; everything else is neutral grey. Charts keep
+a vibrant categorical palette (per-mode). Status green/amber/red stay reserved. *(Crimson and Horizon blue
+are both retired — see the changelog entries.)*
 
-**Define these in `globals.css` (raw scale + semantic aliases):**
+**Define these in `globals.css` — `:root` = LIGHT, `.dark` = DARK overrides (see the file for the full,
+AA-verified set). Components read semantic tokens, so flipping the `.dark` values re-themes the whole app:**
 
 ```css
-:root{
-  /* Brand — crimson (themeable, AA-verified). #E01A4F is the signature (brand600). */
-  --brand-900:#0C090D; /* near-black bands/ink */ --brand-800:#A50F34; /* primary hover */
-  --brand-700:#D4164A; /* primary/buttons/logo */ --brand-600:#E01A4F; /* links/emphasis */
-  --brand-500:#EF4C6D; --brand-100:#FBD7E0; --brand-50:#FDEEF2;
-  /* Accent — cyan (themeable). -700 = text/focus, -500 = fills only. */
-  --accent-700:#12798F; --accent-600:#2B93AB; --accent-500:#53B3CB;
-  --accent-100:#C9E8EE; --accent-50:#E8F5F8;
-  --wash:rgba(12,9,13,.05); /* translucent hover wash (tokenised) */
-  /* Neutrals — warm grey (fixed) */
-  --ink:#0C090D; --slate:#44474E; --muted:#6B6F76; --hint:#9499A1;
-  --border:#C9CDD3; --divider:#E4E7EA; --paper:#FAF8F4; --surface:#FFFFFF;
-  /* Status — reserved, never used for branding (danger/error stays here, NOT crimson) */
+:root{ /* LIGHT (default) */
+  /* Brand — azure accent. brand-700 = CTA/active FILL (white text, constant across modes);
+     brand-600 = link/active TEXT (brightens on dark); brand-900 = constant dark-chrome value. */
+  --brand-900:#0B0B0C; --brand-800:#0A4F8F; --brand-700:#0C62B0; --brand-600:#0E6FC4;
+  --brand-500:#0EA5E9; --brand-100:#DBEAFE; --brand-50:#EFF6FF;
+  --accent-700:#0E6FC4; --accent-600:#0EA5E9; --accent-500:#38BDF8; /* folded onto azure */
+  /* Inverse / dark-chrome (intentionally dark in BOTH modes — hero, headers, tooltips, scrim) */
+  --canvas-invert:#0B0B0C; --surface-invert:#18181B; --on-invert:#E7E9EA; --on-invert-dim:#A1A1AA;
+  --wash:rgba(10,10,10,.05);
+  /* Neutrals — true greyscale (flips under .dark) */
+  --ink:#0A0A0A; --slate:#3F3F46; --muted:#52525B; --hint:#71717A;
+  --border:#E4E4E7; --divider:#EFEFF1; --paper:#F7F7F8; --surface:#FFFFFF;
+  /* Status — reserved (danger/error stays here, NOT the accent) */
   --status-good:#1F7A3D; --status-warn:#C77800; --status-bad:#C62828;
   --status-good-tint:#E3F2E8; --status-warn-tint:#FAF0DC; --status-bad-tint:#FAE4E4;
-  /* Chart series — vibrant, dataviz-validated; coral+gold live here ONLY */
+  /* Chart series — vibrant, dataviz-validated; chart crimson/coral/gold live here ONLY */
   --chart-1:#0D8BA3; --chart-2:#E01A4F; --chart-3:#7A5CC0;
   --chart-4:#B8790F; --chart-5:#4B5BD0; --chart-6:#F15946;
-  /* Semantic aliases — components use THESE */
-  --color-primary:var(--brand-700); --color-primary-hover:var(--brand-800);
-  --color-accent:var(--accent-500); --color-bg:var(--paper); --color-surface:var(--surface);
-  --color-text:var(--ink); --color-text-muted:var(--muted); --color-border:var(--divider);
-  /* Type */
-  --font-display:'Plus Jakarta Sans'; --font-body:'IBM Plex Sans'; --font-mono:'IBM Plex Mono';
-  /* Radii / spacing / motion */
-  --radius-card:16px; --radius-control:10px; --radius-pill:999px;
-  --space-unit:4px; --shadow-card:0 1px 2px rgba(12,9,13,.06),0 4px 16px rgba(12,9,13,.05);
-  --ring-focus:0 0 0 3px var(--accent-100),0 0 0 1.5px var(--accent-700);
-  --ease-out:cubic-bezier(.16,1,.3,1); --dur-fast:140ms; --dur:220ms;
+  --ring-focus:0 0 0 3px rgba(14,111,196,.22),0 0 0 1.5px #0E6FC4;
+  /* Type / radii / spacing / motion — unchanged */
+  --radius-card:16px; --radius-control:10px; --radius-pill:999px; --space-unit:4px;
+}
+.dark{ /* near-black greyscale — only what changes */
+  --ink:#FAFAFA; --slate:#D4D4D8; --muted:#A1A1AA; --hint:#8B8B93;
+  --border:#26262A; --divider:#1E1E21; --paper:#0B0B0C; --surface:#161618;
+  --brand-600:#38BDF8; --brand-500:#38BDF8; --brand-100:#14324C; --brand-50:#0E2233;
+  --canvas-invert:#17171A; --surface-invert:#232327;
+  --status-good-tint:#14301F; --status-warn-tint:#33280F; --status-bad-tint:#331717;
+  --chart-1:#17A2BA; --chart-2:#EF3B63; --chart-3:#9575E6;
+  --chart-4:#BD8514; --chart-5:#6472E0; --chart-6:#F05E3A;
+  --wash:rgba(255,255,255,.07); --ring-focus:0 0 0 3px rgba(56,189,248,.32),0 0 0 1.5px #38BDF8;
+  color-scheme:dark;
 }
 ```
 
@@ -163,9 +169,9 @@ tappable ≥ 16px.
 
 **Non-negotiable rules:**
 - Status = **colour + icon + word + shape** (`✓`/`△`/`!` and `●`/`▲`/`■`). Never colour alone.
-- Brand crimson is kept **magenta-leaning and clear of the reserved status red/amber/green**; danger and
-  error UI use the **status** red, never the brand crimson, and info uses the cyan accent — so brand and
-  status never collide. Coral + gold are chart-only.
+- The **azure accent is reserved** (CTAs / links / focus / active-selected) and clear of the reserved
+  status red/amber/green; danger and error UI use the **status** red, never the accent, and info uses the
+  azure-accent tint — so accent and status never collide. Chart crimson/coral/gold are chart-only.
 - WCAG 2.1 AA contrast; grower tap targets ≥ 48px (use 52–64px); numbers in mono with tabular figures.
 - Numeric entry on grower screens uses a **big +/− stepper**, not a raw keyboard.
 
@@ -242,7 +248,7 @@ Ross weight curve — that under-performance is the hero story, keep it).
 **Phase 2 — Contractor experience**
 - [x] Portfolio dashboard: all active batches, status, projected-ready vs kill date, ranking (EPEF) — `/portfolio` (`components/contractor/PortfolioDashboard.tsx`); batch summary + projected-ready-vs-kill verdict; `getPortfolio()` computes EPEF/FCR/livability per house
 - [x] Per-grower drill-down: per-house detail, trends, track record — `/growers` + `/growers/[siteId]` (`GrowerDetail.tsx`); per-house cards with mortality `Sparkline`, plus a closed-cycle track-record table (`getGrowerDetail()`, `PAST_CYCLES`)
-- [x] Flock-overview data table (dense, mono numbers, status pills) — sortable, EPEF-ranked table inside the portfolio dashboard (dark Horizon header, tabular mono, status pills); click a column to sort, a row to drill in
+- [x] Flock-overview data table (dense, mono numbers, status pills) — sortable, EPEF-ranked table inside the portfolio dashboard (dark inverse-chrome header, tabular mono, status pills); click a column to sort, a row to drill in
 - [x] Collection/catching schedule + vehicle manifest view — `/schedule` (`ScheduleView.tsx`); phased night quotas with progress bars + authorised-vehicle/driver manifest and held count (`getManifest()`, `MANIFEST`)
 - [x] Benchmark view: Ross curve + contractor overlay — `/benchmark` (hand-built SVG `BenchmarkChart.tsx`): Ross 308 weight curve + kill-day line + each house plotted, with the mortality-band / uniformity-target overlay listed
 - [x] Grower-level performance: ranked overview of **all** the contractor's growers — top/worst on a chosen metric (EPEF, FCR, cumulative mortality, weight-vs-target, on-time-to-kill), sortable with a visual ranking bar + status pills; a **"general position across the days"** overlay of each grower's trend by day of cycle (incl. final results for completed cycles); drill-down reuses the grower detail/chart components — `/app/growers` (`ContractorGrowersView`, reusing `CompareChart`) + `/app/growers/[siteId]` (reusing `GrowerDetail`); `getContractorGrowers()` / `getGrowerDetailById()`; several growers + a 2nd contractor seeded in `GROWER_PROFILES`
@@ -266,7 +272,7 @@ Ross weight curve — that under-performance is the hero story, keep it).
 > **Phase 4 decisions.** Motion is purposeful, never decorative: a single route-entrance (not per-section), number count-ups only on the hero stat blocks, a subtle status-pill entrance because status is what the eye should find first. Everything degrades to a crossfade/instant under `prefers-reduced-motion`. The Recharts `ResponsiveContainer` can measure 0 on its very first mount frame (it recovers on the next layout tick); harmless given every chart sits in a sized card.
 
 **Shell — public site & app boundary**
-- [x] Marketing landing at `/` (Horizon-blue hero, value props, two-register section, "Get started" / "Log in" CTAs, tasteful motion) + the grower/contractor experience moved under `/app` (role switcher retained) — `components/marketing/Landing.tsx`; `app/app/layout.tsx` owns the shell so only `/app/*` gets it
+- [x] Marketing landing at `/` (dark near-black hero, value props, two-register section, "Get started" / "Log in" CTAs, tasteful motion) + the grower/contractor experience moved under `/app` (role switcher retained) — `components/marketing/Landing.tsx`; `app/app/layout.tsx` owns the shell so only `/app/*` gets it
 - [x] **Information architecture + collapsible sidebar** — a left sidebar (`AppShell` + `SidebarNav`, `nav-config.tsx`) is the navigation vehicle: desktop full panel ↔ persisted icon rail (tooltips in rail) with collapsible, open-state-remembering groups; mobile hamburger in a slim top bar opens an off-canvas drawer over a dimmed scrim (tap-scrim / select / Escape / swipe to close, large targets); BatchPilot mark on top, role switcher in the sidebar, clear active highlight. Brand-token only, `prefers-reduced-motion` aware, full keyboard nav (`usePersisted` via `useSyncExternalStore`).
 - [x] **Icon system — Untitled UI** — replaced every hand-built inline SVG with the official free `@untitledui/icons` line set, routed through one central module (`components/icons.tsx`) that re-exports the chosen icons under semantic names (`IconDashboard`, `IconDailyUpdate`, `IconStatusGood/Warn/Bad`, `IconMenu`, `IconCollapse`, …); every other file imports from that module only, so the whole set is swappable in one place. Covers sidebar nav + group headers, hamburger/collapse toggles, status pills, alerts, toasts, stepper +/−, and the form trash/check glyphs. On brand (line style, ~2px stroke, 24px nav / smaller inline) and colour comes from `currentColor` via semantic text tokens (never a hardcoded hex). Status stays colour + icon + word + shape via distinct glyphs — tick-circle (good) / triangle (at risk) / alert-circle (needs attention). A11y: decorative icons `aria-hidden`, icon-only buttons keep an `aria-label`.
 
@@ -364,6 +370,16 @@ Ross weight curve — that under-performance is the hero story, keep it).
 - [x] Docs updated: `docs/brand-guidelines.md §3` rewritten (blue retired), this changelog + the `§6` token block refreshed.
 
 > **Vibrance decision.** The user supplied a 5-swatch palette, but **three of the five sat in the reserved status red/amber hues** — so adopting it wholesale would have broken the "status stays reserved / accent stays clear of status / AA / colour-blind-safe" rules the user themselves set. Grilled that collision first and landed on a **guarded** system: the two status-safe swatches (near-black, cyan) + one warm signature (crimson, kept magenta-leaning and *never* used as error) become the UI; coral + gold are quarantined to charts where no status semantics apply. Blue was **retired** (the user found it generic), crimson made primary but held to a **confident accent on a light, white-dominant canvas** (crimson-drenched would read as constant alarm — wrong for a "calm, never alarmist" farm tool). Contrast wasn't eyeballed: the crimson/cyan steps were picked by **computing WCAG ratios** and the chart set by **running the dataviz validator**. Standing headless caveat (Convex env gates the app here): covered by `tsc`, `npm run build`, lint and the full unit suite (71 green); a browser pass (vibrant-not-dark, info-cyan vs error-red unmistakable, status pills unchanged, charts legible over bands, AA holds, bolder type) follows once a Convex dev URL exists.
+
+**Monochrome + azure re-theme — crimson retired for a black-and-white base with one accent, light + dark**
+- [x] **Two-mode token system, one file** (`app/globals.css`) — added `@custom-variant dark (&:where(.dark, .dark *))`; `:root` holds the **LIGHT** (default) values and a new `.dark` block the **near-black greyscale** overrides. Re-pointed `--brand-*` from crimson to an **azure** ramp (folded the old cyan `--accent-*` onto the same azure) and flipped the neutral ramp (`ink/slate/muted/hint/border/divider/paper/surface`) per mode. Because components read semantic tokens, the whole app re-themes with almost no call-site edits. **Rule: fills use `brand-700` (deep, constant, white-text AA); accent text uses `brand-600` (brightens to `#38BDF8` on dark)** — so the app-wide `text-brand-700 → text-brand-600` normalisation keeps links/figures legible after the flip.
+- [x] **Dedicated inverse/dark-chrome tokens** — `--canvas-invert / --surface-invert / --on-invert / --on-invert-dim` for chrome that is intentionally dark in *both* modes (marketing hero, FinalCta band, dense table headers, the sidebar tooltip, the drawer scrim). Repointed every such island off `brand-900/brand-100` (which don't survive the flip) onto these, fixing the "silent traps" (`bg-ink/40` scrim + `bg-ink` tooltip would have gone *white* on dark; `text-brand-900` on tints would have vanished).
+- [x] **Light/dark toggle, persisted, no-FOUC** — `.dark` class on `<html>`; `lib/useTheme.ts` (`useSyncExternalStore`, no setState-in-effect) + a `ThemeToggle` in the sidebar footer and the landing nav; an inline `<head>` script applies the stored theme before paint (light default rendered instantly).
+- [x] **Every chart on the shadcn primitive, vibrant per mode** — `HistoryChart`, `WeightBandChart`, `CompareChart` moved onto `ChartContainer`/`ChartTooltip`(+`Content`) with config-driven `--color-<key>` series (joining `ProjectionChart`); `--chart-1..6` kept vibrant and **retuned for near-black** (dataviz validator: CVD + ≥3:1 on both surfaces PASS). Band fills use the per-mode status tints; the primary actual/projected metric line uses the azure accent.
+- [x] **AA-verified both modes** — body ink ~19:1 (light) / ~18:1 (dark), muted ≥ 4.5:1, white-on-`brand-700` 6.2:1; `Alert` `info` folds onto the azure tint; `global-error` crash screen + `themeColor` retinted (light default). `tsc` + `npm run build` + lint (changed files clean) + full unit suite (71 green).
+- [x] Docs updated: `docs/brand-guidelines.md §3`/`§6` rewritten to the monochrome+azure two-mode system; this changelog + the `§Design` token block refreshed.
+
+> **Re-theme decision.** The user wanted "black and white like X's dark mode, still vibrant on the graphs, a vibrant colour on the major CTA." Grilled the direction before building and locked: **neutral near-black** greyscale (not pure black, not blue-tinted) for the dark base; **azure** as the single accent (green excluded — collides status-good); accent reach = **CTAs + links + focus + active/selected only**; a **light/dark toggle with light as default**; and **both modes redesigned as the same monochrome+azure system** (crimson retired from *both*, not just dark). The token discipline already in place made this mostly a `globals.css` retune under `.dark` plus a finite fix-list; the one structural subtlety — `brand-700` fills can't brighten on dark without breaking white-on-fill AA, but accent *text* must — is resolved by splitting fill (`brand-700`, constant) from text (`brand-600`, flips). Standing headless caveat (Convex env gates the app here): covered by `tsc`/`build`/lint/tests; a browser pass (toggle + no-flash, azure only where decided, charts vibrant + shadcn tooltips in both modes, dark islands legible, status pills intact) follows once a Convex dev URL exists.
 
 **Landing hero — WebGL "eggpit" (Ballpit restyled as floating eggs)**
 - [x] **Decorative Three.js eggs behind the hero** (`/`) — ported the React Bits Ballpit engine to TS (`components/marketing/eggpit/engine.ts`, `three@0.185`) and restyled it as tumbling **eggs**: the shared `SphereGeometry` is **vertex-deformed once** into a true egg (elongated + one end tapered, normals recomputed), each instance gets a **fixed random orientation** composed into its matrix, and a warm matte `MeshPhysicalMaterial` + warm lights make them read as eggs, not plastic. Hero baseline `count:50, gravity:1, friction:0.928, wallBounce:0.85, followCursor`. Collisions stay **sphere-based** (accepted approximation — physics untouched).

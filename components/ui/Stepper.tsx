@@ -217,7 +217,7 @@ export function Stepper({
 
   const btn =
     "flex size-14 shrink-0 items-center justify-center rounded-[var(--radius-control)] " +
-    "bg-brand-50 text-brand-700 select-none touch-none " +
+    "bg-brand-50 text-brand-600 select-none touch-none " +
     "transition-[background-color,transform] duration-[var(--dur-fast)] ease-[var(--ease-out)] " +
     "hover:bg-brand-100 active:scale-95 disabled:bg-divider disabled:text-hint disabled:active:scale-100";
 

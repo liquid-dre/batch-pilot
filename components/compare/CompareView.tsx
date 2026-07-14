@@ -119,7 +119,7 @@ export function CompareView({ data }: { data: CompareData }) {
                 >
                   <span className="inline-block size-2.5 rounded-full" style={{ background: color }} />
                   {b.label}
-                  {b.status === "current" ? <span className={cn("text-[0.6875rem]", active ? "text-brand-100" : "text-muted")}>· current</span> : null}
+                  {b.status === "current" ? <span className={cn("text-[0.6875rem]", active ? "text-white/80" : "text-muted")}>· current</span> : null}
                 </button>
               );
             })}

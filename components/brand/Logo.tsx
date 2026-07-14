@@ -35,7 +35,7 @@ interface LogoProps {
 
 export function Logo({ iconOnly, className }: LogoProps) {
   return (
-    <span className={cn("inline-flex items-center gap-2 text-brand-700", className)}>
+    <span className={cn("inline-flex items-center gap-2 text-brand-600", className)}>
       <LogoMark className="h-6 w-7" />
       {!iconOnly ? (
         <span className="font-display text-[1.25rem] font-extrabold tracking-[-0.02em] text-ink">

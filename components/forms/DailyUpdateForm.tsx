@@ -178,7 +178,7 @@ export function DailyUpdateForm({ data }: { data: DailyFormData }) {
               <Stepper label="Night mortality" value={draft.nightMortality} onChange={(v) => update({ nightMortality: v })} max={2000} blankZero hint="Found dead overnight." />
               <div className="flex items-center justify-between rounded-[var(--radius-control)] bg-brand-50 px-3.5 py-2.5">
                 <span className="text-label text-slate">Total mortality</span>
-                <span className="text-data text-[1.0625rem] font-medium tabular-nums text-brand-700">{num(totalMort)}</span>
+                <span className="text-data text-[1.0625rem] font-medium tabular-nums text-brand-600">{num(totalMort)}</span>
               </div>
             </fieldset>
 

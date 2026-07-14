@@ -35,10 +35,17 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#d4164a",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f7f7f8" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b0b0c" },
+  ],
   width: "device-width",
   initialScale: 1,
 };
+
+/* Set the theme class before paint so there's no flash. Default is light; only
+   a stored "dark" preference adds the class. Runs synchronously, top of body. */
+const NO_FLASH = `(function(){try{if(localStorage.getItem('bp.theme')==='dark')document.documentElement.classList.add('dark');}catch(e){}})();`;
 
 export default function RootLayout({
   children,
@@ -49,9 +56,11 @@ export default function RootLayout({
     <ConvexAuthNextjsServerProvider>
       <html
         lang="en"
+        suppressHydrationWarning
         className={`${display.variable} ${body.variable} ${mono.variable} h-full`}
       >
         <body className="min-h-full">
+          <script dangerouslySetInnerHTML={{ __html: NO_FLASH }} />
           <Providers>{children}</Providers>
           <AppToaster />
         </body>

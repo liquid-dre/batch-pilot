@@ -18,7 +18,7 @@ export function PageHeader({ eyebrow, title, intro, action, back }: PageHeaderPr
         {back ? (
           <Link
             href={back.href}
-            className="mb-1.5 inline-flex items-center gap-1 text-label font-medium text-muted underline-offset-4 transition-colors hover:text-brand-700 hover:underline"
+            className="mb-1.5 inline-flex items-center gap-1 text-label font-medium text-muted underline-offset-4 transition-colors hover:text-brand-600 hover:underline"
           >
             <span aria-hidden>←</span> {back.label}
           </Link>

@@ -40,9 +40,9 @@ const SIZE: Record<Size, { pill: string; dotPad: string; dotSize: string; icon: 
   sm: { pill: "h-9 pl-3 pr-3.5 hover:pl-2 text-[0.875rem] gap-1.5", dotPad: "p-1", dotSize: "size-5", icon: "group-hover:size-3", only: "size-9" },
 };
 
-/* Per-variant pill / dot / revealed-icon colours — all semantic tokens. The
-   secondary + danger variants invert light→dark on hover (the reference move);
-   primary deepens; ghost washes in. */
+/* Per-variant pill / dot / revealed-icon colours — all semantic tokens. Only
+   `primary` (the major CTA) carries the azure accent; `secondary` + `ghost` are
+   monochrome (greyscale) so colour stays reserved for CTAs; `danger` = status. */
 const VARIANT: Record<Variant, { pill: string; dot: string; icon: string }> = {
   primary: {
     pill: "bg-brand-700 text-white hover:bg-brand-800 shadow-card",
@@ -50,14 +50,14 @@ const VARIANT: Record<Variant, { pill: string; dot: string; icon: string }> = {
     icon: "text-brand-700",
   },
   secondary: {
-    pill: "bg-brand-50 text-brand-700 border border-brand-100 hover:bg-brand-700 hover:text-white hover:border-brand-700",
-    dot: "bg-brand-700 group-hover:bg-white group-disabled:bg-hint",
-    icon: "text-brand-700",
+    pill: "bg-surface text-ink border border-border hover:border-ink hover:bg-wash",
+    dot: "bg-ink group-disabled:bg-hint",
+    icon: "text-surface",
   },
   ghost: {
-    pill: "bg-transparent text-slate hover:bg-brand-50 hover:text-brand-700",
-    dot: "bg-brand-100 group-hover:bg-brand-600 group-disabled:bg-divider",
-    icon: "text-brand-700 group-hover:text-white",
+    pill: "bg-transparent text-slate hover:bg-wash hover:text-ink",
+    dot: "bg-divider group-hover:bg-slate group-disabled:bg-divider",
+    icon: "text-slate group-hover:text-surface",
   },
   danger: {
     pill: "bg-status-bad-tint text-status-bad border border-status-bad/20 hover:bg-status-bad hover:text-white hover:border-status-bad",
@@ -66,29 +66,30 @@ const VARIANT: Record<Variant, { pill: string; dot: string; icon: string }> = {
   },
 };
 
-/* On-dark counterparts (marketing hero on brand-900 / brand-700). White-with-
-   alpha is the glass idiom the landing already uses; there is no semantic token
-   for translucency. `primary` becomes the filled light pill (the prominent CTA),
-   `secondary` an outline, `ghost` a subtle text button. */
+/* On-dark counterparts for chrome that stays dark in BOTH themes (the marketing
+   hero on `--canvas-invert`). `primary` keeps the azure accent CTA (the one spot
+   of colour); `secondary`/`ghost` are monochrome on-dark (white-with-alpha is the
+   glass idiom for translucency — there is no semantic token for it); `danger` =
+   status. The revealed glyph sits on the light dot, so it takes the dark base. */
 const INVERSE: Record<Variant, { pill: string; dot: string; icon: string }> = {
   primary: {
-    pill: "bg-surface text-brand-700 hover:bg-brand-50 shadow-card",
-    dot: "bg-brand-700 group-disabled:bg-hint",
-    icon: "text-white",
-  },
-  secondary: {
-    pill: "bg-white/10 text-white border border-white/25 hover:bg-white/20",
-    dot: "bg-white/90 group-disabled:bg-hint",
+    pill: "bg-brand-700 text-white hover:bg-brand-800 shadow-card",
+    dot: "bg-white group-disabled:bg-white/40",
     icon: "text-brand-700",
   },
+  secondary: {
+    pill: "bg-white/10 text-on-invert border border-white/25 hover:bg-white/20",
+    dot: "bg-white/90 group-disabled:bg-white/30",
+    icon: "text-canvas-invert",
+  },
   ghost: {
-    pill: "bg-transparent text-brand-100 hover:bg-white/10 hover:text-white",
+    pill: "bg-transparent text-on-invert-dim hover:bg-white/10 hover:text-on-invert",
     dot: "bg-white/15 group-hover:bg-white/90 group-disabled:bg-white/10",
-    icon: "text-brand-100 group-hover:text-brand-700",
+    icon: "text-on-invert group-hover:text-canvas-invert",
   },
   danger: {
     pill: "bg-status-bad text-white hover:brightness-110 shadow-card",
-    dot: "bg-white group-disabled:bg-hint",
+    dot: "bg-white group-disabled:bg-white/40",
     icon: "text-status-bad",
   },
 };

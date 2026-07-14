@@ -167,7 +167,7 @@ export function SupervisorHome({ data }: { data: SupervisorCaptureData }) {
               )}
             >
               {isSaved && !isActive ? <IconCheck className="size-3.5" /> : null}
-              {h.vaccination && !isSaved ? <IconVaccine className={cn("size-3.5", isActive ? "text-brand-100" : "text-brand-600")} /> : null}
+              {h.vaccination && !isSaved ? <IconVaccine className={cn("size-3.5", isActive ? "text-white" : "text-brand-600")} /> : null}
               {h.name}
             </button>
           );
@@ -200,7 +200,7 @@ export function SupervisorHome({ data }: { data: SupervisorCaptureData }) {
               <Stepper label="Night mortality" value={draft.nightMortality} onChange={(v) => update({ nightMortality: v })} max={2000} blankZero hint="Found dead overnight." />
               <div className="flex items-center justify-between rounded-[var(--radius-control)] bg-brand-50 px-3.5 py-2.5">
                 <span className="text-label text-slate">Total today</span>
-                <span className="text-data text-[1.0625rem] font-medium tabular-nums text-brand-700">{num(totalMort)}</span>
+                <span className="text-data text-[1.0625rem] font-medium tabular-nums text-brand-600">{num(totalMort)}</span>
               </div>
 
               {/* The one calm line: how today's losses sit vs the standard. */}
@@ -241,12 +241,12 @@ export function SupervisorHome({ data }: { data: SupervisorCaptureData }) {
 function VaccinationBanner({ vaccines, method }: { vaccines: string[]; method: string }) {
   return (
     <div className="flex gap-3 rounded-[var(--radius-card)] bg-brand-100 p-4">
-      <span className="mt-0.5 shrink-0 text-brand-700">
+      <span className="mt-0.5 shrink-0 text-brand-600">
         <IconVaccine className="size-5" />
       </span>
       <div className="min-w-0">
-        <p className="text-h3 font-semibold text-brand-900">Vaccination day</p>
-        <p className="mt-0.5 text-body text-brand-900/80">
+        <p className="text-h3 font-semibold text-ink">Vaccination day</p>
+        <p className="mt-0.5 text-body text-slate">
           {vaccines.join(" · ")} — {method.toLowerCase()}. Record what you used below.
         </p>
       </div>

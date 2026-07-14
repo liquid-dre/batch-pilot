@@ -1,36 +1,45 @@
 @import "tailwindcss";
 
+/* Class-based dark mode: `dark:` utilities + the `.dark` token overrides below. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* ============================================================================
-   BatchPilot design tokens — the theming seam (ROADMAP §5, §6).
-   Re-theming the product = editing THIS FILE only. Components never hardcode a
-   hex, font, radius or spacing; they reference the semantic tokens below.
-   Only the brand (Horizon) scale + accent are themeable per white-label client.
-   Status colours, neutrals, type, spacing, radii and motion are fixed.
+   BatchPilot design tokens — the theming seam.
+   Monochrome (black-and-white) base + ONE vibrant azure accent. Two modes:
+   `:root` = LIGHT (default), `.dark` = DARK (near-black greyscale). Components
+   read semantic tokens, so flipping the values under `.dark` cascades the app.
+   Azure = major CTAs, links, focus + active/selected states ONLY; everything
+   else is greyscale. Status green/amber/red stay reserved. All AA-verified.
    ========================================================================== */
 :root {
-  /* Brand — crimson (themeable). Anchored on #e01a4f (the vivid signature, kept
-     as brand-600 for links/emphasis); brand-700 is a marginally deeper crimson
-     so primary buttons + text clear WCAG AA with headroom. brand-900 is a warm
-     near-black used for the sparing dark bands + deep ink. Every step AA-verified. */
-  --brand-900: #0c090d;   /* near-black — dark bands / deepest ink */
-  --brand-800: #a50f34;   /* deep — primary-button hover */
-  --brand-700: #d4164a;   /* primary — buttons, logo, active text (AA on white + tint) */
-  --brand-600: #e01a4f;   /* the vivid signature — links, emphasis */
-  --brand-500: #ef4c6d;   /* bright — hairlines / subtle accents (non-text) */
-  --brand-100: #fbd7e0;   /* light tint — selection, hover tints */
-  --brand-50: #fdeef2;    /* lightest tint — surfaces, active-nav, badges */
+  /* Brand — azure accent (themeable). brand-700 is the CTA/active FILL (white
+     text, AA both modes, kept constant); brand-600 is link/active TEXT (flips
+     brighter on dark); brand-500 is the bright accent/focus mark; brand-900 is
+     the constant near-black used only as an explicit dark-chrome value. */
+  --brand-900: #0b0b0c;   /* near-black — legacy dark-chrome value (constant) */
+  --brand-800: #0a4f8f;   /* deep azure — primary-button hover */
+  --brand-700: #0c62b0;   /* CTA / active fill — white text 6.2:1 (constant) */
+  --brand-600: #0e6fc4;   /* link / active text (flips brighter on dark) */
+  --brand-500: #0ea5e9;   /* bright azure — accents / marks */
+  --brand-100: #dbeafe;   /* light azure tint — selection */
+  --brand-50: #eff6ff;    /* lightest azure tint — active-nav */
 
-  /* Accent — cyan (themeable). Support / data / focus / neutral-info, so "info"
-     never reads as red "error". #53b3cb is fills-only (fails text contrast); the
-     -700 step carries text + the focus ring. */
-  --accent-700: #12798f;  /* cyan text + focus ring (AA on white) */
-  --accent-600: #2b93ab;  /* cyan UI borders (AA-large) */
-  --accent-500: #53b3cb;  /* cyan fills / chart marks (non-text) */
-  --accent-100: #c9e8ee;  /* light cyan — focus halo */
-  --accent-50: #e8f5f8;   /* lightest cyan — info surfaces */
+  /* Accent = the same azure (folded from the old cyan). Focus ring + info. */
+  --accent-700: #0e6fc4;
+  --accent-600: #0ea5e9;
+  --accent-500: #38bdf8;
+  --accent-100: #dbeafe;
+  --accent-50: #eff6ff;
 
-  /* Translucent near-black for hover washes (replaces off-token rgba navy). */
-  --wash: rgba(12, 9, 13, 0.05);
+  /* Inverse / dark-chrome tokens — an intentionally dark surface (marketing
+     hero, dark table headers) that reads in BOTH modes, plus its light text. */
+  --canvas-invert: #0b0b0c;   /* dark band bg (flips to elevated on dark) */
+  --surface-invert: #18181b;  /* elevated dark header/chrome */
+  --on-invert: #e7e9ea;       /* light text on dark chrome */
+  --on-invert-dim: #a1a1aa;   /* secondary light text on dark chrome */
+
+  /* Translucent ink for hover washes (white-alpha on dark). */
+  --wash: rgba(10, 10, 10, 0.05);
 
   /* Egg-shell palette — decorative only (the landing-hero WebGL "eggpit" reads
      these at runtime, so no raw hex lives in the component). Earthy + low-chroma
@@ -42,15 +51,15 @@
   --egg-brown: #b0885f;       /* earthy tan-brown */
   --egg-brown-deep: #7a5230;  /* deep chocolate-brown */
 
-  /* Neutrals — warm grey (fixed) */
-  --ink: #0c090d;
-  --slate: #44474e;
-  --muted: #6b6f76;
-  --hint: #9499a1;
-  --border: #c9cdd3;
-  --divider: #e4e7ea;
-  --paper: #faf8f4;
-  --surface: #ffffff;
+  /* Neutrals — true greyscale (LIGHT). Flipped under `.dark`. AA-verified. */
+  --ink: #0a0a0a;      /* primary text (19.8:1 on white) */
+  --slate: #3f3f46;    /* strong secondary */
+  --muted: #52525b;    /* body-muted (7.7:1) */
+  --hint: #71717a;     /* hint (4.8:1) */
+  --border: #e4e4e7;   /* hairline border */
+  --divider: #efeff1;  /* faint divider */
+  --paper: #f7f7f8;    /* page */
+  --surface: #ffffff;  /* card */
 
   /* Status — reserved, never used for branding */
   --status-good: #1f7a3d;
@@ -106,11 +115,11 @@
   /* Spacing */
   --space-unit: 4px;
 
-  /* Depth — shadows tinted with the near-black ink, not the old navy. */
-  --shadow-card: 0 1px 2px rgba(12, 9, 13, 0.06), 0 4px 16px rgba(12, 9, 13, 0.05);
-  --shadow-raised: 0 2px 6px rgba(12, 9, 13, 0.08), 0 12px 32px rgba(12, 9, 13, 0.1);
-  /* Focus ring on the cyan accent (dark step clears 3:1), not the brand crimson. */
-  --ring-focus: 0 0 0 3px var(--accent-100), 0 0 0 1.5px var(--accent-700);
+  /* Depth — neutral shadows (heavier/black under `.dark`). */
+  --shadow-card: 0 1px 2px rgba(10, 10, 10, 0.06), 0 4px 16px rgba(10, 10, 10, 0.05);
+  --shadow-raised: 0 2px 6px rgba(10, 10, 10, 0.08), 0 12px 32px rgba(10, 10, 10, 0.1);
+  /* Focus ring on the azure accent (flips brighter under `.dark`). */
+  --ring-focus: 0 0 0 3px rgba(14, 111, 196, 0.22), 0 0 0 1.5px #0e6fc4;
 
   /* Motion */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
@@ -123,6 +132,56 @@
   --z-dropdown: 200;
   --z-overlay: 300;
   --z-toast: 400;
+}
+
+/* ----------------------------------------------------------------------------
+   DARK theme — near-black greyscale. Only the values that change; everything
+   else inherits from :root. AA-verified (ink 18.8:1, muted 7.7:1 on paper).
+   -------------------------------------------------------------------------- */
+.dark {
+  /* Neutrals → near-black greyscale */
+  --ink: #fafafa;
+  --slate: #d4d4d8;
+  --muted: #a1a1aa;
+  --hint: #8b8b93;
+  --border: #26262a;
+  --divider: #1e1e21;
+  --paper: #0b0b0c;
+  --surface: #161618;
+
+  /* Azure — brighter link/accent text on dark; CTA fill (brand-700) stays const */
+  --brand-600: #38bdf8;
+  --brand-500: #38bdf8;
+  --brand-100: #14324c;
+  --brand-50: #0e2233;
+  --accent-700: #38bdf8;
+  --accent-600: #7dd3fc;
+  --accent-500: #7dd3fc;
+  --accent-100: #14324c;
+  --accent-50: #0e2233;
+
+  /* Dark chrome elevates above the near-black page */
+  --canvas-invert: #17171a;
+  --surface-invert: #232327;
+
+  /* Status band/alert tints readable on near-black (faint, hued) */
+  --status-good-tint: #14301f;
+  --status-warn-tint: #33280f;
+  --status-bad-tint: #331717;
+
+  /* Vibrant chart series, tuned for near-black (dataviz: CVD + ≥3:1 all pass) */
+  --chart-1: #17a2ba;
+  --chart-2: #ef3b63;
+  --chart-3: #9575e6;
+  --chart-4: #bd8514;
+  --chart-5: #6472e0;
+  --chart-6: #f05e3a;
+
+  --wash: rgba(255, 255, 255, 0.07);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.5), 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-raised: 0 2px 6px rgba(0, 0, 0, 0.55), 0 12px 32px rgba(0, 0, 0, 0.5);
+  --ring-focus: 0 0 0 3px rgba(56, 189, 248, 0.32), 0 0 0 1.5px #38bdf8;
+  color-scheme: dark;
 }
 
 /* ----------------------------------------------------------------------------
@@ -150,6 +209,12 @@
 
   /* Translucent hover wash */
   --color-wash: var(--wash);
+
+  /* Inverse / dark-chrome */
+  --color-canvas-invert: var(--canvas-invert);
+  --color-surface-invert: var(--surface-invert);
+  --color-on-invert: var(--on-invert);
+  --color-on-invert-dim: var(--on-invert-dim);
 
   /* Neutrals */
   --color-ink: var(--ink);
@@ -222,7 +287,7 @@
 
   ::selection {
     background: var(--brand-100);
-    color: var(--brand-900);
+    color: var(--ink);
   }
 
   /* Visible, on-brand focus ring for keyboard users only. */
