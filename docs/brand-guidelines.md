@@ -118,6 +118,9 @@ no tractors. Always ship a solid-colour offline fallback.
 - **Alerts:** info (azure accent tint), success (green tint), warning (amber tint), error (red tint); icon +
   bold title + plain line.
 - **Data table (contractor):** near-black header row, mono tabular numbers, status pills, dense rows.
+- **Theme toggle:** a labelled **Light · Dark** segmented slider with an azure `brand700` pill that slides
+  behind the active side (the segmented-control house style, so no second accent). Collapses to a single
+  icon button in the narrow sidebar rail; the on-dark variant uses the white/α glass treatment.
 
 ---
 

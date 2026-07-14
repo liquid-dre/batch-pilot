@@ -119,7 +119,7 @@ export function SidebarNav({ collapsed, onToggleCollapse, onNavigate }: SidebarN
         <div className="shrink-0 border-t border-divider">
           <div className={cn("space-y-3", collapsed ? "px-2 py-3" : "px-4 py-4")}>
             <div className={cn("flex", collapsed ? "justify-center" : "justify-start")}>
-              <ThemeToggle />
+              <ThemeToggle compact={collapsed} />
             </div>
             {CONVEX_CONNECTED && !collapsed ? <SignOutButton /> : null}
             {CONVEX_CONNECTED ? null : <DemoNote collapsed={collapsed} />}
