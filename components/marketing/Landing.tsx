@@ -1,16 +1,20 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import type { Role } from "@/lib/types";
 import type { WeightBandData } from "@/lib/view";
 import { useCurrentUser } from "@/lib/auth";
 import { LogoMark } from "@/components/brand/Logo";
 import { Button } from "@/components/ui/Button";
-import { HeroEggpit } from "./HeroEggpit";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { IconLogin } from "@/components/icons";
 import { hero, footer } from "@/lib/landingCopy";
 import { Problem, Wedge, WhoItsFor, CatchItEarly, HowItWorks, Trust, Faq, FinalCta } from "./landing/sections";
+
+/** Decorative WebGL line-field behind the hero — client-only (needs WebGL), so
+ *  it's code-split with `ssr: false` and never runs on the server. */
+const Threads = dynamic(() => import("./Threads"), { ssr: false });
 
 /**
  * Marketing landing at `/`. No real auth in the demo: the CTAs set a demo
@@ -61,15 +65,15 @@ export function Landing({ benchmarkData }: { benchmarkData: WeightBandData }) {
 function Hero({ onEnter, onLogin }: { onEnter: (r: Role) => void; onLogin: () => void }) {
   return (
     <section className="relative isolate flex min-h-[38rem] flex-col overflow-hidden bg-brand-900 text-white sm:min-h-[42rem]">
-      {/* soft depth + oversized chevron motif — also the static fallback when the
-          WebGL eggs are gated off (mobile / low-power / reduced-motion). */}
+      {/* soft depth + oversized chevron motif — also the static base beneath the
+          WebGL threads (and the fallback if WebGL is unavailable). */}
       <div className="pointer-events-none absolute inset-0 -z-10">
         <div className="absolute -top-32 left-1/2 size-[42rem] -translate-x-1/2 rounded-full bg-brand-700/40 blur-3xl" />
-        {/* Decorative floating eggs (client-only, capability-gated, disposes on unmount). */}
-        <HeroEggpit />
+        {/* Decorative WebGL line-field (client-only; static frame for reduced-motion, disposes on unmount). */}
+        <Threads className="absolute inset-0" amplitude={5} distance={0.9} enableMouseInteraction={false} />
         <LogoMark className="animate-float absolute -bottom-16 -right-10 h-[26rem] w-auto text-white/[0.05]" />
       </div>
-      {/* Scrim: keeps the white headline/CTAs AA-legible if a pale egg drifts behind. */}
+      {/* Scrim: keeps the white headline/CTAs AA-legible over the threads. */}
       <div className="pointer-events-none absolute inset-0 -z-[5] bg-gradient-to-br from-brand-900/55 via-transparent to-brand-900/45" />
 
       {/* top nav */}
