@@ -66,9 +66,9 @@ function SignInInner() {
   }
 
   return (
-    <div className="flex min-h-full items-center justify-center bg-brand-900 px-4 py-12">
+    <div className="flex min-h-full items-center justify-center bg-canvas-invert px-4 py-12">
       <div className="w-full max-w-md">
-        <div className="mb-6 flex items-center justify-center gap-2 text-white">
+        <div className="mb-6 flex items-center justify-center gap-2 text-on-invert">
           <LogoMark className="h-6 w-7" />
           <span className="font-display text-[1.25rem] font-extrabold tracking-[-0.02em]">BatchPilot</span>
         </div>
@@ -88,7 +88,7 @@ function SignInInner() {
                 }}
                 className={cn(
                   "flex-1 rounded-[calc(var(--radius-control)-3px)] px-3 py-2 text-label font-semibold transition-colors duration-[var(--dur)] ease-[var(--ease-out)]",
-                  mode === m ? "bg-brand-700 text-white shadow-[0_1px_2px_rgba(12,9,13,0.2)]" : "text-brand-700 hover:bg-brand-100",
+                  mode === m ? "bg-brand-700 text-white shadow-[0_1px_2px_rgba(12,9,13,0.2)]" : "text-brand-600 hover:bg-brand-100",
                 )}
               >
                 {m === "signIn" ? "Log in" : "Create account"}
@@ -177,7 +177,7 @@ function SignInInner() {
           </form>
         </div>
 
-        <p className="mt-5 text-center text-label text-brand-100/80">
+        <p className="mt-5 text-center text-label text-on-invert-dim">
           {mode === "signIn" ? "New to BatchPilot? " : "Already have an account? "}
           <button
             type="button"
@@ -185,7 +185,7 @@ function SignInInner() {
               setMode(mode === "signIn" ? "signUp" : "signIn");
               setError(null);
             }}
-            className="font-semibold text-white underline-offset-4 hover:underline"
+            className="font-semibold text-on-invert underline-offset-4 hover:underline"
           >
             {mode === "signIn" ? "Create one" : "Log in"}
           </button>

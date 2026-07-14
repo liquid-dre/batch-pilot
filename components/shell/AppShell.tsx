@@ -101,7 +101,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div
           onClick={() => setDrawerOpen(false)}
           className={cn(
-            "fixed inset-0 z-[var(--z-overlay)] bg-ink/40 transition-opacity duration-[var(--dur)] ease-[var(--ease-out)]",
+            "fixed inset-0 z-[var(--z-overlay)] bg-canvas-invert/50 transition-opacity duration-[var(--dur)] ease-[var(--ease-out)]",
             drawerOpen ? "opacity-100" : "pointer-events-none opacity-0",
           )}
         />

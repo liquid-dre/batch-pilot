@@ -48,7 +48,7 @@ export function AlertsList({ alerts, limit, moreHref }: AlertsListProps) {
         </Card>
       ))}
       {hidden > 0 && moreHref ? (
-        <Link href={moreHref} className="inline-flex text-label font-semibold text-brand-700 underline-offset-4 hover:text-brand-600 hover:underline">
+        <Link href={moreHref} className="inline-flex text-label font-semibold text-brand-600 underline-offset-4 hover:text-brand-600 hover:underline">
           See all {alerts.length} alerts →
         </Link>
       ) : null}

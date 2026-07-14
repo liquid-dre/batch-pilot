@@ -48,6 +48,8 @@ export {
   LogIn01 as IconLogin,
   LogOut01 as IconLogout,
   Inbox01 as IconEmpty,
+  Sun as IconSun,
+  Moon01 as IconMoon,
   Eye as IconView,
   SwitchHorizontal01 as IconSwitch,
   // Manager corrections (maker-checker) — pencil edits, person attribution

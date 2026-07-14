@@ -7,6 +7,7 @@ import { useCurrentUser } from "@/lib/auth";
 import { LogoMark } from "@/components/brand/Logo";
 import { Button } from "@/components/ui/Button";
 import { HeroEggpit } from "./HeroEggpit";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { IconLogin } from "@/components/icons";
 import { hero, footer } from "@/lib/landingCopy";
 import { Problem, Wedge, WhoItsFor, CatchItEarly, HowItWorks, Trust, Faq, FinalCta } from "./landing/sections";
@@ -66,7 +67,7 @@ function Hero({ onEnter, onLogin }: { onEnter: (r: Role) => void; onLogin: () =>
         <div className="absolute -top-32 left-1/2 size-[42rem] -translate-x-1/2 rounded-full bg-brand-700/40 blur-3xl" />
         {/* Decorative floating eggs (client-only, capability-gated, disposes on unmount). */}
         <HeroEggpit />
-        <LogoMark className="animate-float absolute -bottom-16 -right-10 h-[26rem] w-auto text-brand-100/[0.06]" />
+        <LogoMark className="animate-float absolute -bottom-16 -right-10 h-[26rem] w-auto text-white/[0.05]" />
       </div>
       {/* Scrim: keeps the white headline/CTAs AA-legible if a pale egg drifts behind. */}
       <div className="pointer-events-none absolute inset-0 -z-[5] bg-gradient-to-br from-brand-900/55 via-transparent to-brand-900/45" />
@@ -77,15 +78,18 @@ function Hero({ onEnter, onLogin }: { onEnter: (r: Role) => void; onLogin: () =>
           <LogoMark className="h-6 w-7 text-white" />
           <span className="font-display text-[1.25rem] font-extrabold tracking-[-0.02em]">BatchPilot</span>
         </span>
-        <Button type="button" variant="ghost" inverse size="sm" affordance={IconLogin} onClick={onLogin}>
-          {hero.secondaryCta}
-        </Button>
+        <span className="inline-flex items-center gap-1">
+          <ThemeToggle onDark />
+          <Button type="button" variant="ghost" inverse size="sm" affordance={IconLogin} onClick={onLogin}>
+            {hero.secondaryCta}
+          </Button>
+        </span>
       </nav>
 
       {/* hero content */}
       <div className="mx-auto flex w-full max-w-6xl flex-col justify-center px-4 pb-24 pt-10 [text-shadow:0_1px_14px_rgba(12,9,13,0.55)] sm:px-6 sm:pb-32 sm:pt-16">
         <p
-          className="animate-rise inline-flex w-fit items-center gap-2 rounded-[var(--radius-pill)] bg-white/10 px-3 py-1 text-label font-medium text-brand-100"
+          className="animate-rise inline-flex w-fit items-center gap-2 rounded-[var(--radius-pill)] bg-white/10 px-3 py-1 text-label font-medium text-on-invert-dim"
           style={{ animationDelay: "0ms" }}
         >
           {hero.eyebrow}
@@ -99,7 +103,7 @@ function Hero({ onEnter, onLogin }: { onEnter: (r: Role) => void; onLogin: () =>
         </h1>
 
         <p
-          className="animate-rise mt-5 max-w-2xl text-body-l text-brand-100/90 [text-wrap:pretty] sm:text-[1.25rem] sm:leading-relaxed"
+          className="animate-rise mt-5 max-w-2xl text-body-l text-on-invert-dim [text-wrap:pretty] sm:text-[1.25rem] sm:leading-relaxed"
           style={{ animationDelay: "140ms" }}
         >
           {hero.subhead}
@@ -114,7 +118,7 @@ function Hero({ onEnter, onLogin }: { onEnter: (r: Role) => void; onLogin: () =>
           </Button>
         </div>
 
-        <p className="animate-rise mt-8 text-label text-brand-100/70" style={{ animationDelay: "300ms" }}>
+        <p className="animate-rise mt-8 text-label text-on-invert-dim" style={{ animationDelay: "300ms" }}>
           {hero.trustLine}
         </p>
       </div>
@@ -128,7 +132,7 @@ function Footer() {
   return (
     <footer className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-3 px-4 py-8 sm:flex-row sm:px-6">
       <span className="inline-flex items-center gap-2 text-muted">
-        <LogoMark className="h-5 w-6 text-brand-700" />
+        <LogoMark className="h-5 w-6 text-brand-600" />
         <span className="font-display text-label font-bold text-ink">BatchPilot</span>
       </span>
       <p className="text-label text-muted">{footer.tagline}</p>

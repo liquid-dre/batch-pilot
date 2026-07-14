@@ -259,7 +259,7 @@ export function PreviousBatchesTable({ rows }: { rows: BatchArchiveRow[] }) {
               type="button"
               onClick={chip.clear}
               aria-label={`Remove filter: ${chip.label}`}
-              className="inline-flex items-center gap-1 rounded-[var(--radius-pill)] border border-brand-100 bg-brand-50 px-2.5 py-1 text-label font-medium text-brand-700 transition-colors duration-[var(--dur-fast)] hover:bg-brand-100"
+              className="inline-flex items-center gap-1 rounded-[var(--radius-pill)] border border-brand-100 bg-brand-50 px-2.5 py-1 text-label font-medium text-brand-600 transition-colors duration-[var(--dur-fast)] hover:bg-brand-100"
             >
               {chip.label}
               <IconClose className="size-3.5" aria-hidden />
@@ -276,7 +276,7 @@ export function PreviousBatchesTable({ rows }: { rows: BatchArchiveRow[] }) {
         <table className="w-full border-collapse text-left">
           <thead className="sticky top-0 z-10">
             {/* Label / sort / reorder row */}
-            <tr className="bg-brand-900 text-[0.75rem] uppercase tracking-[0.04em] text-brand-100">
+            <tr className="bg-canvas-invert text-[0.75rem] uppercase tracking-[0.04em] text-on-invert-dim">
               {cols.map((col) => {
                 const active = sort.key === col.key;
                 const SortIcon = !active ? IconSortNone : sort.dir === "asc" ? IconSortAsc : IconSortDesc;
@@ -327,7 +327,7 @@ export function PreviousBatchesTable({ rows }: { rows: BatchArchiveRow[] }) {
                         }}
                         aria-label={`Reorder ${col.label} column — drag, or use the left and right arrow keys`}
                         title="Drag to reorder, or focus and use ← →"
-                        className="-ml-1 cursor-grab rounded-[6px] p-1 text-brand-100/60 transition-colors hover:bg-white/10 hover:text-white focus-visible:bg-white/10 active:cursor-grabbing"
+                        className="-ml-1 cursor-grab rounded-[6px] p-1 text-on-invert-dim/70 transition-colors hover:bg-white/10 hover:text-on-invert focus-visible:bg-white/10 active:cursor-grabbing"
                       >
                         <IconDrag className="size-3.5" aria-hidden />
                       </button>
@@ -335,31 +335,31 @@ export function PreviousBatchesTable({ rows }: { rows: BatchArchiveRow[] }) {
                         type="button"
                         onClick={() => toggleSort(col)}
                         aria-label={`Sort by ${col.label}`}
-                        className="inline-flex items-center gap-1 rounded-[6px] px-1 py-0.5 transition-colors hover:text-white focus-visible:text-white"
+                        className="inline-flex items-center gap-1 rounded-[6px] px-1 py-0.5 transition-colors hover:text-on-invert focus-visible:text-on-invert"
                       >
                         <span>{col.label}</span>
                         {col.est ? <EstTag className="border-current/40" /> : null}
-                        <SortIcon className={cn("size-3.5 shrink-0", active ? "text-white" : "text-brand-100/50")} aria-hidden />
+                        <SortIcon className={cn("size-3.5 shrink-0", active ? "text-on-invert" : "text-on-invert-dim/60")} aria-hidden />
                       </button>
                     </div>
                   </th>
                 );
               })}
               {/* Sticky action column — stays put while the grid scrolls sideways */}
-              <th scope="col" className="sticky right-0 z-20 bg-brand-900 px-2 py-2.5">
+              <th scope="col" className="sticky right-0 z-20 bg-canvas-invert px-2 py-2.5">
                 <span className="sr-only">View batch</span>
               </th>
             </tr>
 
             {/* Per-column filter row */}
             {showFilters ? (
-              <tr className="bg-brand-700">
+              <tr className="bg-surface-invert">
                 {cols.map((col) => (
                   <th key={col.key} scope="col" className="px-2 py-2 align-top font-normal normal-case tracking-normal">
                     <FilterField col={col} value={filters[col.key]} onChange={(v) => setFilter(col.key, v)} />
                   </th>
                 ))}
-                <th scope="col" aria-hidden className="sticky right-0 z-20 bg-brand-700 px-2 py-2" />
+                <th scope="col" aria-hidden className="sticky right-0 z-20 bg-surface-invert px-2 py-2" />
               </tr>
             ) : null}
           </thead>
@@ -368,7 +368,7 @@ export function PreviousBatchesTable({ rows }: { rows: BatchArchiveRow[] }) {
             {filtered.map((r) => (
               <tr
                 key={r.id}
-                className="group bg-surface transition-colors duration-[var(--dur-fast)] hover:bg-brand-50/60"
+                className="group bg-surface transition-colors duration-[var(--dur-fast)] hover:bg-wash"
               >
                 {cols.map((col) => (
                   <td
@@ -382,13 +382,13 @@ export function PreviousBatchesTable({ rows }: { rows: BatchArchiveRow[] }) {
                     {col.cell(r)}
                   </td>
                 ))}
-                <td className="sticky right-0 bg-surface px-2 py-2 text-right shadow-[-8px_0_8px_-8px_rgba(12,9,13,0.12)] transition-colors duration-[var(--dur-fast)] group-hover:bg-brand-50/60">
+                <td className="sticky right-0 bg-surface px-2 py-2 text-right shadow-[-8px_0_8px_-8px_var(--wash)] transition-colors duration-[var(--dur-fast)] group-hover:bg-wash">
                   <button
                     type="button"
                     onClick={() => router.push(`/app/batches/${r.id}`)}
                     aria-label={`View ${r.title}`}
                     title={`View ${r.title}`}
-                    className="inline-flex size-9 items-center justify-center rounded-[var(--radius-control)] text-slate transition-colors duration-[var(--dur-fast)] hover:bg-brand-100 hover:text-brand-700 focus-visible:bg-brand-100 focus-visible:text-brand-700"
+                    className="inline-flex size-9 items-center justify-center rounded-[var(--radius-control)] text-slate transition-colors duration-[var(--dur-fast)] hover:bg-brand-100 hover:text-brand-600 focus-visible:bg-brand-100 focus-visible:text-brand-600"
                   >
                     <IconView className="size-5" aria-hidden />
                   </button>
@@ -428,7 +428,7 @@ function BatchCell({ row }: { row: BatchArchiveRow }) {
           batch still on the floor; a closed cycle is a finished result. */}
       {row.status === "current" ? (
         <>
-          <span className="rounded-[var(--radius-pill)] bg-brand-100 px-1.5 py-0.5 text-[0.625rem] font-semibold uppercase tracking-wide text-brand-700">
+          <span className="rounded-[var(--radius-pill)] bg-brand-100 px-1.5 py-0.5 text-[0.625rem] font-semibold uppercase tracking-wide text-brand-600">
             Live
           </span>
           <StatusPill level={row.level} size="sm" />

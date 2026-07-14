@@ -164,7 +164,7 @@ export function HouseHistoryTable({ rows, rossByDay, compareMode, canEdit, edits
                         onClick={() => (openEditor === r.entryId ? setOpenEditor(null) : startEdit(r))}
                         aria-label={`Correct day ${r.day}`}
                         aria-expanded={openEditor === r.entryId}
-                        className="inline-flex size-9 items-center justify-center rounded-[var(--radius-control)] text-slate transition-colors duration-[var(--dur-fast)] hover:bg-brand-50 hover:text-brand-700"
+                        className="inline-flex size-9 items-center justify-center rounded-[var(--radius-control)] text-slate transition-colors duration-[var(--dur-fast)] hover:bg-brand-50 hover:text-brand-600"
                       >
                         <IconEdit className="size-4" />
                       </button>
@@ -225,7 +225,7 @@ function EditedBadge({ count, open, onClick }: { count: number; open: boolean; o
       aria-expanded={open}
       className={cn(
         "inline-flex items-center gap-1 rounded-[var(--radius-pill)] px-1.5 py-0.5 text-[0.625rem] font-semibold tracking-wide",
-        "bg-brand-100 text-brand-700 transition-colors duration-[var(--dur-fast)] hover:bg-brand-100/70",
+        "bg-brand-100 text-brand-600 transition-colors duration-[var(--dur-fast)] hover:bg-brand-100/70",
       )}
       title="Edited by manager — view changes"
     >
@@ -253,7 +253,7 @@ function EditPanel({
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <IconEdit className="size-4 text-brand-700" aria-hidden />
+        <IconEdit className="size-4 text-brand-600" aria-hidden />
         <p className="text-label font-semibold text-ink">Correct day {day}</p>
         <span className="text-label text-muted">Each change is recorded with your name and the old value.</span>
       </div>

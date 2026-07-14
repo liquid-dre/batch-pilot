@@ -1,14 +1,7 @@
 "use client";
 
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import * as Recharts from "recharts";
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 
 export interface CompareSeries {
   id: string;
@@ -34,45 +27,6 @@ function fmt(n: number, unit: string, decimals: number): string {
   return unit ? `${v} ${unit}` : v;
 }
 
-interface TipItem {
-  dataKey?: string | number;
-  name?: string;
-  value?: number;
-  color?: string;
-}
-
-function ChartTooltip({
-  active,
-  payload,
-  label,
-  unit,
-  decimals,
-}: {
-  active?: boolean;
-  payload?: TipItem[];
-  label?: number | string;
-  unit: string;
-  decimals: number;
-}) {
-  if (!active || !payload || payload.length === 0) return null;
-  return (
-    <div className="rounded-[var(--radius-control)] border border-divider bg-surface px-3 py-2 shadow-card">
-      <p className="text-label font-semibold text-ink">Day {label}</p>
-      <ul className="mt-1 space-y-0.5">
-        {payload.map((p) => (
-          <li key={String(p.dataKey)} className="flex items-center gap-2 text-[0.8125rem]">
-            <span className="inline-block h-0.5 w-3 rounded-full" style={{ background: p.color }} />
-            <span className="text-muted">{p.name}</span>
-            <span className="ml-auto font-mono tabular-nums text-ink">
-              {typeof p.value === "number" ? fmt(p.value, unit, decimals) : "—"}
-            </span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
 export function CompareChart({ series, ross, unit, decimals }: CompareChartProps) {
   // Merge all series into a single day-indexed dataset for Recharts.
   const days = new Set<number>();
@@ -96,48 +50,55 @@ export function CompareChart({ series, ross, unit, decimals }: CompareChartProps
     return row;
   });
 
+  // Config drives the tooltip labels + the per-series colour injected as
+  // `--color-<id>` by ChartContainer, so each line references it via var().
+  const config: ChartConfig = {
+    ...(rossMap ? { ross: { label: "Ross 308", color: "var(--hint)" } } : {}),
+    ...Object.fromEntries(series.map((s) => [s.id, { label: s.name, color: s.color }])),
+  };
+
   return (
-    <div className="h-[340px] w-full">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 8, right: 12, bottom: 4, left: 0 }}>
-          <CartesianGrid stroke="var(--divider)" vertical={false} />
-          <XAxis
-            dataKey="day"
-            type="number"
-            domain={["dataMin", "dataMax"]}
-            tick={axisTick}
-            stroke="var(--border)"
-            tickLine={false}
-            tickMargin={8}
-            label={{ value: "day of cycle", position: "insideBottom", offset: -2, fill: MUTED, fontSize: 11 }}
-            height={40}
-          />
-          <YAxis tick={axisTick} stroke="var(--border)" tickLine={false} width={48} />
-          <Tooltip
-            cursor={{ stroke: "var(--border)", strokeWidth: 1 }}
-            content={(props) => {
-              const { active, payload, label } = props as unknown as { active?: boolean; payload?: TipItem[]; label?: number };
-              return <ChartTooltip active={active} payload={payload} label={label} unit={unit} decimals={decimals} />;
-            }}
-          />
-          {rossMap ? (
-            <Line type="monotone" dataKey="ross" name="Ross 308" stroke="var(--hint)" strokeWidth={1.75} strokeDasharray="5 4" dot={false} connectNulls isAnimationActive={false} />
-          ) : null}
-          {series.map((s) => (
-            <Line
-              key={s.id}
-              type="monotone"
-              dataKey={s.id}
-              name={s.name}
-              stroke={s.color}
-              strokeWidth={s.emphasis ? 2.75 : 1.75}
-              dot={false}
-              connectNulls
-              isAnimationActive={false}
+    <ChartContainer config={config} className="h-[340px]">
+      <Recharts.LineChart data={data} margin={{ top: 8, right: 12, bottom: 4, left: 0 }}>
+        <Recharts.CartesianGrid stroke="var(--divider)" vertical={false} />
+        <Recharts.XAxis
+          dataKey="day"
+          type="number"
+          domain={["dataMin", "dataMax"]}
+          tick={axisTick}
+          stroke="var(--border)"
+          tickLine={false}
+          tickMargin={8}
+          label={{ value: "day of cycle", position: "insideBottom", offset: -2, fill: MUTED, fontSize: 11 }}
+          height={40}
+        />
+        <Recharts.YAxis tick={axisTick} stroke="var(--border)" tickLine={false} width={48} />
+        <ChartTooltip
+          cursor={{ stroke: "var(--border)", strokeWidth: 1 }}
+          content={
+            <ChartTooltipContent
+              formatter={(v) => (typeof v === "number" ? fmt(v, unit, decimals) : "—")}
             />
-          ))}
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
+          }
+          labelFormatter={(d) => `Day ${d}`}
+        />
+        {rossMap ? (
+          <Recharts.Line type="monotone" dataKey="ross" name="Ross 308" stroke="var(--color-ross)" strokeWidth={1.75} strokeDasharray="5 4" dot={false} connectNulls isAnimationActive={false} />
+        ) : null}
+        {series.map((s) => (
+          <Recharts.Line
+            key={s.id}
+            type="monotone"
+            dataKey={s.id}
+            name={s.name}
+            stroke={`var(--color-${s.id})`}
+            strokeWidth={s.emphasis ? 2.75 : 1.75}
+            dot={false}
+            connectNulls
+            isAnimationActive={false}
+          />
+        ))}
+      </Recharts.LineChart>
+    </ChartContainer>
   );
 }

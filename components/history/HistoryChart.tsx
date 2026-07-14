@@ -1,15 +1,8 @@
 "use client";
 
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import * as Recharts from "recharts";
 
+import { ChartContainer, ChartTooltip, type ChartConfig } from "@/components/ui/chart";
 import { compactGap, vsBenchmark, type WeightCompareMode } from "@/lib/weightCompare";
 
 export interface ChartDatum {
@@ -39,7 +32,7 @@ const axisTick = { fill: MUTED, fontSize: 12, fontFamily: "var(--font-mono)" };
 
 function fmt(n: number, unit: string, decimals: number): string {
   const v = n.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
-  return unit ? `${v} ${unit}` : v;
+  return unit ? `${v} ${unit}` : v;
 }
 
 interface TipItem {
@@ -49,7 +42,9 @@ interface TipItem {
   color?: string;
 }
 
-function ChartTooltip({
+/** Specialised tooltip: the shared card, plus a "gap to target" footer that the
+ *  generic ChartTooltipContent can't express. Styling matches the primitive. */
+function HistoryTip({
   active,
   payload,
   label,
@@ -91,46 +86,51 @@ function ChartTooltip({
 }
 
 export function HistoryChart({ data, valueName, unit, decimals, showRoss, showBand, gapMode }: HistoryChartProps) {
+  // Config drives the per-series colour injected as `--color-<key>` by
+  // ChartContainer; the actual line stays on the azure accent.
+  const config: ChartConfig = {
+    value: { label: valueName, color: "var(--brand-600)" },
+    ross: { label: "Ross 308", color: "var(--hint)" },
+    band: { label: "Contractor band", color: "var(--status-bad)" },
+  };
   return (
-    <div className="h-[320px] w-full">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 8, right: 12, bottom: 4, left: 0 }}>
-          <CartesianGrid stroke="var(--divider)" vertical={false} />
-          <XAxis
-            dataKey="day"
-            tick={axisTick}
-            stroke="var(--border)"
-            tickLine={false}
-            tickMargin={8}
-            label={{ value: "day of cycle", position: "insideBottom", offset: -2, fill: MUTED, fontSize: 11 }}
-            height={40}
-          />
-          <YAxis tick={axisTick} stroke="var(--border)" tickLine={false} width={48} />
-          <Tooltip
-            cursor={{ stroke: "var(--border)", strokeWidth: 1 }}
-            content={(props) => {
-              const { active, payload, label } = props as unknown as { active?: boolean; payload?: TipItem[]; label?: number };
-              return <ChartTooltip active={active} payload={payload} label={label} unit={unit} decimals={decimals} gapMode={gapMode} />;
-            }}
-          />
-          {showBand ? (
-            <Line type="monotone" dataKey="band" name="Contractor band" stroke="var(--status-bad)" strokeWidth={1.5} strokeDasharray="4 4" dot={false} isAnimationActive={false} />
-          ) : null}
-          {showRoss ? (
-            <Line type="monotone" dataKey="ross" name="Ross 308" stroke="var(--hint)" strokeWidth={1.75} strokeDasharray="5 4" dot={false} connectNulls isAnimationActive={false} />
-          ) : null}
-          <Line
-            type="monotone"
-            dataKey="value"
-            name={valueName}
-            stroke="var(--brand-700)"
-            strokeWidth={2.25}
-            dot={showRoss ? { r: 3, fill: "var(--brand-700)", stroke: INK, strokeWidth: 0 } : false}
-            connectNulls
-            isAnimationActive={false}
-          />
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
+    <ChartContainer config={config} className="h-[320px]">
+      <Recharts.LineChart data={data} margin={{ top: 8, right: 12, bottom: 4, left: 0 }}>
+        <Recharts.CartesianGrid stroke="var(--divider)" vertical={false} />
+        <Recharts.XAxis
+          dataKey="day"
+          tick={axisTick}
+          stroke="var(--border)"
+          tickLine={false}
+          tickMargin={8}
+          label={{ value: "day of cycle", position: "insideBottom", offset: -2, fill: MUTED, fontSize: 11 }}
+          height={40}
+        />
+        <Recharts.YAxis tick={axisTick} stroke="var(--border)" tickLine={false} width={48} />
+        <ChartTooltip
+          cursor={{ stroke: "var(--border)", strokeWidth: 1 }}
+          content={(props) => {
+            const { active, payload, label } = props as unknown as { active?: boolean; payload?: TipItem[]; label?: number };
+            return <HistoryTip active={active} payload={payload} label={label} unit={unit} decimals={decimals} gapMode={gapMode} />;
+          }}
+        />
+        {showBand ? (
+          <Recharts.Line type="monotone" dataKey="band" name="Contractor band" stroke="var(--color-band)" strokeWidth={1.5} strokeDasharray="4 4" dot={false} isAnimationActive={false} />
+        ) : null}
+        {showRoss ? (
+          <Recharts.Line type="monotone" dataKey="ross" name="Ross 308" stroke="var(--color-ross)" strokeWidth={1.75} strokeDasharray="5 4" dot={false} connectNulls isAnimationActive={false} />
+        ) : null}
+        <Recharts.Line
+          type="monotone"
+          dataKey="value"
+          name={valueName}
+          stroke="var(--color-value)"
+          strokeWidth={2.25}
+          dot={showRoss ? { r: 3, fill: "var(--brand-600)", stroke: INK, strokeWidth: 0 } : false}
+          connectNulls
+          isAnimationActive={false}
+        />
+      </Recharts.LineChart>
+    </ChartContainer>
   );
 }

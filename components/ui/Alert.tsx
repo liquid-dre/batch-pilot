@@ -4,7 +4,7 @@ import { IconInfo, IconStatusGood, IconStatusWarn, IconStatusBad, type IconCompo
 /**
  * Callout used for info / success / warning / error (brand-guidelines §6):
  * icon + bold title + plain line. Status variants reuse the reserved status
- * tints; info uses the cyan accent tint (never the crimson brand tint, so an
+ * tints; info uses the azure accent tint (never a status hue, so an
  * informational callout can't be mistaken for a red error). Full background tint
  * + matching icon — no side-stripe borders.
  */

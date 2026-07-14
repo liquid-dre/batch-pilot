@@ -25,7 +25,7 @@ import {
 
 function Eyebrow({ children, onDark }: { children: React.ReactNode; onDark?: boolean }) {
   return (
-    <p className={cn("font-mono text-[0.6875rem] font-semibold uppercase tracking-[0.12em]", onDark ? "text-brand-100/80" : "text-brand-600")}>
+    <p className={cn("font-mono text-[0.6875rem] font-semibold uppercase tracking-[0.12em]", onDark ? "text-on-invert-dim" : "text-brand-600")}>
       {children}
     </p>
   );
@@ -61,7 +61,7 @@ export function Problem() {
       <Reveal className="mt-10 grid gap-px overflow-hidden rounded-[var(--radius-card)] bg-divider sm:grid-cols-3" delay={80}>
         {problem.stats.map((s) => (
           <div key={s.label} className="bg-paper p-6">
-            <p className="font-display text-[2rem] font-extrabold tracking-[-0.03em] text-brand-700">{s.value}</p>
+            <p className="font-display text-[2rem] font-extrabold tracking-[-0.03em] text-brand-600">{s.value}</p>
             <p className="mt-1 text-label text-muted">{s.label}</p>
           </div>
         ))}
@@ -102,20 +102,20 @@ export function Wedge() {
           </Reveal>
 
           {/* What BatchPilot does with it */}
-          <Reveal className="flex flex-col rounded-[var(--radius-card)] bg-brand-900 p-5 text-white sm:p-6" delay={90}>
-            <p className="text-label font-semibold text-brand-100">{wedge.batchpilot.title}</p>
+          <Reveal className="flex flex-col rounded-[var(--radius-card)] bg-canvas-invert p-5 text-on-invert sm:p-6" delay={90}>
+            <p className="text-label font-semibold text-on-invert">{wedge.batchpilot.title}</p>
             <div className="mt-4">
-              <p className="text-[0.75rem] font-semibold uppercase tracking-[0.08em] text-brand-100/70">{wedge.batchpilot.typedLabel}</p>
+              <p className="text-[0.75rem] font-semibold uppercase tracking-[0.08em] text-on-invert-dim">{wedge.batchpilot.typedLabel}</p>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {wedge.batchpilot.typed.map((t) => (
-                  <span key={t} className="rounded-[var(--radius-pill)] bg-white/10 px-2.5 py-1 font-mono text-[0.75rem] text-white">
+                  <span key={t} className="rounded-[var(--radius-pill)] bg-white/10 px-2.5 py-1 font-mono text-[0.75rem] text-on-invert">
                     {t}
                   </span>
                 ))}
               </div>
             </div>
             <div className="mt-5">
-              <p className="text-[0.75rem] font-semibold uppercase tracking-[0.08em] text-brand-100/70">{wedge.batchpilot.computedLabel}</p>
+              <p className="text-[0.75rem] font-semibold uppercase tracking-[0.08em] text-on-invert-dim">{wedge.batchpilot.computedLabel}</p>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {wedge.batchpilot.computed.map((c) => (
                   <span key={c} className="inline-flex items-center gap-1.5 rounded-[var(--radius-pill)] bg-brand-700 px-2.5 py-1 font-mono text-[0.75rem] text-white">
@@ -125,13 +125,13 @@ export function Wedge() {
                 ))}
               </div>
             </div>
-            <p className="mt-auto pt-5 text-label text-brand-100/90 [text-wrap:pretty]">{wedge.batchpilot.caption}</p>
+            <p className="mt-auto pt-5 text-label text-on-invert-dim [text-wrap:pretty]">{wedge.batchpilot.caption}</p>
           </Reveal>
         </div>
 
         {/* Honest WhatsApp-native framing */}
         <Reveal className="mt-6 rounded-[var(--radius-card)] bg-brand-50 p-5 sm:p-6" delay={60}>
-          <h3 className="text-h3 text-brand-700">{wedge.whatsappNative.heading}</h3>
+          <h3 className="text-h3 text-brand-600">{wedge.whatsappNative.heading}</h3>
           <p className="mt-2 max-w-3xl text-body text-slate [text-wrap:pretty]">{wedge.whatsappNative.body}</p>
         </Reveal>
       </div>
@@ -154,7 +154,7 @@ function RoleVisual({ role }: { role: Role }) {
   if (role === "supervisor") {
     return (
       <div className="inline-flex items-center gap-3 rounded-[var(--radius-control)] border border-border bg-surface px-3 py-2">
-        <span className="flex size-9 items-center justify-center rounded-[var(--radius-control)] bg-brand-50 text-h3 font-bold text-brand-700">−</span>
+        <span className="flex size-9 items-center justify-center rounded-[var(--radius-control)] bg-brand-50 text-h3 font-bold text-brand-600">−</span>
         <span className="font-mono text-h2 tabular-nums text-ink">17</span>
         <span className="flex size-9 items-center justify-center rounded-[var(--radius-control)] bg-brand-700 text-h3 font-bold text-white">+</span>
       </div>
@@ -172,7 +172,7 @@ function RoleVisual({ role }: { role: Role }) {
         <div key={r.name} className="flex items-center gap-3 py-1 text-label">
           <span className="font-mono text-muted">{i + 1}</span>
           <span className="text-ink">{r.name}</span>
-          <span className="ml-auto font-mono tabular-nums text-brand-700">{r.epef}</span>
+          <span className="ml-auto font-mono tabular-nums text-brand-600">{r.epef}</span>
         </div>
       ))}
       <p className="mt-1 text-[0.6875rem] text-hint">EPEF, this cycle</p>
@@ -234,7 +234,7 @@ export function CatchItEarly({ data }: { data: WeightBandData }) {
 
         <Reveal className="mt-10 rounded-[var(--radius-card)] border border-divider bg-paper p-5 sm:p-6" delay={70}>
           <div className="mb-4 flex flex-wrap items-center gap-3">
-            <span className="rounded-[var(--radius-pill)] bg-brand-100 px-2.5 py-1 font-mono text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-brand-700">
+            <span className="rounded-[var(--radius-pill)] bg-brand-100 px-2.5 py-1 font-mono text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-brand-600">
               {catchItEarly.exampleLabel}
             </span>
             <StatusPill level="amber" label={catchItEarly.statusLabel} size="sm" />
@@ -263,7 +263,7 @@ export function HowItWorks() {
       <Reveal className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4" delay={60}>
         {howItWorks.steps.map((s) => (
           <div key={s.n} className="rounded-[var(--radius-card)] bg-surface p-6 shadow-card">
-            <span className="flex size-10 items-center justify-center rounded-[var(--radius-control)] bg-brand-50 font-display text-h3 font-extrabold text-brand-700">
+            <span className="flex size-10 items-center justify-center rounded-[var(--radius-control)] bg-brand-50 font-display text-h3 font-extrabold text-brand-600">
               {s.n}
             </span>
             <h3 className="mt-4 text-h3">{s.title}</h3>
@@ -291,7 +291,7 @@ export function Trust() {
             <p className="mt-4 text-label text-muted">{trust.disclaimer}</p>
           </Reveal>
           <Reveal className="rounded-[var(--radius-card)] bg-surface p-6 shadow-card sm:p-8" delay={80}>
-            <LogoMark className="h-8 w-9 text-brand-700" />
+            <LogoMark className="h-8 w-9 text-brand-600" />
             <ul className="mt-5 space-y-3">
               {trust.points.map((p) => (
                 <li key={p} className="flex gap-2.5 text-body text-slate">
@@ -339,14 +339,14 @@ export function Faq() {
 
 export function FinalCta({ onEnter, onLogin }: { onEnter: (r: Role) => void; onLogin: () => void }) {
   return (
-    <section aria-labelledby="final-h" className="relative isolate overflow-hidden bg-brand-700 text-white">
+    <section aria-labelledby="final-h" className="relative isolate overflow-hidden bg-canvas-invert text-on-invert">
       <LogoMark className="pointer-events-none absolute -right-8 top-1/2 h-48 w-auto -translate-y-1/2 text-white/[0.07]" aria-hidden />
       <div className="mx-auto flex max-w-6xl flex-col items-start gap-6 px-4 py-16 sm:px-6 sm:py-20">
         <div className="max-w-xl">
-          <h2 id="final-h" className="text-h1 text-white [text-wrap:balance]">
+          <h2 id="final-h" className="text-h1 text-on-invert [text-wrap:balance]">
             {finalCta.heading}
           </h2>
-          <p className="mt-2 text-body-l text-brand-100/90 [text-wrap:pretty]">{finalCta.body}</p>
+          <p className="mt-2 text-body-l text-on-invert-dim [text-wrap:pretty]">{finalCta.body}</p>
         </div>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <Button type="button" variant="primary" inverse size="lg" onClick={() => onEnter("supervisor")}>

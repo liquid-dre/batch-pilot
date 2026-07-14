@@ -479,7 +479,7 @@ function StatusChip({ status }: { status: string }) {
     <span
       className={cn(
         "rounded-[var(--radius-pill)] px-2 py-0.5 text-[0.75rem] font-semibold",
-        joined ? "bg-status-good-tint text-status-good" : "bg-brand-50 text-brand-700",
+        joined ? "bg-status-good-tint text-status-good" : "bg-brand-50 text-brand-600",
       )}
     >
       {joined ? "Joined" : "Invited"}

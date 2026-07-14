@@ -10,6 +10,7 @@ import { cn } from "@/lib/cn";
 import { LogoMark } from "@/components/brand/Logo";
 import { IconChevronDown, IconInfo } from "@/components/icons";
 import { SignOutButton } from "./SignOutButton";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { NAV, NavGlyph, isActive, BADGE_FETCHERS, type NavSection, type NavItem, type BadgeSource } from "./nav-config";
 
 /** True once a Convex deployment is connected — enables real sign-out. */
@@ -79,7 +80,7 @@ export function SidebarNav({ collapsed, onToggleCollapse, onNavigate }: SidebarN
       <div className="flex h-full flex-col bg-surface">
         {/* Brand */}
         <div className={cn("flex h-16 shrink-0 items-center border-b border-divider", collapsed ? "justify-center px-2" : "gap-2 px-4")}>
-          <Link href="/app" aria-label="BatchPilot home" onClick={onNavigate} className="flex items-center gap-2 rounded-[var(--radius-control)] text-brand-700">
+          <Link href="/app" aria-label="BatchPilot home" onClick={onNavigate} className="flex items-center gap-2 rounded-[var(--radius-control)] text-brand-600">
             <LogoMark className="h-6 w-7 shrink-0" />
             <AnimatePresence initial={false}>
               {!collapsed ? (
@@ -117,6 +118,9 @@ export function SidebarNav({ collapsed, onToggleCollapse, onNavigate }: SidebarN
         {/* Pinned footer: account block, then the Hide toggle as the last row */}
         <div className="shrink-0 border-t border-divider">
           <div className={cn("space-y-3", collapsed ? "px-2 py-3" : "px-4 py-4")}>
+            <div className={cn("flex", collapsed ? "justify-center" : "justify-start")}>
+              <ThemeToggle compact={collapsed} />
+            </div>
             {CONVEX_CONNECTED && !collapsed ? <SignOutButton /> : null}
             {CONVEX_CONNECTED ? null : <DemoNote collapsed={collapsed} />}
           </div>
@@ -276,7 +280,7 @@ function NavRow({
         className={cn(
           "group relative my-0.5 flex h-11 items-center rounded-[var(--radius-control)] transition-colors duration-[var(--dur-fast)]",
           collapsed ? "justify-center" : "gap-3 px-3",
-          active ? "bg-brand-50 text-brand-700 font-semibold" : "text-slate hover:bg-wash hover:text-ink",
+          active ? "bg-brand-50 text-brand-600 font-semibold" : "text-slate hover:bg-wash hover:text-ink",
         )}
       >
         <span className="relative flex shrink-0">
@@ -320,7 +324,7 @@ function NavRow({
         {collapsed ? (
           <span
             role="tooltip"
-            className="pointer-events-none absolute left-full z-[var(--z-dropdown)] ml-2 whitespace-nowrap rounded-[var(--radius-control)] bg-ink px-2 py-1 text-[0.75rem] font-medium text-white opacity-0 shadow-card transition-opacity duration-[var(--dur-fast)] group-hover:opacity-100 group-focus-visible:opacity-100"
+            className="pointer-events-none absolute left-full z-[var(--z-dropdown)] ml-2 whitespace-nowrap rounded-[var(--radius-control)] bg-canvas-invert px-2 py-1 text-[0.75rem] font-medium text-on-invert opacity-0 shadow-card transition-opacity duration-[var(--dur-fast)] group-hover:opacity-100 group-focus-visible:opacity-100"
           >
             {item.label}
             {hasBadge ? ` · ${count}` : ""}
