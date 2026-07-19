@@ -91,6 +91,9 @@ export default defineSchema({
     killDate: v.string(),
     focPct: v.number(),
     contractId: v.string(),
+    // Set when the contractor closes the cycle; an absent value = active. The
+    // active-batch reads filter on this so a closed cycle frees the farm.
+    closedAt: v.optional(v.string()),
   })
     .index("by_extId", ["extId"])
     .index("by_site", ["siteId"]),
@@ -215,6 +218,9 @@ export default defineSchema({
   // record and the grower comparison view (their day-by-day curves are still
   // generated deterministically by the seam from these seeds).
   historicalBatches: defineTable({
+    // Optional so the demo seed (site-less) still validates; a cycle closed live
+    // always stamps its site, and the per-tenant reads query `by_site`.
+    siteId: v.optional(v.string()),
     cycleNo: v.number(),
     placingDate: v.string(),
     killDate: v.string(),
@@ -223,7 +229,9 @@ export default defineSchema({
     finalWeightG: v.number(),
     finalFcr: v.number(),
     epef: v.number(),
-  }).index("by_cycle", ["cycleNo"]),
+  })
+    .index("by_cycle", ["cycleNo"])
+    .index("by_site", ["siteId"]),
 
   // Other growers supplying a contractor (tenant-isolation + generated screens).
   // Their per-house/day-by-day data is generated on demand from these profiles.

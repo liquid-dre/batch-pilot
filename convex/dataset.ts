@@ -38,7 +38,11 @@ export const myDataset = query({
       ? await ctx.db.query("contractors").withIndex("by_extId", (q) => q.eq("extId", contractorId)).first()
       : null;
 
-    const batch = await ctx.db.query("batches").withIndex("by_site", (q) => q.eq("siteId", siteId)).first();
+    const batch = await ctx.db
+      .query("batches")
+      .withIndex("by_site", (q) => q.eq("siteId", siteId))
+      .filter((q) => q.eq(q.field("closedAt"), undefined))
+      .first();
     const placements = batch
       ? await ctx.db.query("placements").withIndex("by_batch", (q) => q.eq("batchId", batch.extId)).collect()
       : [];
@@ -71,6 +75,11 @@ export const myDataset = query({
     const placementIds = new Set(placements.map((p) => p.extId));
     const editLog = (await ctx.db.query("editLog").collect()).filter((e) => placementIds.has(e.placementId));
 
+    // This site's closed cycles (written by closeCycle), newest first.
+    const historicalRows = (
+      await ctx.db.query("historicalBatches").withIndex("by_site", (q) => q.eq("siteId", siteId)).collect()
+    ).sort((a, b) => b.cycleNo - a.cycleNo);
+
     return {
       site: { ...toApp(site), houses },
       contractor: contractorRow ? toApp(contractorRow) : { id: contractorId, name: "" },
@@ -83,11 +92,15 @@ export const myDataset = query({
       feedDeliveries: feedDeliveries.map(toApp),
       catchingEvents: catchingEvents.map(toApp),
       manifest: manifest ? toApp(manifest) : null,
-      // Closed-cycle history + track record become real once `closeCycle` lands
-      // (Phase 2); a live-onboarded farm has none yet.
-      historicalBatches: [],
+      historicalBatches: historicalRows.map(toApp),
       editLog: editLog.map(toApp),
-      pastCycles: [],
+      pastCycles: historicalRows.map((b) => ({
+        cycleNo: b.cycleNo,
+        killDate: b.killDate,
+        finalAvgWeightG: b.finalWeightG,
+        mortalityPct: b.finalCumMortPct,
+        epef: b.epef,
+      })),
     };
   },
 });

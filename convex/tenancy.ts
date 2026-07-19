@@ -2,6 +2,7 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { toApp } from "./lib";
+import { rossAt } from "./ross";
 
 /**
  * Onboarding / multi-tenant (stage 1 — the identity loop).
@@ -223,7 +224,11 @@ export const myWorkspace = query({
           .filter((h): h is NonNullable<typeof h> => Boolean(h))
           .map((h) => ({ id: h.extId, name: h.name, capacity: h.capacity }));
 
-        const batch = await ctx.db.query("batches").withIndex("by_site", (q) => q.eq("siteId", site.extId)).first();
+        const batch = await ctx.db
+          .query("batches")
+          .withIndex("by_site", (q) => q.eq("siteId", site.extId))
+          .filter((q) => q.eq(q.field("closedAt"), undefined))
+          .first();
         if (batch) {
           const placements = await ctx.db
             .query("placements")
@@ -345,8 +350,12 @@ export const startCycle = mutation({
     const { site, siteId } = await requireFarm(ctx);
     const contractorId = (site.contractorIds ?? [])[0] ?? "";
 
-    const existing = await ctx.db.query("batches").withIndex("by_site", (q) => q.eq("siteId", siteId)).first();
-    if (existing) throw new Error("This farm already has a cycle");
+    const existing = await ctx.db
+      .query("batches")
+      .withIndex("by_site", (q) => q.eq("siteId", siteId))
+      .filter((q) => q.eq(q.field("closedAt"), undefined))
+      .first();
+    if (existing) throw new Error("This farm already has an active cycle");
     if (!args.placingDate || !args.killDate) throw new Error("Placing and kill dates are required");
 
     const batchExtId = `${siteId}_b${args.cycleNo}`;
@@ -377,5 +386,79 @@ export const startCycle = mutation({
       });
     }
     return { batchId: batchExtId, placements: n };
+  },
+});
+
+/**
+ * Contractor: close a grower's active cycle. Snapshots the cycle's finals into
+ * `historicalBatches` (scoped to the site, so the grower's Batches/Compare show
+ * real closed cycles) and stamps the batch `closedAt` — which frees the farm to
+ * start the next cycle. Guarded by `requireOwnedFarm`, so only the contractor
+ * who owns the farm can close it (ROADMAP §9 — contractor-driven lifecycle).
+ */
+export const closeCycle = mutation({
+  args: { siteId: v.string() },
+  handler: async (ctx, { siteId }) => {
+    await requireOwnedFarm(ctx, siteId);
+    const batch = await ctx.db
+      .query("batches")
+      .withIndex("by_site", (q) => q.eq("siteId", siteId))
+      .filter((q) => q.eq(q.field("closedAt"), undefined))
+      .first();
+    if (!batch) throw new Error("This farm has no active cycle to close");
+
+    const placements = await ctx.db
+      .query("placements")
+      .withIndex("by_batch", (q) => q.eq("batchId", batch.extId))
+      .collect();
+
+    let placed = 0;
+    let remaining = 0;
+    let day = 0;
+    let weightNum = 0; // Σ avgWeight × birds
+    let weightDen = 0;
+    let placingDate = "";
+    for (const p of placements) {
+      placed += p.placedCount;
+      if (!placingDate || p.placingDate < placingDate) placingDate = p.placingDate;
+      const daily = (
+        await ctx.db.query("dailyEntries").withIndex("by_placement", (q) => q.eq("placementId", p.extId)).collect()
+      ).sort((a, b) => a.day - b.day);
+      const latest = daily[daily.length - 1];
+      const birds = latest?.birdsRemaining ?? p.placedCount;
+      remaining += birds;
+      if (latest) day = Math.max(day, latest.day);
+      const weights = (
+        await ctx.db.query("weightEntries").withIndex("by_placement", (q) => q.eq("placementId", p.extId)).collect()
+      ).sort((a, b) => a.day - b.day);
+      const w = weights[weights.length - 1];
+      if (w) {
+        weightNum += w.avgWeightG * birds;
+        weightDen += birds;
+      }
+    }
+
+    const finalDay = day || Math.max(0, ...placements.map((p) => p.dayCount));
+    const livability = placed ? (remaining / placed) * 100 : 0;
+    const finalCumMortPct = placed ? Number((((placed - remaining) / placed) * 100).toFixed(2)) : 0;
+    const rossW = rossAt(finalDay).weightG;
+    const rossFcr = rossAt(finalDay).fcr ?? 1.3;
+    const finalWeightG = weightDen ? Math.round(weightNum / weightDen) : 0;
+    const finalFcr = finalWeightG ? Number((rossFcr * (rossW / finalWeightG)).toFixed(2)) : rossFcr;
+    const epef = finalWeightG && finalDay ? Math.round(((livability * (finalWeightG / 1000)) / (finalDay * finalFcr)) * 100) : 0;
+
+    await ctx.db.insert("historicalBatches", {
+      siteId,
+      cycleNo: batch.cycleNo,
+      placingDate: placingDate || batch.killDate,
+      killDate: batch.killDate,
+      finalDay,
+      finalCumMortPct,
+      finalWeightG,
+      finalFcr,
+      epef,
+    });
+    await ctx.db.patch(batch._id, { closedAt: new Date().toISOString() });
+    return { cycleNo: batch.cycleNo, finalWeightG, finalCumMortPct, epef };
   },
 });

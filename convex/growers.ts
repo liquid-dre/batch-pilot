@@ -48,7 +48,11 @@ interface PlacementData {
 
 /** Load a farm's active batch + every placement's daily/weight rows. */
 async function loadFarm(ctx: any, siteId: string) {
-  const batch = await ctx.db.query("batches").withIndex("by_site", (q: any) => q.eq("siteId", siteId)).first();
+  const batch = await ctx.db
+    .query("batches")
+    .withIndex("by_site", (q: any) => q.eq("siteId", siteId))
+    .filter((q: any) => q.eq(q.field("closedAt"), undefined))
+    .first();
   if (!batch) return null;
   const rawPlacements = await ctx.db
     .query("placements")
