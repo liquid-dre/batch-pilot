@@ -96,7 +96,15 @@ export function SidebarNav({ collapsed, onToggleCollapse, onNavigate }: SidebarN
   const pathname = usePathname();
   // A freshly-invited user can be "pending" (no farm yet) — no nav until they're
   // placed on a farm; the onboarding home guides them.
-  const sections = NAV[role] ?? [];
+  const rawSections = NAV[role] ?? [];
+  // These screens have no Convex analog yet: allocation is done via start-cycle in
+  // the setup flow, and the house logbook is superseded by Cycle history. Hide
+  // their nav items when Convex is connected (the mock demo keeps them).
+  const sections = CONVEX_CONNECTED
+    ? rawSections
+        .map((s) => ({ ...s, items: s.items.filter((i) => i.key !== "allocate" && i.key !== "logbook") }))
+        .filter((s) => s.items.length > 0)
+    : rawSections;
   const counts = useBadgeCounts(sections);
 
   // Animate only once the user has actually toggled. usePersisted renders the

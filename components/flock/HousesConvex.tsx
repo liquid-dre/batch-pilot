@@ -24,6 +24,7 @@ export function HousesConvex() {
   return (
     <HouseSetupForm
       houses={houses}
+      showAllocate={false}
       save={async (rows) => {
         const r = await setHouses({ houses: rows });
         return r.houses as unknown as House[];

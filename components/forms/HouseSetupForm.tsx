@@ -32,11 +32,15 @@ interface HouseInput {
 export function HouseSetupForm({
   houses,
   save,
+  showAllocate = true,
 }: {
   houses: House[];
   /** Convex path: persists via api.tenancy.setHouses and returns the resulting
    *  houses (with server-assigned ids). Omitted on the mock path. */
   save?: (rows: HouseInput[]) => Promise<House[]>;
+  /** The mock allocate flow has no Convex analog (cycles start from setup), so
+   *  the Convex houses screen hides the "Allocate a cycle" action. */
+  showAllocate?: boolean;
 }) {
   const router = useRouter();
   const tmp = useRef(0);
@@ -97,9 +101,11 @@ export function HouseSetupForm({
         title="Your houses"
         intro="Add or remove houses and set the bird capacity of each. The total updates as you go."
         action={
-          <Button variant="secondary" onClick={() => router.push("/app/houses/allocate")}>
-            Allocate a cycle
-          </Button>
+          showAllocate ? (
+            <Button variant="secondary" onClick={() => router.push("/app/houses/allocate")}>
+              Allocate a cycle
+            </Button>
+          ) : undefined
         }
       />
 
