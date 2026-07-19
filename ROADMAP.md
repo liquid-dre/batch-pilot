@@ -466,6 +466,18 @@ Ross weight curve — that under-performance is the hero story, keep it).
   bands. The contractor Benchmark screen gains a tuning form
   (`BenchmarkTuner.tsx`) editing the mortality/uniformity bands + status
   thresholds (value tuning; CSV curve import deferred).
+  **Admin roles (Phase 5 — done):** a **Platform Admin** tier (BatchPilot
+  operator) sits above every tenant — created only via the
+  `PLATFORM_ADMIN_EMAILS` allowlist (`convex/auth.ts`), never self-serve. Its one
+  above-tenant surface is **white-label theming**: `convex/admin.ts`
+  (`listContractors`, `setContractorTheme`, `myTheme`, all platform-admin
+  guarded) + the org console (`PlatformAdminHome.tsx`) edits any contractor org's
+  brand, and `TenantThemeProvider` overrides the `--brand-*` tokens at runtime
+  for every user under that org (branding as configuration, per BRD §12-P). The
+  BRD's **Contractor Org Admin** is the existing `contractor` role; a contractor
+  can now invite **co-admins** into their own org (`tenancy.inviteOrgAdmins` →
+  an org invite carrying `contractorId`; the auth hook / `claimInvite` stamp the
+  joiner as a full contractor), so an org is run by a team, not one login.
 - **Database + realtime → Convex** — seam: `lib/data/*`. **In progress** (branch
   `claude/convex-integration-setup-g02tm5`): backend scaffolded — `convex/schema.ts`
   (every operational entity, app id kept as indexed `extId`), `convex/seed.ts` +

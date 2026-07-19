@@ -2,6 +2,7 @@
 
 import { AuthProvider } from "@/lib/auth";
 import { ConvexClientProvider } from "@/components/providers/ConvexClientProvider";
+import { TenantThemeProvider } from "@/components/providers/TenantThemeProvider";
 
 /**
  * Client provider tree mounted once in the root layout. `ConvexClientProvider`
@@ -13,7 +14,9 @@ import { ConvexClientProvider } from "@/components/providers/ConvexClientProvide
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <ConvexClientProvider>
-      <AuthProvider>{children}</AuthProvider>
+      <AuthProvider>
+        <TenantThemeProvider>{children}</TenantThemeProvider>
+      </AuthProvider>
     </ConvexClientProvider>
   );
 }

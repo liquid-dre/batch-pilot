@@ -103,6 +103,48 @@ export const inviteSupervisors = mutation({
   },
 });
 
+/**
+ * Contractor: invite co-admin(s) to their own org (ROADMAP §9 — Contractor Org
+ * Admin). A co-admin joins the whole contractor org (same `contractorId`, full
+ * `contractor` rights) rather than a single farm, so an org can be run by a team
+ * rather than one login. Any contractor in the org may invite more.
+ */
+export const inviteOrgAdmins = mutation({
+  args: { emails: v.array(v.string()) },
+  handler: async (ctx, { emails }) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not signed in");
+    const user = await ctx.db.get(userId);
+    if (!user || (user.role as string) !== "contractor" || !user.contractorId) {
+      throw new Error("Only a contractor can invite co-admins");
+    }
+    const contractorId = user.contractorId as string;
+    const existing = await ctx.db
+      .query("invites")
+      .withIndex("by_contractor", (q) => q.eq("contractorId", contractorId))
+      .collect();
+    const already = new Set(existing.map((i) => i.email));
+    const createdAt = new Date().toISOString();
+    const seen = new Set<string>();
+    let invited = 0;
+    for (const raw of emails) {
+      const email = norm(raw);
+      if (!email || seen.has(email) || already.has(email)) continue;
+      seen.add(email);
+      await ctx.db.insert("invites", {
+        email,
+        role: "contractor",
+        contractorId,
+        invitedByUserId: userId as string,
+        status: "pending",
+        createdAt,
+      });
+      invited += 1;
+    }
+    return { invited };
+  },
+});
+
 // A farm's name is set once at creation (`createFarm`) and is intentionally
 // immutable afterwards — there is deliberately no rename mutation, so a
 // contractor can't change it from the UI or by a direct call.
@@ -128,7 +170,17 @@ export const claimInvite = mutation({
       .filter((q) => q.eq(q.field("status"), "pending"))
       .first();
     if (!invite) return { claimed: false as const };
-    const site = await ctx.db.query("sites").withIndex("by_extId", (q) => q.eq("extId", invite.siteId)).first();
+    if (invite.contractorId) {
+      // Org co-admin invite: join the whole contractor org as a contractor.
+      const contractor = await ctx.db
+        .query("contractors")
+        .withIndex("by_extId", (q) => q.eq("extId", invite.contractorId!))
+        .first();
+      await ctx.db.patch(userId, { role: "contractor", contractorId: invite.contractorId, org: contractor?.name ?? "" });
+      await ctx.db.patch(invite._id, { status: "accepted" });
+      return { claimed: true as const, role: "contractor" };
+    }
+    const site = await ctx.db.query("sites").withIndex("by_extId", (q) => q.eq("extId", invite.siteId!)).first();
     await ctx.db.patch(userId, { role: invite.role, siteId: invite.siteId, org: site?.name ?? "" });
     await ctx.db.patch(invite._id, { status: "accepted" });
     return { claimed: true as const, role: invite.role };
@@ -198,7 +250,12 @@ export const myWorkspace = query({
             .map((i) => ({ email: i.email, status: i.status })),
         });
       }
-      return { role, name, email, org: (user.org as string) ?? "", farms };
+      // Co-admins invited into this org (the Contractor Org Admin team).
+      const orgInvites = contractorId
+        ? await ctx.db.query("invites").withIndex("by_contractor", (q) => q.eq("contractorId", contractorId)).collect()
+        : [];
+      const coAdmins = orgInvites.map((i) => ({ email: i.email, status: i.status }));
+      return { role, name, email, org: (user.org as string) ?? "", farms, coAdmins };
     }
 
     if (role === "supervisor" || role === "manager") {

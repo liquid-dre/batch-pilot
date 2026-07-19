@@ -127,6 +127,11 @@ export const NAV: Record<Role, NavSection[]> = {
     { items: [{ key: "schedule", label: "Collection schedule", href: "/app/schedule", icon: "schedule" }] },
     { items: [{ key: "benchmark", label: "Benchmarks", href: "/app/benchmark", icon: "benchmark" }] },
   ],
+  // Platform Admin (BatchPilot operator) — the sole above-tenant surface today is
+  // white-label theming across contractor orgs, edited inline on the org list.
+  platformAdmin: [
+    { items: [{ key: "orgs", label: "Contractor orgs", href: "/app", icon: "growers" }] },
+  ],
 };
 
 /** Is `href` the active route for `pathname`? (`/app` is exact; others prefix-match.) */

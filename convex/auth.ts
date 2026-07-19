@@ -13,9 +13,23 @@ import { convexAuth } from "@convex-dev/auth/server";
  *    invite accepted.
  *  - An invited-but-unmatched sign-up stays "pending" with no tenant — the
  *    onboarding screen tells them to ask to be invited.
+ *  - **Platform Admin** (the BatchPilot operator) is neither self-serve nor
+ *    invited — nothing sits above it. A sign-up whose email is in the
+ *    `PLATFORM_ADMIN_EMAILS` allowlist (comma-separated env var) is stamped
+ *    `platformAdmin`, taking priority over any invite / contractor request.
  *
  * No demo tenant is assigned any more — a fresh account is genuinely empty.
  */
+
+/** Lower-cased emails allowed to become Platform Admin (env allowlist). */
+function platformAdminEmails(): Set<string> {
+  return new Set(
+    (process.env.PLATFORM_ADMIN_EMAILS ?? "")
+      .split(",")
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean),
+  );
+}
 
 export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
   providers: [
@@ -48,6 +62,13 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
       if (!user) return;
 
       const email = ((user.email as string | undefined) ?? "").toLowerCase();
+
+      // Platform Admin allowlist wins over everything — no tenant, no org.
+      if (email && platformAdminEmails().has(email)) {
+        await db.patch(userId, { role: "platformAdmin", siteId: undefined, contractorId: undefined });
+        return;
+      }
+
       const invite = email
         ? await db
             .query("invites")
@@ -57,15 +78,28 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
         : null;
 
       if (invite) {
-        const site = await db
-          .query("sites")
-          .withIndex("by_extId", (q: any) => q.eq("extId", invite.siteId))
-          .first();
-        await db.patch(userId, {
-          role: invite.role,
-          siteId: invite.siteId,
-          org: site?.name ?? "",
-        });
+        if (invite.contractorId) {
+          // Org co-admin invite: join the whole contractor org as a contractor.
+          const contractor = await db
+            .query("contractors")
+            .withIndex("by_extId", (q: any) => q.eq("extId", invite.contractorId))
+            .first();
+          await db.patch(userId, {
+            role: "contractor",
+            contractorId: invite.contractorId,
+            org: contractor?.name ?? "",
+          });
+        } else {
+          const site = await db
+            .query("sites")
+            .withIndex("by_extId", (q: any) => q.eq("extId", invite.siteId))
+            .first();
+          await db.patch(userId, {
+            role: invite.role,
+            siteId: invite.siteId,
+            org: site?.name ?? "",
+          });
+        }
         await db.patch(invite._id, { status: "accepted" });
         return;
       }

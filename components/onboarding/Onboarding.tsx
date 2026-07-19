@@ -108,7 +108,68 @@ function ContractorOnboarding({ workspace }: { workspace: any }) {
           Create farm &amp; invite
         </Button>
       </form>
+
+      <OrgCoAdmins coAdmins={workspace.coAdmins ?? []} />
     </Shell>
+  );
+}
+
+/**
+ * Contractor Org Admin team (ROADMAP §9). Co-admins join the whole org (same
+ * `contractorId`, full contractor rights) so it can be run by a team, not one
+ * login. Any contractor in the org can invite more.
+ */
+function OrgCoAdmins({ coAdmins }: { coAdmins: { email: string; status: string }[] }) {
+  const inviteOrgAdmins = useMutation(api.tenancy.inviteOrgAdmins);
+  const [emails, setEmails] = useState("");
+  const [pending, setPending] = useState(false);
+
+  async function onInvite(e: React.FormEvent) {
+    e.preventDefault();
+    const list = splitEmails(emails);
+    if (list.length === 0) return;
+    setPending(true);
+    try {
+      await inviteOrgAdmins({ emails: list });
+      setEmails("");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <div className="mt-6 rounded-[var(--radius-card)] bg-surface p-5 shadow-card">
+      <h3 className="text-h3">Co-admins</h3>
+      <p className="mt-1 text-label text-muted">
+        Invite colleagues to help run this org. They get the same access you do — every farm, benchmark and schedule.
+      </p>
+
+      <p className="mt-4 mb-1.5 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-hint">Your team</p>
+      {coAdmins.length === 0 ? (
+        <p className="text-label text-muted">Just you so far.</p>
+      ) : (
+        <ul className="flex flex-col gap-1">
+          {coAdmins.map((c) => (
+            <li key={c.email} className="flex items-center justify-between text-label">
+              <span className="text-ink">{c.email}</span>
+              <StatusChip status={c.status} />
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <form onSubmit={onInvite} className="mt-3 flex gap-2">
+        <input
+          value={emails}
+          onChange={(e) => setEmails(e.target.value)}
+          placeholder="colleague@example.com"
+          className="h-10 min-w-0 flex-1 rounded-[var(--radius-control)] border border-border bg-surface px-3 text-label text-ink outline-none focus-visible:border-brand-500"
+        />
+        <Button type="submit" size="sm" affordance={IconSend} loading={pending} className="shrink-0">
+          Invite
+        </Button>
+      </form>
+    </div>
   );
 }
 

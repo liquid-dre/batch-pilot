@@ -21,7 +21,7 @@ export type ISODate = string; // 'YYYY-MM-DD'
  * numbers) and `manager` (oversight — analytics and projections). `contractor`
  * is unchanged. When Clerk lands, each becomes a session role (ROADMAP §9).
  */
-export type Role = "supervisor" | "manager" | "contractor";
+export type Role = "supervisor" | "manager" | "contractor" | "platformAdmin";
 
 /** The two grower-side profiles (both scoped to a site). */
 export type GrowerRole = Extract<Role, "supervisor" | "manager">;
@@ -29,6 +29,17 @@ export type GrowerRole = Extract<Role, "supervisor" | "manager">;
 /** True for either grower profile — use instead of comparing to a single role. */
 export function isGrowerRole(role: Role): role is GrowerRole {
   return role === "supervisor" || role === "manager";
+}
+
+/**
+ * The BatchPilot platform operator (dev team). Sits above every tenant: manages
+ * white-label theming across contractor orgs (ROADMAP §9 / BRD §4). Created via
+ * the `PLATFORM_ADMIN_EMAILS` allowlist at sign-up — never self-serve or
+ * invited, since nothing sits above it. The Contractor Org Admin the BRD
+ * describes is the existing `contractor` role (co-admins share its `contractorId`).
+ */
+export function isPlatformAdmin(role: Role): role is "platformAdmin" {
+  return role === "platformAdmin";
 }
 
 export interface User {

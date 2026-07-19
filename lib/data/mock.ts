@@ -504,3 +504,10 @@ export const CONTRACTOR_USER: User = {
   org: "Irvine's",
   contractorId: CONTRACTOR.id,
 };
+
+export const PLATFORM_ADMIN_USER: User = {
+  id: "u_platform_admin",
+  name: "BatchPilot",
+  role: "platformAdmin",
+  org: "BatchPilot",
+};

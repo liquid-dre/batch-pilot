@@ -307,12 +307,16 @@ export default defineSchema({
   // siteId, then marks it accepted. Email is stored lowercased for matching.
   invites: defineTable({
     email: v.string(),
-    role: v.string(), // "supervisor" | "manager"
-    siteId: v.string(),
+    role: v.string(), // "supervisor" | "manager" | "contractor" (org co-admin)
+    // A farm invite carries `siteId` (supervisor/manager); an org co-admin invite
+    // carries `contractorId` and no site — they join the whole org, not one farm.
+    siteId: v.optional(v.string()),
+    contractorId: v.optional(v.string()),
     invitedByUserId: v.string(),
     status: v.string(), // "pending" | "accepted"
     createdAt: v.string(),
   })
     .index("by_email", ["email"])
-    .index("by_site", ["siteId"]),
+    .index("by_site", ["siteId"])
+    .index("by_contractor", ["contractorId"]),
 });
