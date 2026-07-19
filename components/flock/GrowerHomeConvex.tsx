@@ -34,7 +34,8 @@ export function GrowerHomeConvex() {
       return;
     }
     let alive = true;
-    getDashboardView(raw as unknown as Dataset).then((v) => {
+    const today = new Date().toISOString().slice(0, 10);
+    getDashboardView(raw as unknown as Dataset, today).then((v) => {
       if (alive) setView(v);
     });
     return () => {

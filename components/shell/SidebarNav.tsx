@@ -11,6 +11,10 @@ import { LogoMark } from "@/components/brand/Logo";
 import { IconChevronDown, IconInfo } from "@/components/icons";
 import { SignOutButton } from "./SignOutButton";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { getAlerts } from "@/lib/data";
+import type { Dataset } from "@/lib/data/dataset";
 import { NAV, NavGlyph, isActive, BADGE_FETCHERS, type NavSection, type NavItem, type BadgeSource } from "./nav-config";
 
 /** True once a Convex deployment is connected — enables real sign-out. */
@@ -28,11 +32,12 @@ interface SidebarNavProps {
 }
 
 /**
- * Live badge counts for the current role's nav. Fetches only when the role has a
- * badgeable item (so contractor/supervisor shells fetch nothing), then polls —
- * a stand-in until this becomes a Convex reactive query.
+ * Live badge counts for the current role's nav. Two implementations, chosen once
+ * by whether Convex is connected (a build-time constant, so the choice is stable
+ * across renders): the mock path polls the seam fetchers; the Convex path derives
+ * the count reactively from the signed-in tenant's own dataset.
  */
-function useBadgeCounts(sections: NavSection[]): Partial<Record<BadgeSource, number>> {
+function useBadgeCountsMock(sections: NavSection[]): Partial<Record<BadgeSource, number>> {
   const sources = useMemo(() => {
     const set = new Set<BadgeSource>();
     for (const section of sections) for (const item of section.items) if (item.badge) set.add(item.badge);
@@ -58,6 +63,28 @@ function useBadgeCounts(sections: NavSection[]): Partial<Record<BadgeSource, num
 
   return counts;
 }
+
+/** Convex path: the alerts badge = this tenant's amber/red houses, reactive. */
+function useBadgeCountsConvex(_sections: NavSection[]): Partial<Record<BadgeSource, number>> {
+  const raw = useQuery(api.dataset.myDataset);
+  const [alerts, setAlerts] = useState(0);
+  useEffect(() => {
+    if (!raw) {
+      setAlerts(0);
+      return;
+    }
+    let alive = true;
+    getAlerts(raw as unknown as Dataset).then((a) => {
+      if (alive) setAlerts(a.length);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [raw]);
+  return { alerts };
+}
+
+const useBadgeCounts = CONVEX_CONNECTED ? useBadgeCountsConvex : useBadgeCountsMock;
 
 export function SidebarNav({ collapsed, onToggleCollapse, onNavigate }: SidebarNavProps) {
   const { role } = useCurrentUser();

@@ -1749,8 +1749,8 @@ export async function getYesterdayEntries(ds: Dataset = datasetFromMock()): Prom
 }
 
 /** Actual weigh-ins + a projected forward line (current + ADG × days) to the kill day. */
-export async function getWeightProjection(ds: Dataset = datasetFromMock()): Promise<WeightProjection> {
-  const proj = await getProjection(DEMO_TODAY, ds);
+export async function getWeightProjection(ds: Dataset = datasetFromMock(), today: string = DEMO_TODAY): Promise<WeightProjection> {
+  const proj = await getProjection(today, ds);
   const killDay = proj.houses.length ? Math.max(...proj.houses.map((h) => h.killDay)) : 35;
 
   const ross: ProjectionPoint[] = Array.from({ length: killDay + 1 }, (_, day) => ({
@@ -1800,8 +1800,8 @@ export async function getWeightProjection(ds: Dataset = datasetFromMock()): Prom
 }
 
 /** Cycle info for the dashboard header (day-of-cycle = latest captured + 1, per-house range). */
-export async function getDashboardCycleInfo(ds: Dataset = datasetFromMock()): Promise<DashboardCycleInfo> {
-  const proj = await getProjection(DEMO_TODAY, ds);
+export async function getDashboardCycleInfo(ds: Dataset = datasetFromMock(), today: string = DEMO_TODAY): Promise<DashboardCycleInfo> {
+  const proj = await getProjection(today, ds);
   const days: number[] = [];
   for (const house of ds.site.houses) {
     const latest = await getLatestDailyEntry(house.id, ds);
@@ -1815,7 +1815,7 @@ export async function getDashboardCycleInfo(ds: Dataset = datasetFromMock()): Pr
     siteName: ds.site.name,
     cycleNo: ds.batch.cycleNo,
     breed: ds.batch.breed,
-    today: DEMO_TODAY,
+    today,
     dayLow: days.length ? Math.min(...days) : 0,
     dayHigh: days.length ? Math.max(...days) : 0,
     placingDate,
@@ -1826,12 +1826,12 @@ export async function getDashboardCycleInfo(ds: Dataset = datasetFromMock()): Pr
 }
 
 /** The whole dashboard bundle — one call feeds both role dashboards. */
-export async function getDashboardView(ds: Dataset = datasetFromMock()): Promise<DashboardView> {
+export async function getDashboardView(ds: Dataset = datasetFromMock(), today: string = DEMO_TODAY): Promise<DashboardView> {
   const [cycle, metrics, yesterday, projection] = await Promise.all([
-    getDashboardCycleInfo(ds),
+    getDashboardCycleInfo(ds, today),
     getDashboardMetrics(ds),
     getYesterdayEntries(ds),
-    getWeightProjection(ds),
+    getWeightProjection(ds, today),
   ]);
   return { cycle, metrics, yesterday, projection };
 }
