@@ -626,8 +626,8 @@ export async function submitManagerEdit(input: ManagerEditInput): Promise<Manage
 }
 
 /** The audit trail — all corrections, or those for one entry, newest first. */
-export function getEditLog(entityId?: string): Promise<EditRecord[]> {
-  const rows = entityId ? EDIT_LOG.filter((r) => r.entityId === entityId) : [...EDIT_LOG];
+export function getEditLog(entityId?: string, ds: Dataset = datasetFromMock()): Promise<EditRecord[]> {
+  const rows = entityId ? ds.editLog.filter((r) => r.entityId === entityId) : [...ds.editLog];
   rows.sort((a, b) => (a.editedAt < b.editedAt ? 1 : a.editedAt > b.editedAt ? -1 : 0));
   return resolve(rows);
 }
@@ -1074,10 +1074,10 @@ function assembleBatchHistory(
 }
 
 /** The current batch's full day-by-day history (real captured data). */
-export function getBatchHistory(): Promise<BatchHistory> {
+export function getBatchHistory(ds: Dataset = datasetFromMock()): Promise<BatchHistory> {
   return resolve(
-    assembleBatchHistory(PLACEMENTS, DAILY_ENTRIES, WEIGHT_ENTRIES, (id) =>
-      SITE.houses.find((h) => h.id === id)?.name ?? id,
+    assembleBatchHistory(ds.placements, ds.dailyEntries, ds.weightEntries, (id) =>
+      ds.site.houses.find((h) => h.id === id)?.name ?? id,
     ),
   );
 }
@@ -1163,10 +1163,10 @@ function genComparable(seed: (typeof HISTORICAL_BATCHES)[number]): ComparableBat
  * day-by-day history) plus the closed historical batches (generated curves),
  * each aligned by day of cycle, with a summary of key results.
  */
-export async function getComparableBatches(): Promise<CompareData> {
-  const history = await getBatchHistory();
-  const placing = PLACEMENTS.reduce((min, p) => (p.placingDate < min ? p.placingDate : min), PLACEMENTS[0].placingDate);
-  const killDay = daysBetween(placing, BATCH.killDate);
+export async function getComparableBatches(ds: Dataset = datasetFromMock()): Promise<CompareData> {
+  const history = await getBatchHistory(ds);
+  const placing = ds.placements.reduce((min, p) => (p.placingDate < min ? p.placingDate : min), ds.placements[0]?.placingDate ?? ds.batch.killDate);
+  const killDay = daysBetween(placing, ds.batch.killDate);
 
   const series: ComparePoint[] = history.batch.map((r) => ({
     day: r.day,
@@ -1182,12 +1182,12 @@ export async function getComparableBatches(): Promise<CompareData> {
   const daysToTarget = projectDaysToTarget(series, targetWeightG, history.maxDay);
 
   const current: ComparableBatch = {
-    id: BATCH.id,
-    cycleNo: BATCH.cycleNo,
-    label: `Cycle ${BATCH.cycleNo}`,
+    id: ds.batch.id,
+    cycleNo: ds.batch.cycleNo,
+    label: `Cycle ${ds.batch.cycleNo}`,
     status: "current",
     placingDate: placing,
-    killDate: BATCH.killDate,
+    killDate: ds.batch.killDate,
     killDay,
     finalDay: history.maxDay,
     series,
@@ -1200,7 +1200,7 @@ export async function getComparableBatches(): Promise<CompareData> {
     readyVsKillDays: daysToTarget - killDay,
   };
 
-  const batches = [current, ...HISTORICAL_BATCHES.map(genComparable)].sort((a, b) => b.cycleNo - a.cycleNo);
+  const batches = [current, ...ds.historicalBatches.map(genComparable)].sort((a, b) => b.cycleNo - a.cycleNo);
   const maxDay = Math.max(...batches.map((b) => Math.max(b.finalDay, b.killDay)));
   const ross = Array.from({ length: maxDay }, (_, i) => {
     const day = i + 1;
@@ -1316,17 +1316,17 @@ function vaccinesUpTo(finalDay: number): string[] {
  * the real captured data; a closed batch is assembled from its generated
  * records. Returns null for an unknown id (the detail route 404s).
  */
-export async function getArchivedBatchHistory(batchId: string): Promise<BatchHistory | null> {
-  if (batchId === BATCH.id) return getBatchHistory();
-  const seed = HISTORICAL_BATCHES.find((b) => `batch_c${b.cycleNo}` === batchId);
+export async function getArchivedBatchHistory(batchId: string, ds: Dataset = datasetFromMock()): Promise<BatchHistory | null> {
+  if (ds.batch && batchId === ds.batch.id) return getBatchHistory(ds);
+  const seed = ds.historicalBatches.find((b) => `batch_c${b.cycleNo}` === batchId);
   if (!seed) return resolve(null);
   const g = genClosedBatchData(seed);
   return resolve(assembleBatchHistory(g.placements, g.daily, g.weights, g.nameOf));
 }
 
 /** The live batch as an archive row (real captured totals + estimated EPEF). */
-async function currentArchiveRow(): Promise<BatchArchiveRow> {
-  const [history, compare, rollup] = await Promise.all([getBatchHistory(), getComparableBatches(), getSiteRollup()]);
+async function currentArchiveRow(ds: Dataset = datasetFromMock()): Promise<BatchArchiveRow> {
+  const [history, compare, rollup] = await Promise.all([getBatchHistory(ds), getComparableBatches(ds), getSiteRollup(ds)]);
   const cb = compare.batches.find((b) => b.status === "current")!;
   const finalDay = history.maxDay;
   const feedUsedKg = history.batch.reduce((s, r) => s + r.feedAddedKg, 0);
@@ -1334,12 +1334,12 @@ async function currentArchiveRow(): Promise<BatchArchiveRow> {
   const epef = cb.fcr && finalDay ? Math.round(((livability * (cb.weightG / 1000)) / (finalDay * cb.fcr)) * 100) : 0;
   const vaccineNames = vaccinesUpTo(finalDay);
   return {
-    id: BATCH.id,
-    cycleNo: BATCH.cycleNo,
-    title: `Batch ${BATCH.cycleNo}`,
+    id: ds.batch.id,
+    cycleNo: ds.batch.cycleNo,
+    title: `Batch ${ds.batch.cycleNo}`,
     status: "current",
     placingDate: cb.placingDate,
-    killDate: BATCH.killDate,
+    killDate: ds.batch.killDate,
     growOutDays: finalDay,
     placed: rollup.placed,
     totalMortality: rollup.cumMort,
@@ -1388,16 +1388,16 @@ function closedArchiveRow(seed: HistoricalBatchSeed): BatchArchiveRow {
 }
 
 /** Every batch on the site for the Previous Batches archive (newest first). */
-export async function getBatchArchive(): Promise<BatchArchiveData> {
-  const current = await currentArchiveRow();
-  const closed = HISTORICAL_BATCHES.map(closedArchiveRow);
+export async function getBatchArchive(ds: Dataset = datasetFromMock()): Promise<BatchArchiveData> {
+  const current = await currentArchiveRow(ds);
+  const closed = ds.historicalBatches.map(closedArchiveRow);
   const rows = [current, ...closed].sort((a, b) => b.cycleNo - a.cycleNo);
   return resolve({ rows });
 }
 
 /** One archive row by batch id (for the detail page header + highlights). */
-export async function getBatchArchiveRow(id: string): Promise<BatchArchiveRow | null> {
-  const { rows } = await getBatchArchive();
+export async function getBatchArchiveRow(id: string, ds: Dataset = datasetFromMock()): Promise<BatchArchiveRow | null> {
+  const { rows } = await getBatchArchive(ds);
   return resolve(rows.find((r) => r.id === id) ?? null);
 }
 
