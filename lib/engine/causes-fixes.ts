@@ -6,7 +6,7 @@
 import type { StatusLevel } from "@/lib/types";
 import type { GrowthPhase } from "./thresholds";
 
-export type MetricKey = "weight" | "fcr" | "mortality" | "feed";
+export type MetricKey = "weight" | "fcr" | "mortality" | "feed" | "uniformity";
 
 export interface CauseFix {
   cause: string;
@@ -65,11 +65,17 @@ const FEED_ANY: ByLevel = {
   red: { cause: "Feed added is far above expected intake — almost certainly a bin refill, not consumption.", fix: "Log it as a delivery, not daily feed, so the FCR figure isn't thrown off." },
 };
 
+const UNIFORMITY: ByLevel = {
+  amber: { cause: "Flock uniformity is below the contractor target — the spread of bird weights is widening.", fix: "Check feeder and drinker access and space across the house; grading the slowest birds can tighten the spread." },
+  red: { cause: "Flock uniformity is well below target — a wide weight spread that cuts the graded yield.", fix: "Review stocking density, feeder space and health, and grade off the tail-end birds." },
+};
+
 const TABLE: Record<MetricKey, ByPhase | ByLevel> = {
   weight: WEIGHT,
   mortality: MORTALITY,
   fcr: FCR_ANY,
   feed: FEED_ANY,
+  uniformity: UNIFORMITY,
 };
 
 /** Returns the cause + fix for a metric at a level/phase, or undefined for green. */

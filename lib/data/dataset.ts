@@ -15,6 +15,7 @@
  */
 import type {
   Batch,
+  BenchmarkOverlay,
   CatchingEvent,
   Contract,
   Contractor,
@@ -28,9 +29,11 @@ import type {
   Site,
   WeightEntry,
 } from "@/lib/types";
+import type { StatusThresholds } from "@/lib/engine";
 import type { HistoricalBatchSeed } from "./mock";
 import {
   BATCH,
+  BENCHMARK,
   CATCHING_EVENTS,
   CONTRACT,
   CONTRACTOR,
@@ -62,6 +65,14 @@ export interface Dataset {
   historicalBatches: HistoricalBatchSeed[];
   editLog: EditRecord[];
   pastCycles: PastCycle[];
+  /**
+   * The contractor's tunable benchmark for this tenant: the overlay bands
+   * (mortality ceiling + uniformity target) the engine scores against, plus any
+   * threshold overrides. Optional so the mock/pre-Convex path can fall back to
+   * the Ross-308 default (see `ctxOf` in `lib/data/index.ts`). The growth curve
+   * itself stays code (`ROSS_308_CURVE`) — only the tunable surface travels here.
+   */
+  benchmark?: { overlay: BenchmarkOverlay; thresholds?: StatusThresholds };
 }
 
 /** The demo single-site dataset, straight from the mock seam. */
@@ -81,5 +92,6 @@ export function datasetFromMock(): Dataset {
     historicalBatches: HISTORICAL_BATCHES,
     editLog: EDIT_LOG,
     pastCycles: PAST_CYCLES,
+    benchmark: { overlay: BENCHMARK.overlay },
   };
 }

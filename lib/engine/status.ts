@@ -22,6 +22,8 @@ export interface PlacementMetrics {
   cumMortPct?: number;
   /** Feed added per bird, grams (latest day). */
   feedAddedPerBirdG?: number;
+  /** Latest flock uniformity, % (scored against the contractor target). */
+  uniformityPct?: number;
 }
 
 export interface EngineContext {
@@ -101,6 +103,38 @@ export function evaluateMortality(day: number, cumPct: number, ctx: EngineContex
   };
 }
 
+/** Linear-interpolated contractor uniformity target (min %) for a day. */
+function uniformityTargetAt(overlay: BenchmarkOverlay, day: number): number {
+  const t = overlay.uniformityTarget;
+  if (t.length === 0) return 0;
+  if (day <= t[0].day) return t[0].minPct;
+  for (let i = 1; i < t.length; i++) {
+    if (day <= t[i].day) {
+      const a = t[i - 1];
+      const b = t[i];
+      const f = (day - a.day) / (b.day - a.day);
+      return a.minPct + (b.minPct - a.minPct) * f;
+    }
+  }
+  return t[t.length - 1].minPct;
+}
+
+export function evaluateUniformity(day: number, uniformityPct: number, ctx: EngineContext): MetricStatus {
+  const t = ctx.thresholds ?? DEFAULT_THRESHOLDS;
+  const target = uniformityTargetAt(ctx.overlay, day);
+  const frac = target ? uniformityPct / target : 1;
+  const level: StatusLevel = frac >= t.uniformity.green ? "green" : frac >= t.uniformity.amber ? "amber" : "red";
+  const cf = causeFix("uniformity", level, growthPhase(day));
+  return {
+    key: "uniformity",
+    metric: "Uniformity",
+    level,
+    actualVsTarget: `${Math.round(uniformityPct)}% vs ${Math.round(target)}% target at day ${day}`,
+    cause: cf?.cause,
+    fix: cf?.fix,
+  };
+}
+
 /** Feed-intake sanity check: flags a likely bin refill (not consumption). */
 export function evaluateFeedIntake(day: number, feedAddedPerBirdG: number, ctx: EngineContext): MetricStatus {
   const t = ctx.thresholds ?? DEFAULT_THRESHOLDS;
@@ -127,12 +161,13 @@ export function evaluatePlacement(m: PlacementMetrics, ctx: EngineContext): { ov
   const metrics: MetricStatus[] = [];
   if (m.weightG != null) metrics.push(evaluateWeight(m.weightDay ?? m.day, m.weightG, ctx));
   if (m.cumMortPct != null) metrics.push(evaluateMortality(m.day, m.cumMortPct, ctx));
+  if (m.uniformityPct != null) metrics.push(evaluateUniformity(m.weightDay ?? m.day, m.uniformityPct, ctx));
   if (m.fcr != null) metrics.push(evaluateFcr(m.weightDay ?? m.day, m.fcr, ctx));
   if (m.feedAddedPerBirdG != null) metrics.push(evaluateFeedIntake(m.day, m.feedAddedPerBirdG, ctx));
 
   // Overall = worst metric; ties resolved by a priority order (act on welfare/
   // growth before efficiency).
-  const priority: MetricKey[] = ["mortality", "weight", "fcr", "feed"];
+  const priority: MetricKey[] = ["mortality", "weight", "uniformity", "fcr", "feed"];
   const worst =
     [...metrics].sort((a, b) => SEVERITY[b.level] - SEVERITY[a.level] || priority.indexOf(a.key) - priority.indexOf(b.key))[0];
 

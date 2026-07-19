@@ -12,6 +12,7 @@
 import type {
   Amount,
   BatchProjection,
+  BenchmarkOverlay,
   BenchmarkSet,
   Batch,
   CatchingEvent,
@@ -100,8 +101,19 @@ import {
   type PlacementMetrics,
 } from "@/lib/engine";
 
-/** Benchmark context the status engine scores against (Ross 308 + overlay). */
-const ENGINE_CTX: EngineContext = { curve: ROSS_308_CURVE, overlay: ROSS_308_OVERLAY };
+/**
+ * Benchmark context the status engine scores against. The growth curve stays
+ * code (`ROSS_308_CURVE`); the tunable surface — mortality/uniformity overlay
+ * bands + threshold overrides — comes from the tenant's `ds.benchmark` when
+ * present (a contractor's tuned set), else falls back to the Ross-308 default.
+ */
+function ctxOf(ds: Dataset): EngineContext {
+  return {
+    curve: ROSS_308_CURVE,
+    overlay: ds.benchmark?.overlay ?? ROSS_308_OVERLAY,
+    thresholds: ds.benchmark?.thresholds,
+  };
+}
 
 /** Build the engine's metric inputs for a placement from its latest figures. */
 function metricInputFor(placementId: string, ds: Dataset = datasetFromMock()): PlacementMetrics | null {
@@ -127,6 +139,7 @@ function metricInputFor(placementId: string, ds: Dataset = datasetFromMock()): P
     fcr,
     cumMortPct: latest?.cumPct,
     feedAddedPerBirdG: latest && latest.birdsRemaining ? (latest.feedAddedKg * 1000) / latest.birdsRemaining : undefined,
+    uniformityPct: weight?.uniformityPct,
   };
 }
 
@@ -135,7 +148,7 @@ function houseDiagnostics(houseId: string, ds: Dataset = datasetFromMock()): { o
   const placement = ds.placements.find((p) => p.houseId === houseId);
   const input = placement ? metricInputFor(placement.id, ds) : null;
   if (!input) return { overall: { metric: "Status", level: "green", actualVsTarget: "No data yet" }, metrics: [] };
-  return evaluatePlacement(input, ENGINE_CTX);
+  return evaluatePlacement(input, ctxOf(ds));
 }
 
 function houseStatusSync(houseId: string, ds: Dataset = datasetFromMock()): Status {
@@ -382,7 +395,7 @@ export async function getSupervisorCapture(ds: Dataset = datasetFromMock()): Pro
       lastFeedKg: latest?.feedAddedKg ?? 0,
       rossTargetWeightG: ross.weightG,
       rossIntakeG: ross.dailyIntakeG,
-      standardCumMortPct: Number(mortalityBandPctAt(day).toFixed(2)),
+      standardCumMortPct: Number(mortalityBandPctAt(day, ctxOf(ds).overlay).toFixed(2)),
       vaccination: vac ? { vaccines: vac.vaccines, method: vac.method } : undefined,
     });
   }
@@ -890,6 +903,7 @@ function assembleBatchHistory(
   daily: DailyEntry[],
   weights: WeightEntry[],
   nameOf: (houseId: string) => string,
+  overlay: BenchmarkOverlay = ROSS_308_OVERLAY,
 ): BatchHistory {
   const maxDay = Math.max(
     ...placements.map((p) => p.dayCount),
@@ -1069,7 +1083,7 @@ function assembleBatchHistory(
     houses: prepared.map((ph) => ph.series),
     batch,
     ross,
-    mortalityBand: ROSS_308_OVERLAY.mortalityBand,
+    mortalityBand: overlay.mortalityBand,
   };
 }
 
@@ -1078,6 +1092,7 @@ export function getBatchHistory(ds: Dataset = datasetFromMock()): Promise<BatchH
   return resolve(
     assembleBatchHistory(ds.placements, ds.dailyEntries, ds.weightEntries, (id) =>
       ds.site.houses.find((h) => h.id === id)?.name ?? id,
+      ctxOf(ds).overlay,
     ),
   );
 }
@@ -1626,13 +1641,14 @@ export async function getWeightBandData(ds: Dataset = datasetFromMock()): Promis
     const day = i + 1;
     return { day, weightG: ROSS_308_CURVE[day]?.weightG ?? 0 };
   });
+  const weightBands = (ctxOf(ds).thresholds ?? DEFAULT_THRESHOLDS).weight;
   return resolve({
     ross,
     houses,
     maxDay,
     yMax: 2400,
-    greenFrac: DEFAULT_THRESHOLDS.weight.green,
-    amberFrac: DEFAULT_THRESHOLDS.weight.amber,
+    greenFrac: weightBands.green,
+    amberFrac: weightBands.amber,
   });
 }
 
@@ -1667,9 +1683,10 @@ export async function getDashboardMetrics(ds: Dataset = datasetFromMock()): Prom
   const cumMortPct = rollup.mortPct;
   const feedPerBird = mean(ds.placements.map((p) => cumFeedPerBirdG(p.id, ds)).filter((x): x is number => x != null));
 
-  const weight = evaluateWeight(weightDay, weightG, ENGINE_CTX);
-  const mortality = evaluateMortality(siteDay, cumMortPct, ENGINE_CTX);
-  const fcrStatus = evaluateFcr(weightDay, fcr, ENGINE_CTX);
+  const ctx = ctxOf(ds);
+  const weight = evaluateWeight(weightDay, weightG, ctx);
+  const mortality = evaluateMortality(siteDay, cumMortPct, ctx);
+  const fcrStatus = evaluateFcr(weightDay, fcr, ctx);
 
   const metrics: DashboardMetric[] = [
     {
@@ -1688,7 +1705,7 @@ export async function getDashboardMetrics(ds: Dataset = datasetFromMock()): Prom
       label: "Mortality",
       level: mortality.level,
       actual: Number(cumMortPct.toFixed(2)),
-      target: Number(mortalityBandPctAt(siteDay).toFixed(2)),
+      target: Number(mortalityBandPctAt(siteDay, ctx.overlay).toFixed(2)),
       unit: "pp",
       targetWord: "band",
       cause: mortality.cause,
@@ -1788,12 +1805,13 @@ export async function getWeightProjection(ds: Dataset = datasetFromMock(), today
   }
 
   const yMax = Math.ceil((ross308At(killDay).weightG * 1.05) / 500) * 500;
+  const projWeightBands = (ctxOf(ds).thresholds ?? DEFAULT_THRESHOLDS).weight;
   return resolve({
     ross,
     killDay,
     yMax,
-    greenFrac: DEFAULT_THRESHOLDS.weight.green,
-    amberFrac: DEFAULT_THRESHOLDS.weight.amber,
+    greenFrac: projWeightBands.green,
+    amberFrac: projWeightBands.amber,
     site: { name: "Site average", actual: siteActual, projected: siteProjected },
     houses: houseLines,
   });
