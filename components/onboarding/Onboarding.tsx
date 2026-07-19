@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { cn } from "@/lib/cn";
+import { addDays } from "@/lib/format";
+import { ageAtWeight } from "@/lib/data/ross308";
 import { Button } from "@/components/ui/Button";
 import { IconCheck, IconSend, IconPlus } from "@/components/icons";
 import { ReviewPanel } from "./FarmData";
@@ -276,7 +278,7 @@ function FarmSetup({ workspace }: { workspace: any }) {
   return (
     <div className="mt-6 flex flex-col gap-6">
       <HousesEditor initial={houses} />
-      <CycleSection houses={houses} cycle={cycle} />
+      <CycleSection houses={houses} cycle={cycle} targetWeightG={workspace.targetWeightG ?? null} />
     </div>
   );
 }
@@ -361,15 +363,31 @@ function HousesEditor({ initial }: { initial: any[] }) {
   );
 }
 
-function CycleSection({ houses, cycle }: { houses: any[]; cycle: any }) {
+function CycleSection({ houses, cycle, targetWeightG }: { houses: any[]; cycle: any; targetWeightG: number | null }) {
   const startCycle = useMutation(api.tenancy.startCycle);
   const [cycleNo, setCycleNo] = useState("1");
   const [breed, setBreed] = useState("Ross 308");
-  const [placementDate, setPlacingDate] = useState("");
+  const [placementDate, setPlacementDate] = useState("");
   const [expectedCollectionDate, setExpectedCollectionDate] = useState("");
+  // Track whether the manager has hand-edited the collection date, so the
+  // auto-derived value only pre-fills until they take it over.
+  const [collectionTouched, setCollectionTouched] = useState(false);
   const [counts, setCounts] = useState<Record<string, string>>({});
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  /** The expected collection date implied by a placement date + contractor target. */
+  function derivedCollection(placement: string): string {
+    if (!placement || !targetWeightG) return "";
+    return addDays(placement, Math.round(ageAtWeight(targetWeightG)));
+  }
+
+  function onPlacementChange(v: string) {
+    setPlacementDate(v);
+    // Pre-fill (or refresh) the collection date from the target until the manager
+    // overrides it themselves.
+    if (!collectionTouched) setExpectedCollectionDate(derivedCollection(v));
+  }
 
   if (cycle) {
     return (
@@ -379,8 +397,8 @@ function CycleSection({ houses, cycle }: { houses: any[]; cycle: any }) {
           <dt className="text-muted">Breed</dt><dd className="text-right font-mono text-ink">{cycle.breed}</dd>
           <dt className="text-muted">Placed</dt><dd className="text-right font-mono text-ink">{cycle.placed.toLocaleString()}</dd>
           <dt className="text-muted">Houses</dt><dd className="text-right font-mono text-ink">{cycle.houseCount}</dd>
-          <dt className="text-muted">Placed on</dt><dd className="text-right font-mono text-ink">{cycle.placementDate}</dd>
-          <dt className="text-muted">Kill date</dt><dd className="text-right font-mono text-ink">{cycle.expectedCollectionDate}</dd>
+          <dt className="text-muted">Placement date</dt><dd className="text-right font-mono text-ink">{cycle.placementDate}</dd>
+          <dt className="text-muted">Expected collection</dt><dd className="text-right font-mono text-ink">{cycle.expectedCollectionDate}</dd>
         </dl>
       </div>
     );
@@ -394,7 +412,7 @@ function CycleSection({ houses, cycle }: { houses: any[]; cycle: any }) {
     e.preventDefault();
     setError(null);
     if (!placementDate || !expectedCollectionDate) {
-      setError("Enter the placing and collection dates.");
+      setError("Enter the placement and collection dates.");
       return;
     }
     setPending(true);
@@ -427,11 +445,21 @@ function CycleSection({ houses, cycle }: { houses: any[]; cycle: any }) {
         </label>
         <label className="flex flex-col gap-1.5">
           <span className="text-label font-medium text-slate">Placement date</span>
-          <input type="date" value={placementDate} onChange={(e) => setPlacingDate(e.target.value)} className="h-11 rounded-[var(--radius-control)] border border-border bg-surface px-3 text-body text-ink outline-none focus-visible:border-brand-500" />
+          <input type="date" value={placementDate} onChange={(e) => onPlacementChange(e.target.value)} className="h-11 rounded-[var(--radius-control)] border border-border bg-surface px-3 text-body text-ink outline-none focus-visible:border-brand-500" />
         </label>
         <label className="flex flex-col gap-1.5">
-          <span className="text-label font-medium text-slate">Kill date</span>
-          <input type="date" value={expectedCollectionDate} onChange={(e) => setExpectedCollectionDate(e.target.value)} className="h-11 rounded-[var(--radius-control)] border border-border bg-surface px-3 text-body text-ink outline-none focus-visible:border-brand-500" />
+          <span className="text-label font-medium text-slate">Expected collection date</span>
+          <input
+            type="date"
+            value={expectedCollectionDate}
+            onChange={(e) => { setCollectionTouched(true); setExpectedCollectionDate(e.target.value); }}
+            className="h-11 rounded-[var(--radius-control)] border border-border bg-surface px-3 text-body text-ink outline-none focus-visible:border-brand-500"
+          />
+          <span className="text-[0.8125rem] text-muted">
+            {targetWeightG
+              ? `Auto-filled from the ${targetWeightG.toLocaleString()} g target weight — adjust if collection shifts.`
+              : "No target weight set — enter the date, or ask your contractor to set a target weight to auto-fill it."}
+          </span>
         </label>
       </div>
 

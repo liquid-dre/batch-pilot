@@ -39,10 +39,12 @@ const fromPct = (s: string, fallback: number) => {
 export function BenchmarkTuner({
   overlay,
   thresholds,
+  targetWeightG,
   isDefault,
 }: {
   overlay: Overlay;
   thresholds: Thresholds;
+  targetWeightG: number | null;
   isDefault: boolean;
 }) {
   const setBenchmark = useMutation(api.benchmark.setBenchmark);
@@ -55,12 +57,13 @@ export function BenchmarkTuner({
     <TunerForm
       overlay={overlay}
       thresholds={thresholds}
+      targetWeightG={targetWeightG}
       pending={pending}
       onCancel={() => setOpen(false)}
-      onSave={async (nextOverlay, nextThresholds) => {
+      onSave={async (nextOverlay, nextThresholds, nextTarget) => {
         setPending(true);
         try {
-          await notify.promise(setBenchmark({ overlay: nextOverlay, thresholds: nextThresholds }), {
+          await notify.promise(setBenchmark({ overlay: nextOverlay, thresholds: nextThresholds, targetWeightG: nextTarget }), {
             loading: "Saving benchmark…",
             success: () => ({ title: "Benchmark saved", description: "Your growers' statuses now score against these bands." }),
             error: () => ({ title: "Couldn't save the benchmark", description: "Try again." }),
@@ -92,16 +95,19 @@ export function BenchmarkTuner({
 function TunerForm({
   overlay,
   thresholds,
+  targetWeightG,
   pending,
   onCancel,
   onSave,
 }: {
   overlay: Overlay;
   thresholds: Thresholds;
+  targetWeightG: number | null;
   pending: boolean;
   onCancel: () => void;
-  onSave: (overlay: Overlay, thresholds: Thresholds) => void;
+  onSave: (overlay: Overlay, thresholds: Thresholds, targetWeightG: number | undefined) => void;
 }) {
+  const [target, setTarget] = useState(targetWeightG != null ? String(targetWeightG) : "");
   const [mort, setMort] = useState(() => overlay.mortalityBand.map((b) => ({ day: b.day, v: String(b.maxCumPct) })));
   const [unif, setUnif] = useState(() => overlay.uniformityTarget.map((u) => ({ day: u.day, v: String(u.minPct) })));
   const [th, setTh] = useState(() => ({
@@ -144,7 +150,8 @@ function TunerForm({
       mortality: { amber: fromPct(th.mortAmber, DEFAULT_THRESHOLDS.mortality.amber), red: fromPct(th.mortRed, DEFAULT_THRESHOLDS.mortality.red) },
       uniformity: { green: fromPct(th.unifGreen, DEFAULT_THRESHOLDS.uniformity.green), amber: fromPct(th.unifAmber, DEFAULT_THRESHOLDS.uniformity.amber) },
     };
-    onSave(nextOverlay, nextThresholds);
+    const nextTarget = target.trim() && Number(target) > 0 ? Math.round(Number(target)) : undefined;
+    onSave(nextOverlay, nextThresholds, nextTarget);
   }
 
   return (
@@ -156,6 +163,26 @@ function TunerForm({
             The bands your growers are scored against. Changes apply to every farm the moment you save.
           </p>
         </div>
+
+        <section>
+          <CardEyebrow>Target weight</CardEyebrow>
+          <p className="mt-1 text-label text-muted">
+            The market weight cycles are grown to. Sets each new cycle&apos;s expected collection date from its placement date.
+          </p>
+          <label className="mt-3 flex items-center justify-between gap-3">
+            <span className="text-body text-slate">Target live weight</span>
+            <span className="inline-flex items-center gap-1.5">
+              <input
+                value={target}
+                inputMode="numeric"
+                placeholder="e.g. 2000"
+                onChange={(e) => setTarget(e.target.value.replace(/[^0-9]/g, ""))}
+                className="h-11 w-28 rounded-[var(--radius-control)] border border-border bg-surface px-3 text-right font-mono text-body text-ink outline-none focus-visible:border-brand-500"
+              />
+              <span className="text-label text-muted">g</span>
+            </span>
+          </label>
+        </section>
 
         <div className="grid gap-6 sm:grid-cols-2">
           <section>

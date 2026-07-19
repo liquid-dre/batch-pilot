@@ -284,6 +284,11 @@ export default defineSchema({
   benchmarkSets: defineTable({
     contractorId: v.string(),
     breed: v.optional(v.string()),
+    // The market/target weight a cycle is grown to. Drives the auto-derived
+    // expected collection date at cycle start (placement date + the day the
+    // breed curve reaches this weight). Optional — absent → the grower enters
+    // the collection date manually.
+    targetWeightG: v.optional(v.number()),
     overlay: v.object({
       mortalityBand: v.array(v.object({ day: v.number(), maxCumPct: v.number() })),
       uniformityTarget: v.array(v.object({ day: v.number(), minPct: v.number() })),

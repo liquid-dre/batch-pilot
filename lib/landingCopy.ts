@@ -151,7 +151,7 @@ export const howItWorks = {
     { n: 1, title: "Add your houses", body: "Set up each house and its capacity once." },
     { n: 2, title: "Start a cycle", body: "Enter the placing counts and the contractor's collection date." },
     { n: 3, title: "Capture the day", body: "The supervisor types the raw numbers each morning." },
-    { n: 4, title: "See status & projections", body: "Cumulatives, per-house status and a kill-date projection — automatically." },
+    { n: 4, title: "See status & projections", body: "Cumulatives, per-house status and a collection-date projection — automatically." },
   ],
 } as const;
 

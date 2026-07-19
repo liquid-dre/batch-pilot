@@ -342,6 +342,17 @@ export const myWorkspace = query({
           };
         }
       }
+      // The contractor's target weight (if set) — lets the manager's cycle form
+      // derive the expected collection date from the placement date + breed curve.
+      let targetWeightG: number | null = null;
+      const contractorId = (site?.contractorIds ?? [])[0];
+      if (contractorId) {
+        const bench = await ctx.db
+          .query("benchmarkSets")
+          .withIndex("by_contractor", (q) => q.eq("contractorId", contractorId))
+          .first();
+        targetWeightG = bench?.targetWeightG ?? null;
+      }
       return {
         role,
         name,
@@ -350,11 +361,12 @@ export const myWorkspace = query({
         supervisors,
         houses,
         cycle,
+        targetWeightG,
       };
     }
 
     // Invited but not yet matched to a farm.
-    return { role, name, email, farm: null, supervisors: [] };
+    return { role, name, email, farm: null, supervisors: [], targetWeightG: null };
   },
 });
 

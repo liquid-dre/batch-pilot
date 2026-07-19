@@ -95,12 +95,13 @@ export const myBenchmark = query({
       .first();
 
     if (!row) {
-      return { contractorId, overlay: DEFAULT_OVERLAY, thresholds: DEFAULT_THRESHOLDS, isDefault: true };
+      return { contractorId, overlay: DEFAULT_OVERLAY, thresholds: DEFAULT_THRESHOLDS, targetWeightG: null, isDefault: true };
     }
     return {
       contractorId,
       overlay: row.overlay,
       thresholds: row.thresholds ?? DEFAULT_THRESHOLDS,
+      targetWeightG: row.targetWeightG ?? null,
       isDefault: false,
     };
   },
@@ -112,8 +113,8 @@ export const myBenchmark = query({
  * defaults). Idempotent per contractor — one row, overwritten on each save.
  */
 export const setBenchmark = mutation({
-  args: { overlay: overlayArg, thresholds: v.optional(thresholdsArg) },
-  handler: async (ctx, { overlay, thresholds }) => {
+  args: { overlay: overlayArg, thresholds: v.optional(thresholdsArg), targetWeightG: v.optional(v.number()) },
+  handler: async (ctx, { overlay, thresholds, targetWeightG }) => {
     const { contractorId } = await requireContractor(ctx);
     const updatedAt = new Date().toISOString();
     const existing = await ctx.db
@@ -121,10 +122,10 @@ export const setBenchmark = mutation({
       .withIndex("by_contractor", (q) => q.eq("contractorId", contractorId))
       .first();
     if (existing) {
-      await ctx.db.patch(existing._id, { overlay, thresholds, updatedAt });
+      await ctx.db.patch(existing._id, { overlay, thresholds, targetWeightG, updatedAt });
       return { contractorId };
     }
-    await ctx.db.insert("benchmarkSets", { contractorId, overlay, thresholds, updatedAt });
+    await ctx.db.insert("benchmarkSets", { contractorId, overlay, thresholds, targetWeightG, updatedAt });
     return { contractorId };
   },
 });

@@ -484,6 +484,20 @@ Ross weight curve — that under-performance is the hero story, keep it).
   "no auth yet" seam comment updated to the Convex-Auth reality (the account's
   role gates access in Convex mode; the demo role switcher is the no-backend
   fallback).
+  **Role hierarchy + derived collection date (done):** the invite chain now runs
+  contractor → **manager** → foreman (was contractor → supervisor → manager):
+  `createFarm`/`inviteManagers` invite managers (contractor-guarded), the manager
+  invites foremen (`inviteSupervisors`, manager-guarded); the foreman is
+  capture-only. House setup + cycle start are manager-only (`requireManager`
+  guard; `/app/houses` under `ManagerOnly`). Domain vocabulary renamed
+  everywhere — `placingDate`→`placementDate`, `killDate`→`expectedCollectionDate`
+  (schema + types + seed + ~60 sites), no "kill" wording remains. The contractor
+  sets a **target weight** on their benchmark (`benchmarkSets.targetWeightG`,
+  edited in `BenchmarkTuner`); at cycle start the expected collection date
+  **auto-derives** from placement date + the breed curve (`ageAtWeight` inverse
+  in `lib/data/ross308.ts`, threaded to the manager via `myWorkspace`), as an
+  editable default (manual + hint when no target). Re-seed the dev deployment
+  (schema field names changed).
   **Account self-service (done):** every signed-in role gets `/app/account`
   (footer entry, Convex mode) — edit display name (`account.updateName`) and
   change password (`account.changePassword` action: verifies the current secret
