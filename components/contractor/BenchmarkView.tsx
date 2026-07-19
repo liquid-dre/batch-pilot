@@ -11,7 +11,7 @@ interface BenchmarkViewProps {
   curve: BenchmarkPoint[];
   overlay: BenchmarkOverlay;
   markers: ActualMarker[];
-  killDay: number;
+  collectionDay: number;
   weightBand: WeightBandData;
 }
 
@@ -19,7 +19,7 @@ function LegendDot({ className }: { className: string }) {
   return <span className={`inline-block size-2.5 rounded-full ${className}`} />;
 }
 
-export function BenchmarkView({ breed, curve, overlay, markers, killDay, weightBand }: BenchmarkViewProps) {
+export function BenchmarkView({ breed, curve, overlay, markers, collectionDay, weightBand }: BenchmarkViewProps) {
   return (
     <div className="mx-auto max-w-5xl space-y-8 px-4 py-8 sm:px-6">
       <PageHeader
@@ -49,7 +49,7 @@ export function BenchmarkView({ breed, curve, overlay, markers, killDay, weightB
             <span className="inline-flex items-center gap-2"><LegendDot className="bg-status-warn" /> at risk</span>
             <span className="inline-flex items-center gap-2"><LegendDot className="bg-status-bad" /> needs attention</span>
           </div>
-          <BenchmarkChart curve={curve} markers={markers} killDay={killDay} />
+          <BenchmarkChart curve={curve} markers={markers} collectionDay={collectionDay} />
           <p className="mt-2 text-label text-muted">
             Every house sits below the objective — the gap to the line is the under-performance the contractor is tracking.
           </p>

@@ -20,7 +20,7 @@ export default async function SchedulePage() {
   ]);
   return (
     <ContractorOnly>
-      <ScheduleView events={events} manifest={manifest} siteName={site.name} cycleNo={batch.cycleNo} killDate={batch.killDate} />
+      <ScheduleView events={events} manifest={manifest} siteName={site.name} cycleNo={batch.cycleNo} expectedCollectionDate={batch.expectedCollectionDate} />
     </ContractorOnly>
   );
 }

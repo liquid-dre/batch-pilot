@@ -339,7 +339,7 @@ export const confirmAllocation = mutation({
     if (!planned) throw new Error(`Planned batch not found: ${input.plannedBatchId}`);
 
     // Whole days from the planned placing date to today (0 = placed today).
-    const dayCount = Math.max(0, daysBetween(planned.placingDate, input.today));
+    const dayCount = Math.max(0, daysBetween(planned.placementDate, input.today));
     await ctx.db.patch(planned._id, { allocated: true });
 
     const out = [];

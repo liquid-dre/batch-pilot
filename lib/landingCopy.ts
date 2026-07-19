@@ -17,7 +17,7 @@ import type { Role } from "@/lib/types";
 
 export const hero = {
   eyebrow: "WhatsApp-native ops for broiler farms",
-  headline: "Know a flock's behind on day 18 — not at the kill date.",
+  headline: "Know a flock's behind on day 18 — not at the collection date.",
   subhead:
     "Your team already texts the morning numbers. BatchPilot turns them into cumulative %, a clear per-house status, and a projection to the contractor's collection date — so you act while it still changes the outcome.",
   primaryCta: "Get started",
@@ -31,7 +31,7 @@ export const problem = {
   body:
     "One WhatsApp group holds the supervisor, the owner and the contractor. Before the day starts, the supervisor hand-tallies cumulative mortality, cull-and-mort, cum %, birds remaining and a site-average block — across six houses. It's slow, it's easy to mistype, and by tomorrow it has scrolled out of sight.",
   kicker:
-    "No history. No trend. No track record. The first time anyone sees a real problem is at the kill date — when the margin is already gone.",
+    "No history. No trend. No track record. The first time anyone sees a real problem is at the collection date — when the margin is already gone.",
   stats: [
     { value: "6", label: "houses, tallied by hand" },
     { value: "~96,000", label: "birds on one site" },
@@ -111,7 +111,7 @@ export const roles: RoleSection[] = [
     heading: "See the whole site — and whether you'll hit the date.",
     bullets: [
       "Status per house and per site: green, amber or red, with the likely cause and the fix.",
-      "A projection to the contractor's kill date, updated as the numbers come in.",
+      "A projection to the contractor's collection date, updated as the numbers come in.",
       "Fix a mis-typed entry — the correction is attributed, so the record stays honest.",
       "History, charts and batch-to-batch comparison, not a chat you have to scroll back through.",
     ],
@@ -123,7 +123,7 @@ export const roles: RoleSection[] = [
     eyebrow: "Contractor",
     heading: "Every grower you supply, ranked and forecast — live.",
     bullets: [
-      "One portfolio across every flock: projected ready-date vs. kill date, house by house.",
+      "One portfolio across every flock: projected ready-date vs. collection date, house by house.",
       "Rank growers by EPEF; drill into any site's daily record and trend.",
       "Plan the catch and reconcile feed — spot a delivery short of the order before it costs you.",
       "Strict isolation: you see only your own batches, even on a grower you share.",
@@ -149,7 +149,7 @@ export const howItWorks = {
   heading: "Four steps from group chat to a clear view.",
   steps: [
     { n: 1, title: "Add your houses", body: "Set up each house and its capacity once." },
-    { n: 2, title: "Start a cycle", body: "Enter the placing counts and the contractor's kill date." },
+    { n: 2, title: "Start a cycle", body: "Enter the placing counts and the contractor's collection date." },
     { n: 3, title: "Capture the day", body: "The supervisor types the raw numbers each morning." },
     { n: 4, title: "See status & projections", body: "Cumulatives, per-house status and a kill-date projection — automatically." },
   ],
@@ -162,7 +162,7 @@ export const trust = {
     "BatchPilot's flows, figures and formats come from real WhatsApp messages and documents from an active Irvine's broiler grower — Nhunge, cycle 85, six houses. Performance is measured against the published Ross 308 objectives.",
   points: [
     "Real daily mortality, feed-delivery and weigh-in records — the app's capture maps to them one-to-one.",
-    "Projections always read against the contractor's kill date, the way the contract is actually planned.",
+    "Projections always read against the contractor's collection date, the way the contract is actually planned.",
     "Efficiency KPIs — FCR, EPEF, projected margin — computed, not eyeballed.",
   ],
   disclaimer: "Demo build. Figures shown are from the sample cycle and clearly-labelled illustrative scenarios.",

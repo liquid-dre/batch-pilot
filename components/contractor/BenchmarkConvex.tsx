@@ -42,7 +42,7 @@ export function BenchmarkConvex() {
   const markers: ActualMarker[] = growers
     .filter((g) => g.weightG > 0)
     .map((g) => ({ day: g.day, weightG: g.weightG, level: g.level, label: g.name }));
-  const killDay = growers.length ? Math.max(...growers.map((g) => g.killDay)) : 35;
+  const collectionDay = growers.length ? Math.max(...growers.map((g) => g.collectionDay)) : 35;
 
   // The tenant's tuned overlay + thresholds (Ross-308 default until they save).
   const overlay = bench?.overlay ?? ROSS_308_OVERLAY;
@@ -66,7 +66,7 @@ export function BenchmarkConvex() {
             <span className="inline-flex items-center gap-2"><LegendDot className="bg-status-warn" /> at risk</span>
             <span className="inline-flex items-center gap-2"><LegendDot className="bg-status-bad" /> needs attention</span>
           </div>
-          <BenchmarkChart curve={ROSS_308_CURVE} markers={markers} killDay={killDay} />
+          <BenchmarkChart curve={ROSS_308_CURVE} markers={markers} collectionDay={collectionDay} />
           <p className="mt-2 text-label text-muted">
             {markers.length
               ? "Each point is a farm's latest weigh-in against the objective — the gap to the line is the under-performance you're tracking."

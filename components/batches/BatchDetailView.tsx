@@ -28,7 +28,7 @@ export function BatchDetailView({
         back={{ href: "/app/batches", label: "Previous batches" }}
         eyebrow={`${row.status === "current" ? "Live batch" : "Closed batch"} · ${row.growOutDays} days`}
         title={row.title}
-        intro={`${shortDate(row.placingDate)} – ${shortDate(row.killDate)}`}
+        intro={`${shortDate(row.placementDate)} – ${shortDate(row.expectedCollectionDate)}`}
       />
 
       {/* HIGHLIGHTS */}

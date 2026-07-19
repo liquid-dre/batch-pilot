@@ -70,7 +70,7 @@ async function collectionView(ctx: any, batch: any, site: any) {
     active: true as const,
     siteName: site.name,
     cycleNo: batch.cycleNo,
-    killDate: batch.killDate,
+    expectedCollectionDate: batch.expectedCollectionDate,
     events: events.map(toApp),
     manifest: manifest ? toApp(manifest) : null,
     remaining,

@@ -64,7 +64,7 @@ export function GrowerDetail({ data }: { data: GrowerDetailData }) {
         back={{ href: "/app/growers", label: "Growers" }}
         eyebrow={`${data.farmCode}/0${data.cycleNo} · ${data.breed}`}
         title={data.siteName}
-        intro={`Per-house detail and trends for cycle ${data.cycleNo}, against a kill date of ${shortDate(data.killDate)}.`}
+        intro={`Per-house detail and trends for cycle ${data.cycleNo}, against a collection date of ${shortDate(data.expectedCollectionDate)}.`}
       />
 
       <SiteRollupCard rollup={data.rollup} />
@@ -123,7 +123,7 @@ export function GrowerDetail({ data }: { data: GrowerDetailData }) {
             {data.pastCycles.map((c) => (
               <TR key={c.cycleNo}>
                 <TD className="font-medium text-ink">Cycle {c.cycleNo}</TD>
-                <TD>{shortDate(c.killDate)}</TD>
+                <TD>{shortDate(c.expectedCollectionDate)}</TD>
                 <TD num>{grams(c.finalAvgWeightG)}</TD>
                 <TD num>{pct(c.mortalityPct)}</TD>
                 <TD num className="font-semibold text-ink">{c.epef}</TD>

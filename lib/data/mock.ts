@@ -89,9 +89,9 @@ export const BATCH: Batch = {
   contractorId: CONTRACTOR.id,
   cycleNo: 85,
   breed: "Ross 308",
-  // Staggered kill dates (Houses 1–2: 15 Jun, Houses 3–6: 16 Jun); the later
+  // Staggered collection dates (Houses 1–2: 15 Jun, Houses 3–6: 16 Jun); the later
   // contractor target is stored on the batch, per-house age lives on Placement.
-  killDate: "2026-06-16",
+  expectedCollectionDate: "2026-06-16",
   focPct: 1,
   contractId: CONTRACT.id,
 };
@@ -108,8 +108,8 @@ export const PLANNED_BATCH: PlannedBatch = {
   contractorId: CONTRACTOR.id,
   cycleNo: 86,
   breed: "Ross 308",
-  placingDate: "2026-06-16",
-  killDate: "2026-07-17",
+  placementDate: "2026-06-16",
+  expectedCollectionDate: "2026-07-17",
   focPct: 1,
   totalPlaced: 95000,
   allocated: false,
@@ -121,12 +121,12 @@ export const PLANNED_BATCH: PlannedBatch = {
 // ---------------------------------------------------------------------------
 
 export const PLACEMENTS: Placement[] = [
-  { id: "p1", batchId: BATCH.id, houseId: "h1", placedCount: 16153, placingDate: "2026-05-15", dayCount: 27 },
-  { id: "p2", batchId: BATCH.id, houseId: "h2", placedCount: 16156, placingDate: "2026-05-15", dayCount: 27 },
-  { id: "p3", batchId: BATCH.id, houseId: "h3", placedCount: 16153, placingDate: "2026-05-16", dayCount: 26 },
-  { id: "p4", batchId: BATCH.id, houseId: "h4", placedCount: 16156, placingDate: "2026-05-16", dayCount: 26 },
-  { id: "p5", batchId: BATCH.id, houseId: "h5", placedCount: 16139, placingDate: "2026-05-16", dayCount: 26 },
-  { id: "p6", batchId: BATCH.id, houseId: "h6", placedCount: 16146, placingDate: "2026-05-16", dayCount: 26 },
+  { id: "p1", batchId: BATCH.id, houseId: "h1", placedCount: 16153, placementDate: "2026-05-15", dayCount: 27 },
+  { id: "p2", batchId: BATCH.id, houseId: "h2", placedCount: 16156, placementDate: "2026-05-15", dayCount: 27 },
+  { id: "p3", batchId: BATCH.id, houseId: "h3", placedCount: 16153, placementDate: "2026-05-16", dayCount: 26 },
+  { id: "p4", batchId: BATCH.id, houseId: "h4", placedCount: 16156, placementDate: "2026-05-16", dayCount: 26 },
+  { id: "p5", batchId: BATCH.id, houseId: "h5", placedCount: 16139, placementDate: "2026-05-16", dayCount: 26 },
+  { id: "p6", batchId: BATCH.id, houseId: "h6", placedCount: 16146, placementDate: "2026-05-16", dayCount: 26 },
 ];
 
 // ---------------------------------------------------------------------------
@@ -394,8 +394,8 @@ export const MANIFEST: Manifest = {
  */
 export interface HistoricalBatchSeed {
   cycleNo: number;
-  placingDate: string;
-  killDate: string;
+  placementDate: string;
+  expectedCollectionDate: string;
   /** Grow-out length in days. */
   finalDay: number;
   finalCumMortPct: number;
@@ -405,16 +405,16 @@ export interface HistoricalBatchSeed {
 }
 
 export const HISTORICAL_BATCHES: HistoricalBatchSeed[] = [
-  { cycleNo: 84, placingDate: "2026-03-24", killDate: "2026-04-28", finalDay: 35, finalCumMortPct: 4.1, finalWeightG: 2210, finalFcr: 1.62, epef: 352 },
-  { cycleNo: 83, placingDate: "2026-02-03", killDate: "2026-03-10", finalDay: 35, finalCumMortPct: 3.4, finalWeightG: 2305, finalFcr: 1.55, epef: 389 },
-  { cycleNo: 82, placingDate: "2025-12-20", killDate: "2026-01-22", finalDay: 33, finalCumMortPct: 4.8, finalWeightG: 2160, finalFcr: 1.66, epef: 331 },
-  { cycleNo: 81, placingDate: "2025-10-25", killDate: "2025-12-02", finalDay: 38, finalCumMortPct: 3.9, finalWeightG: 2480, finalFcr: 1.6, epef: 365 },
+  { cycleNo: 84, placementDate: "2026-03-24", expectedCollectionDate: "2026-04-28", finalDay: 35, finalCumMortPct: 4.1, finalWeightG: 2210, finalFcr: 1.62, epef: 352 },
+  { cycleNo: 83, placementDate: "2026-02-03", expectedCollectionDate: "2026-03-10", finalDay: 35, finalCumMortPct: 3.4, finalWeightG: 2305, finalFcr: 1.55, epef: 389 },
+  { cycleNo: 82, placementDate: "2025-12-20", expectedCollectionDate: "2026-01-22", finalDay: 33, finalCumMortPct: 4.8, finalWeightG: 2160, finalFcr: 1.66, epef: 331 },
+  { cycleNo: 81, placementDate: "2025-10-25", expectedCollectionDate: "2025-12-02", finalDay: 38, finalCumMortPct: 3.9, finalWeightG: 2480, finalFcr: 1.6, epef: 365 },
 ];
 
 // Contractor track-record rows are derived from the historical seed (one source).
 export const PAST_CYCLES: PastCycle[] = HISTORICAL_BATCHES.map((b) => ({
   cycleNo: b.cycleNo,
-  killDate: b.killDate,
+  expectedCollectionDate: b.expectedCollectionDate,
   finalAvgWeightG: b.finalWeightG,
   mortalityPct: b.finalCumMortPct,
   epef: b.epef,
@@ -439,7 +439,7 @@ export interface GrowerProfile {
   status: "active" | "completed";
   /** Current age in days (active) or grow-out length (completed). */
   age: number;
-  /** Grow-out length to the kill date. */
+  /** Grow-out length to the collection date. */
   growOut: number;
   /** Cumulative mortality % at `age`. */
   cumMortPct: number;

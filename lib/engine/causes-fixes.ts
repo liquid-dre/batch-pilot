@@ -30,8 +30,8 @@ const WEIGHT: ByPhase = {
     red: { cause: "Growth is well behind the Ross 308 curve.", fix: "Check feeder space, feed quality and water flow; weigh again in 2 days." },
   },
   finisher: {
-    amber: { cause: "Birds are a little under target weight near the kill date.", fix: "Maximise feed access in the final days." },
-    red: { cause: "Birds are well under target weight near the kill date.", fix: "Maximise feed access now and tell the contractor the projected weight." },
+    amber: { cause: "Birds are a little under target weight near the collection date.", fix: "Maximise feed access in the final days." },
+    red: { cause: "Birds are well under target weight near the collection date.", fix: "Maximise feed access now and tell the contractor the projected weight." },
   },
 };
 

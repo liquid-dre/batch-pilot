@@ -276,7 +276,7 @@ export async function getAlerts(ds: Dataset = datasetFromMock()): Promise<FlockA
 // --- Projection (formula-based; ROADMAP §9 — ML deferred) ------------------
 
 /**
- * Projects each house's weight to the contractor kill date from its latest
+ * Projects each house's weight to the contractor collection date from its latest
  * weigh-in and daily gain, compared to the Ross 308 objective at that age.
  * Deliberately simple and explainable: current weight + dailyGain × days left.
  */
@@ -289,10 +289,10 @@ export async function getProjection(today: string = DEMO_TODAY, ds: Dataset = da
     const weights = ds.weightEntries.filter((w) => w.placementId === placement.id).sort((a, b) => a.day - b.day);
     const weight = weights[weights.length - 1];
     if (!house || !weight) continue;
-    const killDay = daysBetween(placement.placingDate, ds.batch.killDate);
-    const daysLeft = Math.max(0, killDay - weight.day);
+    const collectionDay = daysBetween(placement.placementDate, ds.batch.expectedCollectionDate);
+    const daysLeft = Math.max(0, collectionDay - weight.day);
     const projectedWeightG = Math.round(weight.avgWeightG + weight.adgG * daysLeft);
-    const targetWeightG = ross308At(killDay).weightG;
+    const targetWeightG = ross308At(collectionDay).weightG;
     const pctOfTarget = Math.round((projectedWeightG / targetWeightG) * 100);
     houses.push({
       houseId: house.id,
@@ -300,7 +300,7 @@ export async function getProjection(today: string = DEMO_TODAY, ds: Dataset = da
       weightDay: weight.day,
       currentWeightG: weight.avgWeightG,
       dailyGainG: weight.adgG,
-      killDay,
+      collectionDay,
       projectedWeightG,
       targetWeightG,
       pctOfTarget,
@@ -319,12 +319,12 @@ export async function getProjection(today: string = DEMO_TODAY, ds: Dataset = da
   const under = 100 - pctOfTarget;
   const verdict =
     level === "green"
-      ? "On track to meet the target weight by the kill date."
-      : `Projected about ${under}% under target weight by the kill date. Lift feed intake to close the gap.`;
+      ? "On track to meet the target weight by the collection date."
+      : `Projected about ${under}% under target weight by the collection date. Lift feed intake to close the gap.`;
 
   return resolve({
-    killDate: ds.batch.killDate,
-    daysToKill: daysBetween(today, ds.batch.killDate),
+    expectedCollectionDate: ds.batch.expectedCollectionDate,
+    daysToCollection: daysBetween(today, ds.batch.expectedCollectionDate),
     projectedAvgWeightG,
     targetAvgWeightG,
     pctOfTarget,
@@ -708,15 +708,15 @@ export async function getPortfolio(today: string = DEMO_TODAY): Promise<Portfoli
   const projection = await getProjection(today);
 
   // Latest date any house is projected to reach the Ross target weight.
-  let projectedReadyDate = BATCH.killDate;
+  let projectedReadyDate = BATCH.expectedCollectionDate;
   for (const placement of PLACEMENTS) {
     const weights = WEIGHT_ENTRIES.filter((w) => w.placementId === placement.id).sort((a, b) => a.day - b.day);
     const weight = weights[weights.length - 1];
     if (!weight) continue;
-    const killDay = daysBetween(placement.placingDate, BATCH.killDate);
-    const target = ross308At(killDay).weightG;
+    const collectionDay = daysBetween(placement.placementDate, BATCH.expectedCollectionDate);
+    const target = ross308At(collectionDay).weightG;
     const daysToTarget = weight.adgG > 0 ? Math.ceil((target - weight.avgWeightG) / weight.adgG) : 0;
-    const readyDate = addDays(placement.placingDate, weight.day + Math.max(0, daysToTarget));
+    const readyDate = addDays(placement.placementDate, weight.day + Math.max(0, daysToTarget));
     if (daysBetween(projectedReadyDate, readyDate) > 0) projectedReadyDate = readyDate;
   }
 
@@ -729,8 +729,8 @@ export async function getPortfolio(today: string = DEMO_TODAY): Promise<Portfoli
       siteName: SITE.name,
       farmCode: SITE.farmCode,
       cycleNo: BATCH.cycleNo,
-      killDate: BATCH.killDate,
-      daysToKill: projection.daysToKill,
+      expectedCollectionDate: BATCH.expectedCollectionDate,
+      daysToCollection: projection.daysToCollection,
       houseCount: rows.length,
       birdsOnSite,
       avgMortPct,
@@ -775,7 +775,7 @@ export async function getGrowerDetail(): Promise<GrowerDetailData> {
     farmCode: SITE.farmCode,
     cycleNo: BATCH.cycleNo,
     breed: BATCH.breed,
-    killDate: BATCH.killDate,
+    expectedCollectionDate: BATCH.expectedCollectionDate,
     rollup,
     houses,
     pastCycles: PAST_CYCLES,
@@ -858,7 +858,7 @@ export interface AllocatedHouse {
   houseId: string;
   houseName: string;
   count: number;
-  /** House age on `placingDate` relative to today (0 = placed today). */
+  /** House age on `placementDate` relative to today (0 = placed today). */
   dayCount: number;
 }
 
@@ -872,7 +872,7 @@ export async function confirmAllocation(
   allocations: { houseId: string; count: number }[],
   today: string = DEMO_TODAY,
 ): Promise<AllocatedHouse[]> {
-  const dayCount = Math.max(0, daysBetween(PLANNED_BATCH.placingDate, today));
+  const dayCount = Math.max(0, daysBetween(PLANNED_BATCH.placementDate, today));
   PLANNED_BATCH.allocated = true;
   return resolve(
     allocations
@@ -1099,7 +1099,7 @@ export function getBatchHistory(ds: Dataset = datasetFromMock()): Promise<BatchH
 
 /** ISO date for a placement's day-of-cycle (placing date = day 0). */
 function dateForDay(p: Placement, day: number): string {
-  return addDays(p.placingDate, day);
+  return addDays(p.placementDate, day);
 }
 
 // ===========================================================================
@@ -1123,7 +1123,7 @@ function projectDaysToTarget(series: ComparePoint[], target: number, finalDay: n
 
 /** Build a closed batch's day-of-cycle curve toward its documented final result. */
 function genComparable(seed: (typeof HISTORICAL_BATCHES)[number]): ComparableBatch {
-  const killDay = daysBetween(seed.placingDate, seed.killDate);
+  const collectionDay = daysBetween(seed.placementDate, seed.expectedCollectionDate);
   const finalRossW = rossOf(seed.finalDay).weightG || seed.finalWeightG;
   const finalFactor = seed.finalWeightG / finalRossW;
   const k = 2.4;
@@ -1150,7 +1150,7 @@ function genComparable(seed: (typeof HISTORICAL_BATCHES)[number]): ComparableBat
   last.cumPct = seed.finalCumMortPct;
   last.fcr = seed.finalFcr;
 
-  const targetWeightG = rossOf(killDay).weightG;
+  const targetWeightG = rossOf(collectionDay).weightG;
   const daysToTarget = projectDaysToTarget(series, targetWeightG, seed.finalDay);
 
   return {
@@ -1158,9 +1158,9 @@ function genComparable(seed: (typeof HISTORICAL_BATCHES)[number]): ComparableBat
     cycleNo: seed.cycleNo,
     label: `Cycle ${seed.cycleNo}`,
     status: "closed",
-    placingDate: seed.placingDate,
-    killDate: seed.killDate,
-    killDay,
+    placementDate: seed.placementDate,
+    expectedCollectionDate: seed.expectedCollectionDate,
+    collectionDay,
     finalDay: seed.finalDay,
     series,
     weightG: seed.finalWeightG,
@@ -1169,7 +1169,7 @@ function genComparable(seed: (typeof HISTORICAL_BATCHES)[number]): ComparableBat
     fcr: seed.finalFcr,
     targetWeightG,
     daysToTarget,
-    readyVsKillDays: daysToTarget - killDay,
+    readyVsCollectionDays: daysToTarget - collectionDay,
   };
 }
 
@@ -1180,8 +1180,8 @@ function genComparable(seed: (typeof HISTORICAL_BATCHES)[number]): ComparableBat
  */
 export async function getComparableBatches(ds: Dataset = datasetFromMock()): Promise<CompareData> {
   const history = await getBatchHistory(ds);
-  const placing = ds.placements.reduce((min, p) => (p.placingDate < min ? p.placingDate : min), ds.placements[0]?.placingDate ?? ds.batch.killDate);
-  const killDay = daysBetween(placing, ds.batch.killDate);
+  const placing = ds.placements.reduce((min, p) => (p.placementDate < min ? p.placementDate : min), ds.placements[0]?.placementDate ?? ds.batch.expectedCollectionDate);
+  const collectionDay = daysBetween(placing, ds.batch.expectedCollectionDate);
 
   const series: ComparePoint[] = history.batch.map((r) => ({
     day: r.day,
@@ -1193,7 +1193,7 @@ export async function getComparableBatches(ds: Dataset = datasetFromMock()): Pro
   }));
   const lastWeighed = [...history.batch].reverse().find((r) => r.avgWeightG != null);
   const lastRow = history.batch[history.batch.length - 1];
-  const targetWeightG = rossOf(killDay).weightG;
+  const targetWeightG = rossOf(collectionDay).weightG;
   const daysToTarget = projectDaysToTarget(series, targetWeightG, history.maxDay);
 
   const current: ComparableBatch = {
@@ -1201,9 +1201,9 @@ export async function getComparableBatches(ds: Dataset = datasetFromMock()): Pro
     cycleNo: ds.batch.cycleNo,
     label: `Cycle ${ds.batch.cycleNo}`,
     status: "current",
-    placingDate: placing,
-    killDate: ds.batch.killDate,
-    killDay,
+    placementDate: placing,
+    expectedCollectionDate: ds.batch.expectedCollectionDate,
+    collectionDay,
     finalDay: history.maxDay,
     series,
     weightG: lastWeighed?.avgWeightG ?? 0,
@@ -1212,11 +1212,11 @@ export async function getComparableBatches(ds: Dataset = datasetFromMock()): Pro
     fcr: lastWeighed?.fcr ?? 0,
     targetWeightG,
     daysToTarget,
-    readyVsKillDays: daysToTarget - killDay,
+    readyVsCollectionDays: daysToTarget - collectionDay,
   };
 
   const batches = [current, ...ds.historicalBatches.map(genComparable)].sort((a, b) => b.cycleNo - a.cycleNo);
-  const maxDay = Math.max(...batches.map((b) => Math.max(b.finalDay, b.killDay)));
+  const maxDay = Math.max(...batches.map((b) => Math.max(b.finalDay, b.collectionDay)));
   const ross = Array.from({ length: maxDay }, (_, i) => {
     const day = i + 1;
     const pt = rossOf(day);
@@ -1264,7 +1264,7 @@ function genClosedBatchData(seed: HistoricalBatchSeed): GeneratedBatch {
     const hCumPct = Number(Math.max(0, seed.finalCumMortPct * (1 + centered * 0.08)).toFixed(2));
     const hFinalWeight = Math.round(seed.finalWeightG * (1 + centered * 0.006));
 
-    placements.push({ id: placementId, batchId, houseId, placedCount: placed, placingDate: seed.placingDate, dayCount: finalDay });
+    placements.push({ id: placementId, batchId, houseId, placedCount: placed, placementDate: seed.placementDate, dayCount: finalDay });
 
     // Front-loaded daily mortality summing to the house's cumulative %.
     const { mortSeries } = genHouseDaily(placed, finalDay, hCumPct);
@@ -1279,7 +1279,7 @@ function genClosedBatchData(seed: HistoricalBatchSeed): GeneratedBatch {
       daily.push({
         id: `${placementId}-d${d}`,
         placementId,
-        date: addDays(seed.placingDate, d),
+        date: addDays(seed.placementDate, d),
         day: d,
         dayMortality: mort - nightMortality,
         nightMortality,
@@ -1353,8 +1353,8 @@ async function currentArchiveRow(ds: Dataset = datasetFromMock()): Promise<Batch
     cycleNo: ds.batch.cycleNo,
     title: `Batch ${ds.batch.cycleNo}`,
     status: "current",
-    placingDate: cb.placingDate,
-    killDate: ds.batch.killDate,
+    placementDate: cb.placementDate,
+    expectedCollectionDate: ds.batch.expectedCollectionDate,
     growOutDays: finalDay,
     placed: rollup.placed,
     totalMortality: rollup.cumMort,
@@ -1366,7 +1366,7 @@ async function currentArchiveRow(ds: Dataset = datasetFromMock()): Promise<Batch
     feedUsedKg,
     vaccineCount: vaccineNames.length,
     vaccineNames,
-    readyVsKillDays: cb.readyVsKillDays,
+    readyVsCollectionDays: cb.readyVsCollectionDays,
     level: growerLevel(cb.vsRossPct),
   };
 }
@@ -1384,8 +1384,8 @@ function closedArchiveRow(seed: HistoricalBatchSeed): BatchArchiveRow {
     cycleNo: seed.cycleNo,
     title: `Batch ${seed.cycleNo}`,
     status: "closed",
-    placingDate: seed.placingDate,
-    killDate: seed.killDate,
+    placementDate: seed.placementDate,
+    expectedCollectionDate: seed.expectedCollectionDate,
     growOutDays: seed.finalDay,
     placed,
     totalMortality,
@@ -1397,7 +1397,7 @@ function closedArchiveRow(seed: HistoricalBatchSeed): BatchArchiveRow {
     feedUsedKg,
     vaccineCount: vaccineNames.length,
     vaccineNames,
-    readyVsKillDays: comp.readyVsKillDays,
+    readyVsCollectionDays: comp.readyVsCollectionDays,
     level: growerLevel(comp.vsRossPct),
   };
 }
@@ -1483,7 +1483,7 @@ function genGrowerPerf(profile: GrowerProfile): GrowerPerf {
     cycleNo: profile.cycleNo,
     status: profile.status,
     day: profile.age,
-    killDay: profile.growOut,
+    collectionDay: profile.growOut,
     placed,
     remaining,
     epef,
@@ -1491,7 +1491,7 @@ function genGrowerPerf(profile: GrowerProfile): GrowerPerf {
     cumMortPct: profile.cumMortPct,
     weightG,
     vsRossPct,
-    readyVsKillDays: daysToTarget - profile.growOut,
+    readyVsCollectionDays: daysToTarget - profile.growOut,
     level: growerLevel(vsRossPct),
     trend: genGrowerTrend(profile),
   };
@@ -1510,7 +1510,7 @@ async function murrayPerf(): Promise<GrowerPerf> {
     cycleNo: BATCH.cycleNo,
     status: "active",
     day: cb.finalDay,
-    killDay: cb.killDay,
+    collectionDay: cb.collectionDay,
     placed: rollup.placed,
     remaining: rollup.remaining,
     epef,
@@ -1518,7 +1518,7 @@ async function murrayPerf(): Promise<GrowerPerf> {
     cumMortPct: cb.cumMortPct,
     weightG: cb.weightG,
     vsRossPct: cb.vsRossPct,
-    readyVsKillDays: cb.readyVsKillDays,
+    readyVsCollectionDays: cb.readyVsCollectionDays,
     level: growerLevel(cb.vsRossPct),
     trend: cb.series.map((p) => ({
       day: p.day,
@@ -1554,7 +1554,7 @@ function genGrowerPastCycles(profile: GrowerProfile, today: string) {
     const mortalityPct = Number((profile.cumMortPct * (0.95 + 0.05 * n)).toFixed(1));
     const liv = 100 - mortalityPct;
     const epef = Math.round((liv * (finalAvgWeightG / 1000)) / (35 * profile.fcr) * 100);
-    return { cycleNo, killDate: addDays(today, -45 * n), finalAvgWeightG, mortalityPct, epef };
+    return { cycleNo, expectedCollectionDate: addDays(today, -45 * n), finalAvgWeightG, mortalityPct, epef };
   });
 }
 
@@ -1604,7 +1604,7 @@ export async function getGrowerDetailById(siteId: string): Promise<GrowerDetailD
     farmCode: profile.farmCode,
     cycleNo: profile.cycleNo,
     breed: "Ross 308",
-    killDate: addDays(placing, profile.growOut),
+    expectedCollectionDate: addDays(placing, profile.growOut),
     rollup: {
       placed: placedTotal,
       remaining: remainingTotal,
@@ -1768,9 +1768,9 @@ export async function getYesterdayEntries(ds: Dataset = datasetFromMock()): Prom
 /** Actual weigh-ins + a projected forward line (current + ADG × days) to the kill day. */
 export async function getWeightProjection(ds: Dataset = datasetFromMock(), today: string = DEMO_TODAY): Promise<WeightProjection> {
   const proj = await getProjection(today, ds);
-  const killDay = proj.houses.length ? Math.max(...proj.houses.map((h) => h.killDay)) : 35;
+  const collectionDay = proj.houses.length ? Math.max(...proj.houses.map((h) => h.collectionDay)) : 35;
 
-  const ross: ProjectionPoint[] = Array.from({ length: killDay + 1 }, (_, day) => ({
+  const ross: ProjectionPoint[] = Array.from({ length: collectionDay + 1 }, (_, day) => ({
     day,
     weightG: ross308At(day).weightG,
   }));
@@ -1783,7 +1783,7 @@ export async function getWeightProjection(ds: Dataset = datasetFromMock(), today
           .map((w) => ({ day: w.day, weightG: w.avgWeightG }))
       : [{ day: h.weightDay, weightG: h.currentWeightG }];
     const projected: ProjectionPoint[] = [];
-    for (let d = h.weightDay; d <= h.killDay; d++) {
+    for (let d = h.weightDay; d <= h.collectionDay; d++) {
       projected.push({ day: d, weightG: Math.round(h.currentWeightG + h.dailyGainG * (d - h.weightDay)) });
     }
     return { houseId: h.houseId, name: h.houseName, actual, projected };
@@ -1800,15 +1800,15 @@ export async function getWeightProjection(ds: Dataset = datasetFromMock(), today
   const siteCurrent = Math.round(mean(proj.houses.map((h) => h.currentWeightG)));
   const siteAdg = mean(proj.houses.map((h) => h.dailyGainG));
   const siteProjected: ProjectionPoint[] = [];
-  for (let d = siteWeighDay; d <= killDay; d++) {
+  for (let d = siteWeighDay; d <= collectionDay; d++) {
     siteProjected.push({ day: d, weightG: Math.round(siteCurrent + siteAdg * (d - siteWeighDay)) });
   }
 
-  const yMax = Math.ceil((ross308At(killDay).weightG * 1.05) / 500) * 500;
+  const yMax = Math.ceil((ross308At(collectionDay).weightG * 1.05) / 500) * 500;
   const projWeightBands = (ctxOf(ds).thresholds ?? DEFAULT_THRESHOLDS).weight;
   return resolve({
     ross,
-    killDay,
+    collectionDay,
     yMax,
     greenFrac: projWeightBands.green,
     amberFrac: projWeightBands.amber,
@@ -1825,9 +1825,9 @@ export async function getDashboardCycleInfo(ds: Dataset = datasetFromMock(), tod
     const latest = await getLatestDailyEntry(house.id, ds);
     days.push((latest?.day ?? 0) + 1);
   }
-  const placingDate = ds.placements.reduce(
-    (min, p) => (p.placingDate < min ? p.placingDate : min),
-    ds.placements[0]?.placingDate ?? ds.batch.killDate,
+  const placementDate = ds.placements.reduce(
+    (min, p) => (p.placementDate < min ? p.placementDate : min),
+    ds.placements[0]?.placementDate ?? ds.batch.expectedCollectionDate,
   );
   return resolve({
     siteName: ds.site.name,
@@ -1836,9 +1836,9 @@ export async function getDashboardCycleInfo(ds: Dataset = datasetFromMock(), tod
     today,
     dayLow: days.length ? Math.min(...days) : 0,
     dayHigh: days.length ? Math.max(...days) : 0,
-    placingDate,
-    killDate: ds.batch.killDate,
-    daysToKill: proj.daysToKill,
+    placementDate,
+    expectedCollectionDate: ds.batch.expectedCollectionDate,
+    daysToCollection: proj.daysToCollection,
     houseCount: ds.site.houses.length,
   });
 }

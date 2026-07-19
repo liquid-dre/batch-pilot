@@ -116,7 +116,7 @@ function FarmSchedule({ siteId }: { siteId: string }) {
       <section className="space-y-3">
         <div className="flex items-baseline justify-between">
           <h2 className="text-h3">Catching nights</h2>
-          <span className="text-label text-muted">Kill date {view.killDate}</span>
+          <span className="text-label text-muted">Collection date {view.expectedCollectionDate}</span>
         </div>
         {events.length === 0 ? (
           <Card>

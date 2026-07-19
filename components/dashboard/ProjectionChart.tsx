@@ -11,7 +11,7 @@ import { cn } from "@/lib/cn";
 /**
  * Weight projection against the Ross 308 curve: actual weigh-ins to date as a
  * solid line, then a dashed projected line (current weight + ADG × days-left)
- * running forward to the kill date, over the shaded green/amber/red band. Built
+ * running forward to the collection date, over the shaded green/amber/red band. Built
  * on the shadcn-style chart primitive. The manager variant can toggle to each
  * house's line; the supervisor sees one calm site-average line.
  */
@@ -21,7 +21,7 @@ export function ProjectionChart({ projection, variant }: { projection: WeightPro
   const [byHouse, setByHouse] = useState(false);
   const showHouses = variant === "manager" && byHouse;
 
-  const { ross, killDay, yMax, greenFrac, amberFrac } = projection;
+  const { ross, collectionDay, yMax, greenFrac, amberFrac } = projection;
 
   // Per-house continuous series (actual, then projected from the weigh day on).
   const houseMaps = projection.houses.map((h) => {
@@ -89,8 +89,8 @@ export function ProjectionChart({ projection, variant }: { projection: WeightPro
               <Recharts.XAxis
                 dataKey="day"
                 type="number"
-                domain={[0, killDay]}
-                ticks={weeklyTicks(killDay)}
+                domain={[0, collectionDay]}
+                ticks={weeklyTicks(collectionDay)}
                 tickLine={false}
                 axisLine={false}
                 tickMargin={8}
@@ -123,7 +123,7 @@ export function ProjectionChart({ projection, variant }: { projection: WeightPro
                 </>
               )}
 
-              <Recharts.ReferenceLine x={killDay} stroke="var(--slate)" strokeDasharray="2 3" label={{ value: "kill", position: "insideTopRight", fontSize: 11, fill: "var(--muted)" }} />
+              <Recharts.ReferenceLine x={collectionDay} stroke="var(--slate)" strokeDasharray="2 3" label={{ value: "collection", position: "insideTopRight", fontSize: 11, fill: "var(--muted)" }} />
               <ChartTooltip
                 content={<ChartTooltipContent formatter={(v) => (v == null ? "—" : `${num(Number(v))} g`)} />}
                 labelFormatter={(d) => `Day ${d}`}
@@ -136,10 +136,10 @@ export function ProjectionChart({ projection, variant }: { projection: WeightPro
   );
 }
 
-/** Weekly-ish ticks (every 7 days) up to and including the kill day. */
-function weeklyTicks(killDay: number): number[] {
+/** Weekly-ish ticks (every 7 days) up to and including the collection day. */
+function weeklyTicks(collectionDay: number): number[] {
   const ticks: number[] = [];
-  for (let d = 0; d <= killDay; d += 7) ticks.push(d);
-  if (ticks[ticks.length - 1] !== killDay) ticks.push(killDay);
+  for (let d = 0; d <= collectionDay; d += 7) ticks.push(d);
+  if (ticks[ticks.length - 1] !== collectionDay) ticks.push(collectionDay);
   return ticks;
 }

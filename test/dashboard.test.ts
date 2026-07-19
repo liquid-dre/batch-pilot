@@ -23,10 +23,10 @@ describe("getDashboardMetrics", () => {
 describe("getWeightProjection", () => {
   it("runs the projected line forward to the kill day, monotonic (ADG ≥ 0)", async () => {
     const p = await getWeightProjection();
-    expect(p.ross.length).toBe(p.killDay + 1);
+    expect(p.ross.length).toBe(p.collectionDay + 1);
     const proj = p.site.projected;
     expect(proj.length).toBeGreaterThan(0);
-    expect(proj[proj.length - 1].day).toBe(p.killDay);
+    expect(proj[proj.length - 1].day).toBe(p.collectionDay);
     for (let i = 1; i < proj.length; i++) expect(proj[i].weightG).toBeGreaterThanOrEqual(proj[i - 1].weightG);
   });
 });

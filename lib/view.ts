@@ -97,8 +97,8 @@ export interface DashboardData {
   houses: HouseView[];
   feed: FeedDelivery[];
   catching: CatchingEvent[];
-  /** Whole days from "today" to the batch kill date (0 = today, <0 = past). */
-  killCountdownDays: number;
+  /** Whole days from "today" to the batch collection date (0 = today, <0 = past). */
+  collectionCountdownDays: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -129,8 +129,8 @@ export interface PortfolioSummary {
   siteName: string;
   farmCode: string;
   cycleNo: number;
-  killDate: string;
-  daysToKill: number;
+  expectedCollectionDate: string;
+  daysToCollection: number;
   houseCount: number;
   birdsOnSite: number;
   avgMortPct: number;
@@ -247,8 +247,8 @@ export interface BatchArchiveRow {
   /** Page/row title, e.g. "Batch 85". */
   title: string;
   status: "current" | "closed";
-  placingDate: string;
-  killDate: string;
+  placementDate: string;
+  expectedCollectionDate: string;
   /** Grow-out length in days (current age for the live batch). */
   growOutDays: number;
   placed: number;
@@ -268,8 +268,8 @@ export interface BatchArchiveRow {
   /** Vaccinations given in the cycle (program rounds completed by the grow-out). */
   vaccineCount: number;
   vaccineNames: string[];
-  /** daysToTarget − killDay: negative = reached target ahead of the kill date. */
-  readyVsKillDays: number;
+  /** daysToTarget − collectionDay: negative = reached target ahead of the collection date. */
+  readyVsCollectionDays: number;
   level: StatusLevel;
 }
 
@@ -296,9 +296,9 @@ export interface ComparableBatch {
   cycleNo: number;
   label: string;
   status: "current" | "closed";
-  placingDate: string;
-  killDate: string;
-  killDay: number;
+  placementDate: string;
+  expectedCollectionDate: string;
+  collectionDay: number;
   /** Last day with data: grow-out length (closed) or current age (ongoing). */
   finalDay: number;
   series: ComparePoint[];
@@ -310,8 +310,8 @@ export interface ComparableBatch {
   targetWeightG: number;
   /** Day of cycle the batch reaches (or is projected to reach) target weight. */
   daysToTarget: number;
-  /** daysToTarget − killDay: negative = ahead of the kill date, positive = behind. */
-  readyVsKillDays: number;
+  /** daysToTarget − collectionDay: negative = ahead of the collection date, positive = behind. */
+  readyVsCollectionDays: number;
 }
 
 export interface CompareData {
@@ -340,7 +340,7 @@ export interface GrowerPerf {
   status: "active" | "completed";
   /** Current age (active) or grow-out length (completed). */
   day: number;
-  killDay: number;
+  collectionDay: number;
   placed: number;
   remaining: number;
   // Headline metrics
@@ -349,8 +349,8 @@ export interface GrowerPerf {
   cumMortPct: number;
   weightG: number;
   vsRossPct: number;
-  /** daysToTarget − killDay: negative = ahead of the kill date, positive = behind. */
-  readyVsKillDays: number;
+  /** daysToTarget − collectionDay: negative = ahead of the collection date, positive = behind. */
+  readyVsCollectionDays: number;
   level: StatusLevel;
   /** Day-of-cycle trend for the position-across-days chart. */
   trend: GrowerTrendPoint[];
@@ -408,7 +408,7 @@ export interface GrowerDetailData {
   farmCode: string;
   cycleNo: number;
   breed: string;
-  killDate: string;
+  expectedCollectionDate: string;
   rollup: SiteRollup;
   houses: HouseTrend[];
   pastCycles: PastCycle[];
@@ -427,9 +427,9 @@ export interface DashboardCycleInfo {
   /** Current working day of cycle (latest captured + 1), per-house range. */
   dayLow: number;
   dayHigh: number;
-  placingDate: string;
-  killDate: string;
-  daysToKill: number;
+  placementDate: string;
+  expectedCollectionDate: string;
+  daysToCollection: number;
   houseCount: number;
 }
 
@@ -477,7 +477,7 @@ export interface ProjectionLine {
 }
 export interface WeightProjection {
   ross: ProjectionPoint[];
-  killDay: number;
+  collectionDay: number;
   yMax: number;
   greenFrac: number;
   amberFrac: number;

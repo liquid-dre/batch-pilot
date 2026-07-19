@@ -88,7 +88,7 @@ export default defineSchema({
     contractorId: v.string(),
     cycleNo: v.number(),
     breed: v.string(),
-    killDate: v.string(),
+    expectedCollectionDate: v.string(),
     focPct: v.number(),
     contractId: v.string(),
     // Set when the contractor closes the cycle; an absent value = active. The
@@ -104,8 +104,8 @@ export default defineSchema({
     contractorId: v.string(),
     cycleNo: v.number(),
     breed: v.string(),
-    placingDate: v.string(),
-    killDate: v.string(),
+    placementDate: v.string(),
+    expectedCollectionDate: v.string(),
     focPct: v.number(),
     totalPlaced: v.number(),
     allocated: v.boolean(),
@@ -116,7 +116,7 @@ export default defineSchema({
     batchId: v.string(),
     houseId: v.string(),
     placedCount: v.number(),
-    placingDate: v.string(),
+    placementDate: v.string(),
     dayCount: v.number(),
   })
     .index("by_extId", ["extId"])
@@ -228,8 +228,8 @@ export default defineSchema({
     // always stamps its site, and the per-tenant reads query `by_site`.
     siteId: v.optional(v.string()),
     cycleNo: v.number(),
-    placingDate: v.string(),
-    killDate: v.string(),
+    placementDate: v.string(),
+    expectedCollectionDate: v.string(),
     finalDay: v.number(),
     finalCumMortPct: v.number(),
     finalWeightG: v.number(),

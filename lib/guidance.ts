@@ -53,7 +53,7 @@ export function weightGuidance({ vsRossPct, day, eatingAtOrAboveTarget }: Weight
   const status = level === "amber" ? "Behind, but in reach" : "Behind target";
   // The precise gap is shown separately via the difference/percentage toggle, so
   // the framing stays in plain words and doesn't double up on the number.
-  const gap = "The flock is behind the Ross 308 weight for its age. There's still time to close some of it before the kill date.";
+  const gap = "The flock is behind the Ross 308 weight for its age. There's still time to close some of it before the collection date.";
 
   if (eatingAtOrAboveTarget) {
     // Eating enough (or more) yet under weight — efficiency / heat signal.

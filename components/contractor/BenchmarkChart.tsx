@@ -10,7 +10,7 @@ export interface ActualMarker {
 interface BenchmarkChartProps {
   curve: BenchmarkPoint[];
   markers: ActualMarker[];
-  killDay: number;
+  collectionDay: number;
   maxDay?: number;
 }
 
@@ -25,7 +25,7 @@ const LEVEL_FILL: Record<StatusLevel, string> = {
  * objective with each house's actual weight plotted against it, plus a kill-date
  * reference line. The gap below the curve is the under-performance story.
  */
-export function BenchmarkChart({ curve, markers, killDay, maxDay = 35 }: BenchmarkChartProps) {
+export function BenchmarkChart({ curve, markers, collectionDay, maxDay = 35 }: BenchmarkChartProps) {
   const W = 720;
   const H = 360;
   const padL = 52;
@@ -68,9 +68,9 @@ export function BenchmarkChart({ curve, markers, killDay, maxDay = 35 }: Benchma
       </text>
 
       {/* kill-date reference line */}
-      <line x1={x(killDay)} y1={padT} x2={x(killDay)} y2={padT + plotH} className="stroke-hint" strokeWidth="1.5" strokeDasharray="4 4" />
-      <text x={x(killDay)} y={padT + 12} textAnchor="middle" className="fill-hint" fontSize="10">
-        kill day {killDay}
+      <line x1={x(collectionDay)} y1={padT} x2={x(collectionDay)} y2={padT + plotH} className="stroke-hint" strokeWidth="1.5" strokeDasharray="4 4" />
+      <text x={x(collectionDay)} y={padT + 12} textAnchor="middle" className="fill-hint" fontSize="10">
+        collection day {collectionDay}
       </text>
 
       {/* Ross 308 objective curve */}

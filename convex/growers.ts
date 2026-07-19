@@ -41,7 +41,7 @@ interface PlacementData {
   placedCount: number;
   entries: any[]; // dailyEntries, sorted by day asc
   weights: any[]; // weightEntries, sorted by day asc
-  placingDate: string;
+  placementDate: string;
   houseId: string;
   dayCount: number;
 }
@@ -71,7 +71,7 @@ async function loadFarm(ctx: any, siteId: string) {
       placedCount: p.placedCount,
       entries,
       weights,
-      placingDate: p.placingDate,
+      placementDate: p.placementDate,
       houseId: p.houseId,
       dayCount: p.dayCount,
     });
@@ -139,12 +139,12 @@ function sitePerf(site: any, farm: { batch: any; placements: PlacementData[] }) 
   const fcr = weightG ? Number((rossFcr * (rossW / weightG)).toFixed(2)) : rossFcr;
   const epef = weightG && day ? Math.round(((livability * (weightG / 1000)) / (day * fcr)) * 100) : 0;
 
-  const killDay = daysBetween(placements[0].placingDate, batch.killDate);
-  const target = rossAt(killDay).weightG;
+  const collectionDay = daysBetween(placements[0].placementDate, batch.expectedCollectionDate);
+  const target = rossAt(collectionDay).weightG;
   const adg = adgCount ? adgSum / adgCount : rossAt(day).dailyGainG ?? 90;
   const daysToTarget = weightG >= target ? day : day + Math.ceil((target - weightG) / Math.max(adg, 1));
-  const readyVsKillDays = weightG ? daysToTarget - killDay : 0;
-  const status: "active" | "completed" = killDay > 0 && day >= killDay ? "completed" : "active";
+  const readyVsCollectionDays = weightG ? daysToTarget - collectionDay : 0;
+  const status: "active" | "completed" = collectionDay > 0 && day >= collectionDay ? "completed" : "active";
 
   // Day-of-cycle trend: site cumulative mortality %, plus weight-vs-Ross and FCR
   // forward-filled from the weigh days (0 before the first weigh-in).
@@ -175,7 +175,7 @@ function sitePerf(site: any, farm: { batch: any; placements: PlacementData[] }) 
     cycleNo: batch.cycleNo,
     status,
     day,
-    killDay,
+    collectionDay,
     placed,
     remaining,
     epef,
@@ -183,7 +183,7 @@ function sitePerf(site: any, farm: { batch: any; placements: PlacementData[] }) 
     cumMortPct,
     weightG,
     vsRossPct,
-    readyVsKillDays,
+    readyVsCollectionDays,
     level: growerLevel(vsRossPct),
     trend,
   };
@@ -328,7 +328,7 @@ export const contractorGrowerDetail = query({
       farmCode: site.farmCode,
       cycleNo: batch.cycleNo,
       breed: batch.breed,
-      killDate: batch.killDate,
+      expectedCollectionDate: batch.expectedCollectionDate,
       rollup: { placed, remaining, cumMort, mortPct, houseCount: placements.length },
       houses,
       settlement,

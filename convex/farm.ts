@@ -75,7 +75,7 @@ export const farmData = query({
       role,
       farmName: site.name,
       today,
-      cycle: { cycleNo: batch.cycleNo, breed: batch.breed, killDate: batch.killDate },
+      cycle: { cycleNo: batch.cycleNo, breed: batch.breed, expectedCollectionDate: batch.expectedCollectionDate },
       houses,
     };
   },

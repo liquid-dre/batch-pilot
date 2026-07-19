@@ -13,7 +13,7 @@ import { cn } from "@/lib/cn";
 import { rowActivation } from "@/lib/a11y";
 import { CompareChart, type CompareSeries } from "@/components/compare/CompareChart";
 
-type MetricKey = "epef" | "fcr" | "cumMortPct" | "vsRossPct" | "readyVsKillDays";
+type MetricKey = "epef" | "fcr" | "cumMortPct" | "vsRossPct" | "readyVsCollectionDays";
 type TrendKey = "vsRossPct" | "fcr" | "cumPct";
 
 interface Metric {
@@ -29,7 +29,7 @@ interface Metric {
   ross: boolean;
 }
 
-function killText(days: number): string {
+function collectionText(days: number): string {
   if (days <= -1) return `${Math.abs(days)}d early`;
   if (days === 0) return "on time";
   return `${days}d late`;
@@ -40,7 +40,7 @@ const METRICS: Metric[] = [
   { key: "fcr", label: "FCR", higherBetter: false, value: (g) => g.fcr, format: (g) => g.fcr.toFixed(2), trend: "fcr", unit: "", decimals: 2, ross: true },
   { key: "cumMortPct", label: "Cumulative mortality", higherBetter: false, value: (g) => g.cumMortPct, format: (g) => pct(g.cumMortPct), trend: "cumPct", unit: "%", decimals: 2, ross: false },
   { key: "vsRossPct", label: "Weight vs target", higherBetter: true, value: (g) => g.vsRossPct, format: (g) => `${g.vsRossPct}%`, trend: "vsRossPct", unit: "%", decimals: 0, ross: false },
-  { key: "readyVsKillDays", label: "On-time to kill date", higherBetter: false, value: (g) => g.readyVsKillDays, format: (g) => killText(g.readyVsKillDays), trend: "vsRossPct", unit: "%", decimals: 0, ross: false },
+  { key: "readyVsCollectionDays", label: "On-time to collection date", higherBetter: false, value: (g) => g.readyVsCollectionDays, format: (g) => collectionText(g.readyVsCollectionDays), trend: "vsRossPct", unit: "%", decimals: 0, ross: false },
 ];
 
 const PALETTE = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "var(--chart-5)", "var(--chart-6)"];
@@ -179,7 +179,7 @@ export function ContractorGrowersView({ data }: { data: ContractorGrowers }) {
                 <Cell active={metric.key === "fcr"}>{g.fcr.toFixed(2)}</Cell>
                 <Cell active={metric.key === "cumMortPct"}>{pct(g.cumMortPct)}</Cell>
                 <Cell active={metric.key === "vsRossPct"}>{g.vsRossPct}%</Cell>
-                <Cell active={metric.key === "readyVsKillDays"}>{killText(g.readyVsKillDays)}</Cell>
+                <Cell active={metric.key === "readyVsCollectionDays"}>{collectionText(g.readyVsCollectionDays)}</Cell>
                 <TD>
                   <div className="h-2 w-28 overflow-hidden rounded-full bg-divider">
                     <div className="h-full rounded-full bg-brand-500" style={{ width: `${Math.round(score(g) * 100)}%` }} />

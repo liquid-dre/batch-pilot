@@ -102,7 +102,7 @@ export const myDataset = query({
       editLog: editLog.map(toApp),
       pastCycles: historicalRows.map((b) => ({
         cycleNo: b.cycleNo,
-        killDate: b.killDate,
+        expectedCollectionDate: b.expectedCollectionDate,
         finalAvgWeightG: b.finalWeightG,
         mortalityPct: b.finalCumMortPct,
         epef: b.epef,

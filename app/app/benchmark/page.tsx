@@ -22,14 +22,14 @@ export default async function BenchmarkPage() {
     getWeightBandData(),
   ]);
 
-  const killDay = placements[0] ? daysBetween(placements[0].placingDate, batch.killDate) : 31;
+  const collectionDay = placements[0] ? daysBetween(placements[0].placementDate, batch.expectedCollectionDate) : 31;
   const markers: ActualMarker[] = portfolio.rows
     .filter((r) => r.avgWeightG > 0)
     .map((r) => ({ day: r.day, weightG: r.avgWeightG, level: r.level, label: r.houseName }));
 
   return (
     <ContractorOnly>
-      <BenchmarkView breed={batch.breed} curve={benchmark.curve} overlay={benchmark.overlay} markers={markers} killDay={killDay} weightBand={weightBand} />
+      <BenchmarkView breed={batch.breed} curve={benchmark.curve} overlay={benchmark.overlay} markers={markers} collectionDay={collectionDay} weightBand={weightBand} />
     </ContractorOnly>
   );
 }

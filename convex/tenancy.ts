@@ -323,7 +323,7 @@ export const myWorkspace = query({
         : null;
       let managers: { email: string; status: string }[] = [];
       let houses: { id: string; name: string; capacity: number }[] = [];
-      let cycle: { cycleNo: number; breed: string; placingDate: string; killDate: string; placed: number; houseCount: number } | null = null;
+      let cycle: { cycleNo: number; breed: string; placementDate: string; expectedCollectionDate: string; placed: number; houseCount: number } | null = null;
       if (site) {
         const invites = await ctx.db
           .query("invites")
@@ -352,8 +352,8 @@ export const myWorkspace = query({
           cycle = {
             cycleNo: batch.cycleNo,
             breed: batch.breed,
-            killDate: batch.killDate,
-            placingDate: placements[0]?.placingDate ?? "",
+            expectedCollectionDate: batch.expectedCollectionDate,
+            placementDate: placements[0]?.placementDate ?? "",
             placed: placements.reduce((s, p) => s + p.placedCount, 0),
             houseCount: placements.length,
           };
@@ -457,8 +457,8 @@ export const startCycle = mutation({
   args: {
     cycleNo: v.number(),
     breed: v.string(),
-    placingDate: v.string(),
-    killDate: v.string(),
+    placementDate: v.string(),
+    expectedCollectionDate: v.string(),
     houses: v.array(v.object({ houseId: v.string(), placedCount: v.number() })),
   },
   handler: async (ctx, args) => {
@@ -471,7 +471,7 @@ export const startCycle = mutation({
       .filter((q) => q.eq(q.field("closedAt"), undefined))
       .first();
     if (existing) throw new Error("This farm already has an active cycle");
-    if (!args.placingDate || !args.killDate) throw new Error("Placing and kill dates are required");
+    if (!args.placementDate || !args.expectedCollectionDate) throw new Error("Placing and kill dates are required");
 
     const batchExtId = `${siteId}_b${args.cycleNo}`;
     await ctx.db.insert("batches", {
@@ -480,13 +480,13 @@ export const startCycle = mutation({
       contractorId,
       cycleNo: args.cycleNo,
       breed: args.breed || "Ross 308",
-      killDate: args.killDate,
+      expectedCollectionDate: args.expectedCollectionDate,
       focPct: 0,
       contractId: "",
     });
 
     const today = new Date().toISOString().slice(0, 10);
-    const dayCount = Math.max(0, daysBetween(args.placingDate, today));
+    const dayCount = Math.max(0, daysBetween(args.placementDate, today));
     let n = 0;
     for (const h of args.houses) {
       if (!h.houseId || h.placedCount <= 0) continue;
@@ -496,7 +496,7 @@ export const startCycle = mutation({
         batchId: batchExtId,
         houseId: h.houseId,
         placedCount: Math.round(h.placedCount),
-        placingDate: args.placingDate,
+        placementDate: args.placementDate,
         dayCount,
       });
     }
@@ -532,10 +532,10 @@ export const closeCycle = mutation({
     let day = 0;
     let weightNum = 0; // Σ avgWeight × birds
     let weightDen = 0;
-    let placingDate = "";
+    let placementDate = "";
     for (const p of placements) {
       placed += p.placedCount;
-      if (!placingDate || p.placingDate < placingDate) placingDate = p.placingDate;
+      if (!placementDate || p.placementDate < placementDate) placementDate = p.placementDate;
       const daily = (
         await ctx.db.query("dailyEntries").withIndex("by_placement", (q) => q.eq("placementId", p.extId)).collect()
       ).sort((a, b) => a.day - b.day);
@@ -565,8 +565,8 @@ export const closeCycle = mutation({
     await ctx.db.insert("historicalBatches", {
       siteId,
       cycleNo: batch.cycleNo,
-      placingDate: placingDate || batch.killDate,
-      killDate: batch.killDate,
+      placementDate: placementDate || batch.expectedCollectionDate,
+      expectedCollectionDate: batch.expectedCollectionDate,
       finalDay,
       finalCumMortPct,
       finalWeightG,

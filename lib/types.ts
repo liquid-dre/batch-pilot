@@ -117,7 +117,7 @@ export interface Batch {
   cycleNo: number;
   breed: Breed;
   /** Contractor's target collection date (a stored target, not computed). */
-  killDate: ISODate;
+  expectedCollectionDate: ISODate;
   /** Free-of-charge allowance, e.g. 1 (%) — excluded from chargeable count. */
   focPct: number;
   contractId: ID;
@@ -134,8 +134,8 @@ export interface PlannedBatch {
   contractorId: ID;
   cycleNo: number;
   breed: Breed;
-  placingDate: ISODate;
-  killDate: ISODate;
+  placementDate: ISODate;
+  expectedCollectionDate: ISODate;
   focPct: number;
   /** Total birds to place across the site, not yet split per house. */
   totalPlaced: number;
@@ -148,7 +148,7 @@ export interface Placement {
   batchId: ID;
   houseId: ID;
   placedCount: number;
-  placingDate: ISODate;
+  placementDate: ISODate;
   /** Age in days as of the latest entry (placing date = day 0). */
   dayCount: number;
 }
@@ -337,8 +337,8 @@ export interface HouseProjection {
   currentWeightG: number;
   /** Daily gain used to project forward (g/day). */
   dailyGainG: number;
-  /** House age on the kill date. */
-  killDay: number;
+  /** House age on the collection date. */
+  collectionDay: number;
   projectedWeightG: number;
   /** Ross 308 objective weight at the kill day (the target to beat). */
   targetWeightG: number;
@@ -347,9 +347,9 @@ export interface HouseProjection {
 }
 
 export interface BatchProjection {
-  killDate: ISODate;
-  /** Whole days from "today" to the kill date (0 = today). */
-  daysToKill: number;
+  expectedCollectionDate: ISODate;
+  /** Whole days from "today" to the collection date (0 = today). */
+  daysToCollection: number;
   projectedAvgWeightG: number;
   targetAvgWeightG: number;
   pctOfTarget: number;
@@ -380,7 +380,7 @@ export interface Manifest {
 /** A finished cycle on a site — the grower's track record (ROADMAP §8 Phase 2). */
 export interface PastCycle {
   cycleNo: number;
-  killDate: ISODate;
+  expectedCollectionDate: ISODate;
   finalAvgWeightG: number;
   mortalityPct: number;
   /** European Production Efficiency Factor for the closed cycle. */

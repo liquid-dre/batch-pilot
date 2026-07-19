@@ -355,8 +355,8 @@ function CycleSection({ houses, cycle }: { houses: any[]; cycle: any }) {
   const startCycle = useMutation(api.tenancy.startCycle);
   const [cycleNo, setCycleNo] = useState("1");
   const [breed, setBreed] = useState("Ross 308");
-  const [placingDate, setPlacingDate] = useState("");
-  const [killDate, setKillDate] = useState("");
+  const [placementDate, setPlacingDate] = useState("");
+  const [expectedCollectionDate, setExpectedCollectionDate] = useState("");
   const [counts, setCounts] = useState<Record<string, string>>({});
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -369,8 +369,8 @@ function CycleSection({ houses, cycle }: { houses: any[]; cycle: any }) {
           <dt className="text-muted">Breed</dt><dd className="text-right font-mono text-ink">{cycle.breed}</dd>
           <dt className="text-muted">Placed</dt><dd className="text-right font-mono text-ink">{cycle.placed.toLocaleString()}</dd>
           <dt className="text-muted">Houses</dt><dd className="text-right font-mono text-ink">{cycle.houseCount}</dd>
-          <dt className="text-muted">Placed on</dt><dd className="text-right font-mono text-ink">{cycle.placingDate}</dd>
-          <dt className="text-muted">Kill date</dt><dd className="text-right font-mono text-ink">{cycle.killDate}</dd>
+          <dt className="text-muted">Placed on</dt><dd className="text-right font-mono text-ink">{cycle.placementDate}</dd>
+          <dt className="text-muted">Kill date</dt><dd className="text-right font-mono text-ink">{cycle.expectedCollectionDate}</dd>
         </dl>
       </div>
     );
@@ -383,8 +383,8 @@ function CycleSection({ houses, cycle }: { houses: any[]; cycle: any }) {
   async function start(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!placingDate || !killDate) {
-      setError("Enter the placing and kill dates.");
+    if (!placementDate || !expectedCollectionDate) {
+      setError("Enter the placing and collection dates.");
       return;
     }
     setPending(true);
@@ -392,8 +392,8 @@ function CycleSection({ houses, cycle }: { houses: any[]; cycle: any }) {
       await startCycle({
         cycleNo: Number(cycleNo) || 1,
         breed,
-        placingDate,
-        killDate,
+        placementDate,
+        expectedCollectionDate,
         houses: houses.map((h) => ({ houseId: h.id, placedCount: Number(counts[h.id]) || 0 })),
       });
     } catch {
@@ -416,12 +416,12 @@ function CycleSection({ houses, cycle }: { houses: any[]; cycle: any }) {
           <input value={breed} onChange={(e) => setBreed(e.target.value)} className="h-11 rounded-[var(--radius-control)] border border-border bg-surface px-3 text-body text-ink outline-none focus-visible:border-brand-500" />
         </label>
         <label className="flex flex-col gap-1.5">
-          <span className="text-label font-medium text-slate">Placing date</span>
-          <input type="date" value={placingDate} onChange={(e) => setPlacingDate(e.target.value)} className="h-11 rounded-[var(--radius-control)] border border-border bg-surface px-3 text-body text-ink outline-none focus-visible:border-brand-500" />
+          <span className="text-label font-medium text-slate">Placement date</span>
+          <input type="date" value={placementDate} onChange={(e) => setPlacingDate(e.target.value)} className="h-11 rounded-[var(--radius-control)] border border-border bg-surface px-3 text-body text-ink outline-none focus-visible:border-brand-500" />
         </label>
         <label className="flex flex-col gap-1.5">
           <span className="text-label font-medium text-slate">Kill date</span>
-          <input type="date" value={killDate} onChange={(e) => setKillDate(e.target.value)} className="h-11 rounded-[var(--radius-control)] border border-border bg-surface px-3 text-body text-ink outline-none focus-visible:border-brand-500" />
+          <input type="date" value={expectedCollectionDate} onChange={(e) => setExpectedCollectionDate(e.target.value)} className="h-11 rounded-[var(--radius-control)] border border-border bg-surface px-3 text-body text-ink outline-none focus-visible:border-brand-500" />
         </label>
       </div>
 
