@@ -438,16 +438,22 @@ Ross weight curve — that under-performance is the hero story, keep it).
   **Stage 2b (done):** supervisor daily capture (`writes.submitDailyUpdate`,
   tenant-guarded) + a live manager review panel, both on the reactive
   `farm.farmData` query — a saved round shows up live on the manager's screen.
-  **Stage 2c (in progress):** the contractor **Growers** screen is now on Convex —
-  `convex/growers.ts` (`contractorGrowers` + `contractorGrowerDetail`, scoped by
-  `getAuthUserId` → `contractorId`) derives the ranked performance (EPEF, FCR,
-  weight-vs-Ross, on-time, per-day trend) server-side from each owned farm's real
-  captured rows; farms with a cycle but no capture surface as **"not yet
-  reporting"** rather than zeroed rows. Weigh-ins are now captured on Convex too
-  (`WeightsPanel` → `writes.submitWeights`) so the weight-based metrics populate.
-  `/app/growers` (+ `/[siteId]`) read Convex when connected, the mock demo
-  otherwise. The remaining analytics (projections, weight-vs-Ross dashboard,
-  alerts, efficiency) and the other nav routes still show the mock demo until then.
+  **Stage 2c (done):** the **whole app** is per-tenant on Convex when connected —
+  grower Dashboard/Capture/Weigh-ins/Feed/Alerts/History/Compare/Batches/Houses and
+  contractor Overview/Growers/Benchmark/Schedule. The `lib/data` view-builders were
+  made `Dataset`-pure and run on a scoped `convex/dataset.ts` `myDataset` (grower
+  single-site) or bespoke scoped queries (`convex/growers.ts` for the contractor
+  cross-farm views); the status engine lights up on real data unchanged. Every
+  built write is wired (daily/weights/feed/manager-edit); alerts are dismissable
+  (`convex/alerts.ts` + per-user overlay). Vestigial screens (allocate, logbook)
+  are hidden in Convex mode. The mock seam stays the no-backend fallback.
+  **Cycle lifecycle + collection (Phase 2 — done):** contractor-driven close
+  (`tenancy.closeCycle` → archives finals to `historicalBatches`, frees a new
+  cycle); collection capture (`convex/collection.ts` — contractor posts the night
+  schedule + vehicle manifest, the farm's supervisor records catches +
+  gate-verifies); and grower **settlement/margin** from contractor-set contract
+  terms (`tenancy.setContract`; margin = collected kg × buy-back − chick & feed
+  inputs, FOC-aware), shown on the contractor grower detail.
 - **Database + realtime → Convex** — seam: `lib/data/*`. **In progress** (branch
   `claude/convex-integration-setup-g02tm5`): backend scaffolded — `convex/schema.ts`
   (every operational entity, app id kept as indexed `extId`), `convex/seed.ts` +
