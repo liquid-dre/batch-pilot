@@ -89,8 +89,95 @@ export function GrowerDetailConvex({ siteId }: { siteId: string }) {
   const detail = data as GrowerDetailData;
   return (
     <>
+      <ContractBar siteId={siteId} linked={Boolean(detail.settlement?.contractLinked)} />
       <CloseCycleBar siteId={siteId} siteName={detail.siteName} cycleNo={detail.cycleNo} />
       <GrowerDetail data={detail} />
     </>
+  );
+}
+
+/** Contractor: set/edit the contract terms (prices + FOC%) — unblocks settlement. */
+function ContractBar({ siteId, linked }: { siteId: string; linked: boolean }) {
+  const setContract = useMutation(api.tenancy.setContract);
+  const [open, setOpen] = useState(false);
+  const [chick, setChick] = useState("");
+  const [feed, setFeed] = useState("");
+  const [buyback, setBuyback] = useState("");
+  const [foc, setFoc] = useState("1");
+  const [pending, setPending] = useState(false);
+
+  async function save() {
+    setPending(true);
+    try {
+      await notify.promise(
+        setContract({
+          siteId,
+          chickPrice: Number(chick) || 0,
+          feedPricePerKg: Number(feed) || 0,
+          buyBackPerKg: Number(buyback) || 0,
+          focPct: Number(foc) || 0,
+        }),
+        {
+          loading: "Saving contract…",
+          success: () => ({ title: "Contract set", description: "Grower margin now shows on this cycle." }),
+          error: () => ({ title: "Couldn't save the contract", description: "Try again." }),
+        },
+      );
+      setOpen(false);
+    } catch {
+      /* toast shown */
+    } finally {
+      setPending(false);
+    }
+  }
+
+  if (!open) {
+    return (
+      <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-end gap-2 px-4 pt-6 sm:px-6">
+        {!linked && <span className="text-label text-muted">No contract set — margin hidden.</span>}
+        <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>
+          {linked ? "Edit contract terms" : "Set contract terms"}
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto max-w-5xl px-4 pt-6 sm:px-6">
+      <Card>
+        <CardBody className="space-y-4 pt-5">
+          <h3 className="text-h3">Contract terms</h3>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <PriceField label="Chick price" value={chick} onChange={setChick} />
+            <PriceField label="Feed price / kg" value={feed} onChange={setFeed} />
+            <PriceField label="Buy-back / kg" value={buyback} onChange={setBuyback} />
+            <PriceField label="FOC %" value={foc} onChange={setFoc} />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" size="sm" onClick={() => setOpen(false)} disabled={pending}>
+              Cancel
+            </Button>
+            <Button size="sm" loading={pending} onClick={save}>
+              Save contract
+            </Button>
+          </div>
+        </CardBody>
+      </Card>
+    </div>
+  );
+}
+
+function PriceField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <label className="flex flex-col gap-1.5">
+      <span className="text-label font-medium text-slate">{label}</span>
+      <input
+        value={value}
+        inputMode="decimal"
+        placeholder="0"
+        onChange={(e) => onChange(e.target.value.replace(/[^0-9.]/g, ""))}
+        className="h-11 rounded-[var(--radius-control)] border border-border bg-surface px-3 text-right font-mono text-body text-ink outline-none focus-visible:border-brand-500"
+      />
+    </label>
   );
 }

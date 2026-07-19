@@ -387,6 +387,22 @@ export interface WeightBandData {
   amberFrac: number;
 }
 
+/** Grower margin/settlement from the linked contract (Phase 2). */
+export interface SettlementView {
+  contractLinked: boolean;
+  /** True when collected kg is projected (no real collection weights recorded). */
+  estimated?: boolean;
+  focPct?: number;
+  chargeablePlaced?: number;
+  collectedKg?: number;
+  feedKg?: number;
+  buyBackPerKg?: number;
+  revenue?: number;
+  chickCost?: number;
+  feedCost?: number;
+  margin?: number;
+}
+
 export interface GrowerDetailData {
   siteName: string;
   farmCode: string;
@@ -396,6 +412,8 @@ export interface GrowerDetailData {
   rollup: SiteRollup;
   houses: HouseTrend[];
   pastCycles: PastCycle[];
+  /** Present on the Convex contractor path once a contract is set. */
+  settlement?: SettlementView;
 }
 
 /* ----------------------------------------------- Rebuilt dashboard (both roles) --- */
