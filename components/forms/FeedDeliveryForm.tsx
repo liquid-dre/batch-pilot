@@ -34,7 +34,25 @@ function Chip({ active, children, onClick }: { active: boolean; children: React.
   );
 }
 
-export function FeedDeliveryForm({ deliveries, today }: { deliveries: FeedDelivery[]; today: string }) {
+interface FeedInput {
+  date: string;
+  feedType: string;
+  bagSizeKg: number;
+  bagCount: number;
+  netWeightKg: number;
+}
+
+export function FeedDeliveryForm({
+  deliveries,
+  today,
+  save,
+}: {
+  deliveries: FeedDelivery[];
+  today: string;
+  /** Convex path: persists via the mutation; the list comes from the reactive
+   *  query. Omitted on the mock path, which appends optimistically. */
+  save?: (input: FeedInput) => Promise<unknown>;
+}) {
   const [feedType, setFeedType] = useState(FEED_TYPES[2]);
   const [bagSizeKg, setBagSizeKg] = useState(50);
   const [bagCount, setBagCount] = useState(300);
@@ -51,8 +69,9 @@ export function FeedDeliveryForm({ deliveries, today }: { deliveries: FeedDelive
 
   async function handleSave() {
     setSaving(true);
+    const doSave = save ?? ((input: FeedInput) => submitFeedDelivery(input));
     try {
-      await notify.promise(submitFeedDelivery({ date: today, feedType, bagSizeKg, bagCount, netWeightKg }), {
+      await notify.promise(doSave({ date: today, feedType, bagSizeKg, bagCount, netWeightKg }), {
         loading: SAVING,
         success: () => {
           const t = feedSavedToast(flagged, diffKg);
@@ -61,16 +80,23 @@ export function FeedDeliveryForm({ deliveries, today }: { deliveries: FeedDelive
         },
         error: saveFailedToast,
       });
-      setLog((prev) => [
-        { id: `local-${prev.length}`, siteId: "site_nhunge", date: today, feedType, bagSizeKg, bagCount, netWeightKg },
-        ...prev,
-      ]);
+      // Mock path has no persistence, so echo the entry locally. The Convex path
+      // gets the new row from the reactive query (`deliveries`) instead.
+      if (!save) {
+        setLog((prev) => [
+          { id: `local-${prev.length}`, siteId: "site_nhunge", date: today, feedType, bagSizeKg, bagCount, netWeightKg },
+          ...prev,
+        ]);
+      }
     } catch {
       /* error toast already shown */
     } finally {
       setSaving(false);
     }
   }
+
+  // Convex drives the list reactively via the prop; mock uses the optimistic log.
+  const shown = save ? deliveries : log;
 
   return (
     <div className="mx-auto max-w-2xl space-y-7 px-4 py-8 sm:px-6 sm:py-10">
@@ -138,11 +164,11 @@ export function FeedDeliveryForm({ deliveries, today }: { deliveries: FeedDelive
 
       <section className="space-y-3">
         <h2 className="text-h3">Recent deliveries</h2>
-        {log.length === 0 ? (
+        {shown.length === 0 ? (
           <EmptyState title="No deliveries logged yet" body="Weigh the next load on arrival and save it here to track feed against intake." />
         ) : (
           <div className="space-y-2">
-            {log.map((d) => {
+            {shown.map((d) => {
               const nom = d.bagSizeKg * d.bagCount;
               const short = nom - d.netWeightKg;
               const shortPct = nom ? (short / nom) * 100 : 0;

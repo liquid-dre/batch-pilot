@@ -130,8 +130,16 @@ export const submitFeedDelivery = mutation({
     netWeightKg: v.number(),
   },
   handler: async (ctx, input) => {
+    // Server-authoritative tenant scope: a signed-in grower can only log feed
+    // against their own farm, whatever siteId the client passed.
+    const authId = await getAuthUserId(ctx);
+    let siteId = input.siteId;
+    if (authId) {
+      const u = await ctx.db.get(authId);
+      if (u?.siteId) siteId = u.siteId as string;
+    }
     const count = (await ctx.db.query("feedDeliveries").collect()).length;
-    await ctx.db.insert("feedDeliveries", { extId: `fd${count + 1}`, ...input });
+    await ctx.db.insert("feedDeliveries", { extId: `fd${count + 1}`, ...input, siteId });
 
     const nominalKg = input.bagSizeKg * input.bagCount;
     const diffKg = nominalKg - input.netWeightKg;
