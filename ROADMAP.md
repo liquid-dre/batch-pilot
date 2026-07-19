@@ -478,6 +478,12 @@ Ross weight curve — that under-performance is the hero story, keep it).
   can now invite **co-admins** into their own org (`tenancy.inviteOrgAdmins` →
   an org invite carrying `contractorId`; the auth hook / `claimInvite` stamp the
   joiner as a full contractor), so an org is run by a team, not one login.
+  **Polish (Phase 6 — done):** removed contradictory onboarding copy (the manager
+  dashboard no longer reads as "arrives next" — it's shipped); the start-a-cycle
+  form stacks to one column on mobile (date/breed inputs); every stale "Clerk" /
+  "no auth yet" seam comment updated to the Convex-Auth reality (the account's
+  role gates access in Convex mode; the demo role switcher is the no-backend
+  fallback).
 - **Database + realtime → Convex** — seam: `lib/data/*`. **In progress** (branch
   `claude/convex-integration-setup-g02tm5`): backend scaffolded — `convex/schema.ts`
   (every operational entity, app id kept as indexed `extId`), `convex/seed.ts` +

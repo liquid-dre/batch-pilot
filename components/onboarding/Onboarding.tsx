@@ -311,7 +311,7 @@ function ManagerOnboarding({ workspace }: { workspace: any }) {
       <FarmCard farm={workspace.farm} />
       <ReviewPanel />
       <FarmSetup workspace={workspace} />
-      <NextStepNote>The full analytics dashboard (projections, benchmark curve, alerts) arrives next.</NextStepNote>
+      <NextStepNote>Your full dashboard — projections, benchmark curve and alerts — appears here the moment your cycle is running.</NextStepNote>
     </Shell>
   );
 }
@@ -466,7 +466,7 @@ function CycleSection({ houses, cycle }: { houses: any[]; cycle: any }) {
   return (
     <form onSubmit={start} className="rounded-[var(--radius-card)] bg-surface p-5 shadow-card">
       <h3 className="text-h3">Start a cycle</h3>
-      <div className="mt-4 grid grid-cols-2 gap-3">
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label className="flex flex-col gap-1.5">
           <span className="text-label font-medium text-slate">Cycle no.</span>
           <input value={cycleNo} onChange={(e) => setCycleNo(e.target.value.replace(/[^0-9]/g, ""))} inputMode="numeric" className="h-11 rounded-[var(--radius-control)] border border-border bg-surface px-3 font-mono text-body text-ink outline-none focus-visible:border-brand-500" />

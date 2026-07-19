@@ -14,12 +14,14 @@ export type ID = string;
 export type ISODate = string; // 'YYYY-MM-DD'
 
 /**
- * Who's looking. No login yet — a role switcher stands in (ROADMAP §5).
+ * Who's looking. In Convex mode this is the signed-in account's role; the
+ * no-backend demo falls back to a role switcher (ROADMAP §5/§9).
  *
  * The grower experience is split into two profiles that share the same site
  * scope but do different jobs: `supervisor` (the foreman who captures the daily
  * numbers) and `manager` (oversight — analytics and projections). `contractor`
- * is unchanged. When Clerk lands, each becomes a session role (ROADMAP §9).
+ * runs the supply side; `platformAdmin` is the BatchPilot operator above every
+ * tenant (white-label theming — see `isPlatformAdmin`).
  */
 export type Role = "supervisor" | "manager" | "contractor" | "platformAdmin";
 
@@ -294,9 +296,9 @@ export type EditableField = "dayMortality" | "nightMortality" | "culls" | "feedA
  * One attributed correction to a captured value — the maker-checker audit trail.
  * Supervisors capture; managers correct, and every correction is deliberate and
  * recorded: who, when, and old→new. The edited entry stays visibly marked and
- * the change remains viewable. This is the Clerk seam: today the editor is the
- * demo manager from the auth stub; later it's the authed Clerk identity, and
- * these records become a Convex table. Nothing is ever silently overwritten.
+ * the change remains viewable. In Convex mode the editor is the signed-in
+ * manager and these records are the `editLog` table; the demo path attributes
+ * them to the mock manager. Nothing is ever silently overwritten.
  */
 export interface EditRecord {
   id: ID;

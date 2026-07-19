@@ -533,7 +533,7 @@ export async function submitWeights(input: WeightsInput): Promise<WeightsResult>
   });
 }
 
-// --- Manager corrections (maker-checker; ROADMAP §5/§9 — Clerk seam) --------
+// --- Manager corrections (maker-checker; ROADMAP §5/§9 — Convex Auth seam) --
 
 /** Plain labels for the audit trail and the edit panel. */
 const EDITABLE_FIELD_LABELS: Record<EditableField, string> = {
@@ -547,7 +547,7 @@ const EDITABLE_FIELD_LABELS: Record<EditableField, string> = {
 export interface ManagerEditInput {
   /** The DailyEntry id being corrected. */
   entityId: string;
-  /** Who is making the correction (the auth-stub manager today → Clerk later). */
+  /** Who is making the correction (the signed-in manager; the mock manager in demo). */
   editor: { id: string; name: string; role: Role };
   /** Only the fields that changed; `null` clears an optional field (temp). */
   changes: Partial<Record<EditableField, number | null>>;

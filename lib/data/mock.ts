@@ -473,13 +473,15 @@ export const BENCHMARK: BenchmarkSet = {
 };
 
 // ---------------------------------------------------------------------------
-// Users — the role switcher returns one of these (no auth yet, ROADMAP §5).
+// Users — the demo role switcher returns one of these (the no-backend fallback
+// for the Convex-authed user; ROADMAP §5).
 // ---------------------------------------------------------------------------
 
 /**
- * The grower side has two profiles on the same site (ROADMAP §5 — the Clerk
- * seam): the supervisor/foreman who captures the daily numbers, and the manager
- * who oversees performance. The login screen offers both; the switcher toggles.
+ * The grower side has two profiles on the same site (ROADMAP §5): the
+ * supervisor/foreman who captures the daily numbers, and the manager who
+ * oversees performance. The demo switcher toggles between them; in Convex mode
+ * the signed-in account's role decides.
  */
 export const SUPERVISOR_USER: User = {
   id: "u_supervisor",
