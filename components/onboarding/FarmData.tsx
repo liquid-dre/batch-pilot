@@ -7,7 +7,47 @@ import { dailySaved, SAVING, saveFailedToast } from "@/lib/copy";
 import { ross308At } from "@/lib/data/ross308";
 import { notify } from "@/components/ui/notify";
 import { Button } from "@/components/ui/Button";
+import { WizardSteps } from "@/components/ui/WizardSteps";
 import { IconCheck } from "@/components/icons";
+
+/** One house at a time: a wizard-step house switcher + prev/next, so capture and
+ *  weigh-ins page through houses instead of a long vertical scroll. */
+function HouseStepper({
+  houses,
+  saved,
+  render,
+}: {
+  houses: any[];
+  saved: Set<string>;
+  render: (house: any, goNext: () => void) => React.ReactNode;
+}) {
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const currentId = activeId && houses.some((h) => h.houseId === activeId) ? activeId : houses[0].houseId;
+  const idx = houses.findIndex((h) => h.houseId === currentId);
+  const active = houses[idx];
+  const steps = houses.map((h) => ({ id: h.houseId, label: h.name, complete: saved.has(h.houseId) }));
+  const goTo = (i: number) => {
+    const h = houses[i];
+    if (h) setActiveId(h.houseId);
+  };
+  return (
+    <div className="space-y-4">
+      <WizardSteps steps={steps} activeId={currentId} onSelect={setActiveId} ariaLabel="Houses" />
+      {render(active, () => goTo(idx + 1))}
+      <div className="flex items-center justify-between">
+        <Button type="button" variant="secondary" size="sm" onClick={() => goTo(idx - 1)} disabled={idx === 0}>
+          Previous
+        </Button>
+        <span className="text-label text-muted">
+          House {idx + 1} of {houses.length}
+        </span>
+        <Button type="button" variant="secondary" size="sm" onClick={() => goTo(idx + 1)} disabled={idx === houses.length - 1}>
+          Next
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 /**
  * Stage 2b — the capture → review loop, both on the reactive `farm.farmData`
@@ -19,21 +59,28 @@ import { IconCheck } from "@/components/icons";
 
 export function CapturePanel() {
   const data = useQuery(api.farm.farmData);
+  const [saved, setSaved] = useState<Set<string>>(() => new Set());
   if (!data || !data.cycle || data.houses.length === 0) return null;
   return (
-    <div className="mt-6">
-      <h3 className="text-h3">Today&apos;s capture</h3>
-      <p className="mt-1 text-label text-muted">Enter what you counted this round. The cumulative maths is done for you.</p>
-      <div className="mt-4 flex flex-col gap-3">
-        {data.houses.map((h: any) => (
-          <CaptureHouseCard key={h.houseId} house={h} today={data.today} />
-        ))}
-      </div>
-    </div>
+    <HouseStepper
+      houses={data.houses}
+      saved={saved}
+      render={(house, goNext) => (
+        <CaptureHouseCard
+          key={house.houseId}
+          house={house}
+          today={data.today}
+          onSaved={() => {
+            setSaved((prev) => new Set(prev).add(house.houseId));
+            goNext();
+          }}
+        />
+      )}
+    />
   );
 }
 
-function CaptureHouseCard({ house, today }: { house: any; today: string }) {
+function CaptureHouseCard({ house, today, onSaved }: { house: any; today: string; onSaved?: () => void }) {
   const submit = useMutation(api.writes.submitDailyUpdate);
   const [dayM, setDayM] = useState("");
   const [nightM, setNightM] = useState("");
@@ -76,6 +123,7 @@ function CaptureHouseCard({ house, today }: { house: any; today: string }) {
       setNightM("");
       setCulls("");
       setFeed("");
+      onSaved?.();
     } catch {
       /* error toast already shown */
     } finally {
@@ -132,21 +180,27 @@ function Field({ label, value, onChange, decimal }: { label: string; value: stri
  */
 export function WeightsPanel() {
   const data = useQuery(api.farm.farmData);
+  const [saved, setSaved] = useState<Set<string>>(() => new Set());
   if (!data || !data.cycle || data.houses.length === 0) return null;
   return (
-    <div className="mt-6">
-      <h3 className="text-h3">Record a weigh-in</h3>
-      <p className="mt-1 text-label text-muted">Enter the average weight per house. We compare each one to the Ross 308 target for its age.</p>
-      <div className="mt-4 flex flex-col gap-3">
-        {data.houses.map((h: any) => (
-          <WeighHouseCard key={h.houseId} house={h} />
-        ))}
-      </div>
-    </div>
+    <HouseStepper
+      houses={data.houses}
+      saved={saved}
+      render={(house, goNext) => (
+        <WeighHouseCard
+          key={house.houseId}
+          house={house}
+          onSaved={() => {
+            setSaved((prev) => new Set(prev).add(house.houseId));
+            goNext();
+          }}
+        />
+      )}
+    />
   );
 }
 
-function WeighHouseCard({ house }: { house: any }) {
+function WeighHouseCard({ house, onSaved }: { house: any; onSaved?: () => void }) {
   const submit = useMutation(api.writes.submitWeights);
   const day = house.dayToRecord as number;
   const target = ross308At(day).weightG;
@@ -175,6 +229,7 @@ function WeighHouseCard({ house }: { house: any }) {
         }),
         error: saveFailedToast,
       });
+      onSaved?.();
     } catch {
       /* error toast already shown */
     } finally {

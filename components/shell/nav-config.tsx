@@ -88,7 +88,13 @@ export const NAV: Record<Role, NavSection[]> = {
   // Manager so this non-technical role never feels flooded.
   supervisor: [
     { items: [{ key: "home", label: "Home", href: "/app", icon: "dashboard" }] },
-    { items: [{ key: "capture", label: "Today's capture", href: "/app/capture", icon: "daily" }] },
+    {
+      label: "Today's capture",
+      items: [
+        { key: "capture", label: "Daily capture", href: "/app/capture", icon: "daily" },
+        { key: "weights", label: "Weigh-ins", href: "/app/weights", icon: "weights" },
+      ],
+    },
     { items: [{ key: "feed", label: "Feed deliveries", href: "/app/feed", icon: "feed" }] },
     {
       label: "Records",
