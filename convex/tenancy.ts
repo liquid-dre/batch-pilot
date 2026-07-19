@@ -1,6 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { toApp } from "./lib";
 
 /**
  * Onboarding / multi-tenant (stage 1 — the identity loop).
@@ -284,7 +285,14 @@ export const setHouses = mutation({
 
     const valid = houses.filter((h) => h.name.trim() !== "" && Number.isFinite(h.capacity) && h.capacity > 0);
     const keepIds = new Set(valid.map((h) => h.id).filter(Boolean));
-    await Promise.all(existing.filter((h) => !keepIds.has(h.extId)).map((h) => ctx.db.delete(h._id)));
+    const toDelete = existing.filter((h) => !keepIds.has(h.extId));
+    // Guard: a house with placements belongs to a running cycle — removing it
+    // would orphan its placement + daily entries. Block it (end the cycle first).
+    for (const h of toDelete) {
+      const placement = await ctx.db.query("placements").withIndex("by_house", (q) => q.eq("houseId", h.extId)).first();
+      if (placement) throw new Error(`Can't remove ${h.name} — it has a running cycle. End the cycle before changing houses.`);
+    }
+    await Promise.all(toDelete.map((h) => ctx.db.delete(h._id)));
 
     // Monotonic per-farm suffix; the full extId is `${siteId}_h${n}` so it's
     // globally unique across farms.
@@ -310,7 +318,17 @@ export const setHouses = mutation({
       }
     }
     await ctx.db.patch(site._id, { houseIds: orderedIds });
-    return { count: orderedIds.length };
+
+    // Return the resulting houses (ordered) so the caller can re-sync its rows
+    // with the server-assigned ids for freshly added houses.
+    const byId = new Map(
+      (await ctx.db.query("houses").withIndex("by_site", (q) => q.eq("siteId", siteId)).collect()).map((h) => [h.extId, h]),
+    );
+    const rows = orderedIds
+      .map((hid) => byId.get(hid))
+      .filter((h): h is NonNullable<typeof h> => Boolean(h))
+      .map((h) => toApp(h));
+    return { count: orderedIds.length, houses: rows };
   },
 });
 

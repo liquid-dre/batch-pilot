@@ -23,7 +23,21 @@ interface Row {
 
 const TrashIcon = () => <IconTrash className="size-5" />;
 
-export function HouseSetupForm({ houses }: { houses: House[] }) {
+interface HouseInput {
+  id?: string;
+  name: string;
+  capacity: number;
+}
+
+export function HouseSetupForm({
+  houses,
+  save,
+}: {
+  houses: House[];
+  /** Convex path: persists via api.tenancy.setHouses and returns the resulting
+   *  houses (with server-assigned ids). Omitted on the mock path. */
+  save?: (rows: HouseInput[]) => Promise<House[]>;
+}) {
   const router = useRouter();
   const tmp = useRef(0);
 
@@ -58,9 +72,10 @@ export function HouseSetupForm({ houses }: { houses: House[] }) {
       return;
     }
     setSaving(true);
+    const doSave = save ?? saveHouses;
     try {
       const saved = await notify.promise(
-        saveHouses(rows.map((r) => ({ id: r.id, name: r.name, capacity: r.capacity }))),
+        doSave(rows.map((r) => ({ id: r.id, name: r.name, capacity: r.capacity }))),
         {
           loading: SAVING,
           success: (s) => housesSavedToast(s.length, totalCapacity),
