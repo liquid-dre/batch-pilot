@@ -19,10 +19,10 @@ function norm(email: string): string {
   return email.trim().toLowerCase();
 }
 
-/** Contractor: create a farm and invite its supervisor(s) by email. */
+/** Contractor: create a farm and invite its manager(s) by email. */
 export const createFarm = mutation({
-  args: { name: v.string(), supervisorEmails: v.array(v.string()) },
-  handler: async (ctx, { name, supervisorEmails }) => {
+  args: { name: v.string(), managerEmails: v.array(v.string()) },
+  handler: async (ctx, { name, managerEmails }) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not signed in");
     const user = await ctx.db.get(userId);
@@ -45,13 +45,13 @@ export const createFarm = mutation({
 
     const createdAt = new Date().toISOString();
     const seen = new Set<string>();
-    for (const raw of supervisorEmails) {
+    for (const raw of managerEmails) {
       const email = norm(raw);
       if (!email || seen.has(email)) continue;
       seen.add(email);
       await ctx.db.insert("invites", {
         email,
-        role: "supervisor",
+        role: "manager",
         siteId: siteExtId,
         invitedByUserId: userId as string,
         status: "pending",
@@ -75,31 +75,17 @@ async function requireOwnedFarm(ctx: any, siteId: string) {
   return { userId, user, site };
 }
 
-/** Contractor: invite more supervisor(s) to an existing farm they own. */
+/** Manager: invite supervisor(s)/foreman to their own farm (they capture daily). */
 export const inviteSupervisors = mutation({
-  args: { siteId: v.string(), emails: v.array(v.string()) },
-  handler: async (ctx, { siteId, emails }) => {
-    const { userId } = await requireOwnedFarm(ctx, siteId);
-    const existing = await ctx.db.query("invites").withIndex("by_site", (q) => q.eq("siteId", siteId)).collect();
-    const already = new Set(existing.filter((i) => i.role === "supervisor").map((i) => i.email));
-    const createdAt = new Date().toISOString();
-    const seen = new Set<string>();
-    let invited = 0;
-    for (const raw of emails) {
-      const email = norm(raw);
-      if (!email || seen.has(email) || already.has(email)) continue;
-      seen.add(email);
-      await ctx.db.insert("invites", {
-        email,
-        role: "supervisor",
-        siteId,
-        invitedByUserId: userId as string,
-        status: "pending",
-        createdAt,
-      });
-      invited += 1;
+  args: { emails: v.array(v.string()) },
+  handler: async (ctx, { emails }) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not signed in");
+    const user = await ctx.db.get(userId);
+    if (!user || (user.role as string) !== "manager" || !user.siteId) {
+      throw new Error("Only a manager can invite supervisors");
     }
-    return { invited };
+    return inviteSameRolePeers(ctx, userId as string, user.siteId as string, "supervisor", emails);
   },
 });
 
@@ -187,27 +173,24 @@ export const claimInvite = mutation({
   },
 });
 
-/** Supervisor: invite manager(s) to their own farm. */
+/** Contractor: invite more manager(s) to an existing farm they own. */
 export const inviteManagers = mutation({
-  args: { emails: v.array(v.string()) },
-  handler: async (ctx, { emails }) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not signed in");
-    const user = await ctx.db.get(userId);
-    if (!user || (user.role as string) !== "supervisor" || !user.siteId) {
-      throw new Error("Only a supervisor can invite managers");
-    }
+  args: { siteId: v.string(), emails: v.array(v.string()) },
+  handler: async (ctx, { siteId, emails }) => {
+    const { userId } = await requireOwnedFarm(ctx, siteId);
+    const existing = await ctx.db.query("invites").withIndex("by_site", (q) => q.eq("siteId", siteId)).collect();
+    const already = new Set(existing.filter((i) => i.role === "manager").map((i) => i.email));
     const createdAt = new Date().toISOString();
     const seen = new Set<string>();
     let invited = 0;
     for (const raw of emails) {
       const email = norm(raw);
-      if (!email || seen.has(email)) continue;
+      if (!email || seen.has(email) || already.has(email)) continue;
       seen.add(email);
       await ctx.db.insert("invites", {
         email,
         role: "manager",
-        siteId: user.siteId as string,
+        siteId,
         invitedByUserId: userId as string,
         status: "pending",
         createdAt,
@@ -303,8 +286,8 @@ export const myWorkspace = query({
           name: s.name,
           farmCode: s.farmCode,
           houseCount: (s.houseIds ?? []).length,
-          supervisors: invites
-            .filter((i) => i.role === "supervisor")
+          managers: invites
+            .filter((i) => i.role === "manager")
             .map((i) => ({ email: i.email, status: i.status })),
         });
       }
@@ -321,7 +304,7 @@ export const myWorkspace = query({
       const site = siteId
         ? await ctx.db.query("sites").withIndex("by_extId", (q) => q.eq("extId", siteId)).first()
         : null;
-      let managers: { email: string; status: string }[] = [];
+      let supervisors: { email: string; status: string }[] = [];
       let houses: { id: string; name: string; capacity: number }[] = [];
       let cycle: { cycleNo: number; breed: string; placementDate: string; expectedCollectionDate: string; placed: number; houseCount: number } | null = null;
       if (site) {
@@ -329,7 +312,7 @@ export const myWorkspace = query({
           .query("invites")
           .withIndex("by_site", (q) => q.eq("siteId", site.extId))
           .collect();
-        managers = invites.filter((i) => i.role === "manager").map((i) => ({ email: i.email, status: i.status }));
+        supervisors = invites.filter((i) => i.role === "supervisor").map((i) => ({ email: i.email, status: i.status }));
 
         const houseRows = await ctx.db.query("houses").withIndex("by_site", (q) => q.eq("siteId", site.extId)).collect();
         const byId = new Map(houseRows.map((h) => [h.extId, h]));
@@ -364,14 +347,14 @@ export const myWorkspace = query({
         name,
         email,
         farm: site ? { id: site.extId, name: site.name, farmCode: site.farmCode, houseCount: houses.length } : null,
-        managers,
+        supervisors,
         houses,
         cycle,
       };
     }
 
     // Invited but not yet matched to a farm.
-    return { role, name, email, farm: null, managers: [] };
+    return { role, name, email, farm: null, supervisors: [] };
   },
 });
 
@@ -382,25 +365,28 @@ function daysBetween(a: string, b: string): number {
   return Math.round((Date.UTC(by, bm - 1, bd) - Date.UTC(ay, am - 1, ad)) / 86_400_000);
 }
 
-/** The signed-in grower + their farm id, or throws. Houses/cycle are grower-set. */
-async function requireFarm(ctx: any) {
+/**
+ * The signed-in **manager** + their farm, or throws. Houses/capacities and
+ * starting a cycle are the manager's job alone; the supervisor/foreman only
+ * captures (ROADMAP §9 — role hierarchy).
+ */
+async function requireManager(ctx: any) {
   const userId = await getAuthUserId(ctx);
   if (!userId) throw new Error("Not signed in");
   const user = await ctx.db.get(userId);
-  const role = user?.role as string;
-  if (!user || !user.siteId || (role !== "supervisor" && role !== "manager")) {
-    throw new Error("Only a farm's grower can configure it");
+  if (!user || (user.role as string) !== "manager" || !user.siteId) {
+    throw new Error("Only the farm's manager can set this up");
   }
   const site = await ctx.db.query("sites").withIndex("by_extId", (q: any) => q.eq("extId", user.siteId)).first();
   if (!site) throw new Error("Farm not found");
   return { userId, user, site, siteId: user.siteId as string };
 }
 
-/** Grower: replace the farm's house list (house extIds are farm-scoped/unique). */
+/** Manager: replace the farm's house list (house extIds are farm-scoped/unique). */
 export const setHouses = mutation({
   args: { houses: v.array(v.object({ id: v.optional(v.string()), name: v.string(), capacity: v.number() })) },
   handler: async (ctx, { houses }) => {
-    const { site, siteId } = await requireFarm(ctx);
+    const { site, siteId } = await requireManager(ctx);
     const existing = await ctx.db.query("houses").withIndex("by_site", (q) => q.eq("siteId", siteId)).collect();
 
     const valid = houses.filter((h) => h.name.trim() !== "" && Number.isFinite(h.capacity) && h.capacity > 0);
@@ -462,7 +448,7 @@ export const startCycle = mutation({
     houses: v.array(v.object({ houseId: v.string(), placedCount: v.number() })),
   },
   handler: async (ctx, args) => {
-    const { site, siteId } = await requireFarm(ctx);
+    const { site, siteId } = await requireManager(ctx);
     const contractorId = (site.contractorIds ?? [])[0] ?? "";
 
     const existing = await ctx.db

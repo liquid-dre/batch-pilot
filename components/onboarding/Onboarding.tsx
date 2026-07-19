@@ -59,7 +59,7 @@ function ContractorOnboarding({ workspace }: { workspace: any }) {
     }
     setPending(true);
     try {
-      await createFarm({ name: name.trim(), supervisorEmails: splitEmails(emails) });
+      await createFarm({ name: name.trim(), managerEmails: splitEmails(emails) });
       setName("");
       setEmails("");
     } catch {
@@ -72,7 +72,7 @@ function ContractorOnboarding({ workspace }: { workspace: any }) {
   return (
     <Shell title="Your growers" subtitle={`Signed in as ${workspace.email} · contractor`}>
       {farms.length === 0 ? (
-        <EmptyHint>Add your first grower&apos;s farm below, then invite the supervisor who runs it.</EmptyHint>
+        <EmptyHint>Add your first grower&apos;s farm below, then invite the manager who runs it.</EmptyHint>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
           {farms.map((f) => (
@@ -93,12 +93,12 @@ function ContractorOnboarding({ workspace }: { workspace: any }) {
           />
         </label>
         <label className="mt-4 flex flex-col gap-1.5">
-          <span className="text-label font-medium text-slate">Supervisor email(s)</span>
+          <span className="text-label font-medium text-slate">Manager email(s)</span>
           <textarea
             value={emails}
             onChange={(e) => setEmails(e.target.value)}
             rows={2}
-            placeholder="supervisor@example.com, another@example.com"
+            placeholder="manager@example.com, another@example.com"
             className="rounded-[var(--radius-control)] border border-border bg-surface p-3.5 text-body text-ink outline-none focus-visible:border-brand-500"
           />
           <span className="text-[0.8125rem] text-muted">Separate multiple emails with commas or new lines. They join when they sign up with that email.</span>
@@ -115,9 +115,9 @@ function ContractorOnboarding({ workspace }: { workspace: any }) {
 
 function ContractorFarmCard({ farm }: { farm: any }) {
   // The farm name is set once at creation and is read-only thereafter for the
-  // contractor (there is no rename path — UI or mutation). Supervisors are still
-  // theirs to invite.
-  const inviteSupervisors = useMutation(api.tenancy.inviteSupervisors);
+  // contractor (there is no rename path — UI or mutation). Managers are the
+  // contractor's to invite; the manager then brings in the foremen.
+  const inviteManagers = useMutation(api.tenancy.inviteManagers);
   const [newEmail, setNewEmail] = useState("");
   const [inviting, setInviting] = useState(false);
 
@@ -126,7 +126,7 @@ function ContractorFarmCard({ farm }: { farm: any }) {
     if (!newEmail.trim()) return;
     setInviting(true);
     try {
-      await inviteSupervisors({ siteId: farm.id, emails: splitEmails(newEmail) });
+      await inviteManagers({ siteId: farm.id, emails: splitEmails(newEmail) });
       setNewEmail("");
     } finally {
       setInviting(false);
@@ -141,12 +141,12 @@ function ContractorFarmCard({ farm }: { farm: any }) {
       </div>
       <p className="mt-1 text-label text-muted">{farm.houseCount} house(s) set up</p>
 
-      <p className="mt-4 mb-1.5 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-hint">Supervisors</p>
-      {farm.supervisors.length === 0 ? (
+      <p className="mt-4 mb-1.5 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-hint">Managers</p>
+      {farm.managers.length === 0 ? (
         <p className="text-label text-muted">None invited yet.</p>
       ) : (
         <ul className="flex flex-col gap-1">
-          {farm.supervisors.map((s: any) => (
+          {farm.managers.map((s: any) => (
             <li key={s.email} className="flex items-center justify-between text-label">
               <span className="text-ink">{s.email}</span>
               <StatusChip status={s.status} />
@@ -160,7 +160,7 @@ function ContractorFarmCard({ farm }: { farm: any }) {
           value={newEmail}
           onChange={(e) => setNewEmail(e.target.value)}
           type="email"
-          placeholder="Invite another supervisor"
+          placeholder="Invite another manager"
           className="h-10 min-w-0 flex-1 rounded-[var(--radius-control)] border border-border bg-surface px-3 text-label text-ink outline-none focus-visible:border-brand-500"
         />
         <Button type="submit" size="sm" affordance={IconSend} loading={inviting} className="shrink-0">
@@ -172,9 +172,32 @@ function ContractorFarmCard({ farm }: { farm: any }) {
 }
 
 /* ------------------------------------------------------------- Supervisor -- */
+// The foreman captures the daily numbers — they don't set the farm up. Before a
+// cycle is running there's nothing for them to do but wait on the manager; once
+// it starts, the home becomes the capture dashboard (GrowerHomeConvex).
 
 function SupervisorOnboarding({ workspace }: { workspace: any }) {
-  const inviteManagers = useMutation(api.tenancy.inviteManagers);
+  if (!workspace.farm) return <PendingState email={workspace.email} />;
+  return (
+    <Shell title={workspace.farm.name} subtitle={`Foreman · ${workspace.email}`}>
+      <FarmCard farm={workspace.farm} />
+      <div className="mt-6 rounded-[var(--radius-card)] bg-surface p-5 shadow-card">
+        <h3 className="text-h3">Waiting on the cycle</h3>
+        <p className="mt-2 text-body text-slate">
+          Your manager sets up the houses and starts the cycle. The moment it&apos;s running, this
+          becomes your daily capture home — today&apos;s numbers, weigh-ins and feed.
+        </p>
+      </div>
+    </Shell>
+  );
+}
+
+/* ---------------------------------------------------------------- Manager -- */
+// The manager runs the farm: invites the foremen, sets up houses, starts the
+// cycle, and reviews/corrects captured numbers.
+
+function ManagerOnboarding({ workspace }: { workspace: any }) {
+  const inviteSupervisors = useMutation(api.tenancy.inviteSupervisors);
   const [emails, setEmails] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -191,7 +214,7 @@ function SupervisorOnboarding({ workspace }: { workspace: any }) {
     }
     setPending(true);
     try {
-      await inviteManagers({ emails: list });
+      await inviteSupervisors({ emails: list });
       setEmails("");
     } catch {
       setError("Could not send the invites. Try again.");
@@ -200,22 +223,22 @@ function SupervisorOnboarding({ workspace }: { workspace: any }) {
     }
   }
 
-  const managers: any[] = workspace.managers ?? [];
+  const supervisors: any[] = workspace.supervisors ?? [];
 
   return (
-    <Shell title={workspace.farm.name} subtitle={`Supervisor · ${workspace.email}`}>
+    <Shell title={workspace.farm.name} subtitle={`Manager · ${workspace.email}`}>
       <FarmCard farm={workspace.farm} />
 
       <form onSubmit={onInvite} className="mt-6 rounded-[var(--radius-card)] bg-surface p-5 shadow-card">
-        <h3 className="text-h3">Invite your manager(s)</h3>
-        <p className="mt-1 text-label text-muted">Managers oversee performance and can correct captured numbers.</p>
+        <h3 className="text-h3">Invite your foreman(s)</h3>
+        <p className="mt-1 text-label text-muted">Foremen capture the daily numbers, weigh-ins and feed on the ground.</p>
         <label className="mt-4 flex flex-col gap-1.5">
-          <span className="text-label font-medium text-slate">Manager email(s)</span>
+          <span className="text-label font-medium text-slate">Foreman email(s)</span>
           <textarea
             value={emails}
             onChange={(e) => setEmails(e.target.value)}
             rows={2}
-            placeholder="manager@example.com"
+            placeholder="foreman@example.com"
             className="rounded-[var(--radius-control)] border border-border bg-surface p-3.5 text-body text-ink outline-none focus-visible:border-brand-500"
           />
         </label>
@@ -224,31 +247,18 @@ function SupervisorOnboarding({ workspace }: { workspace: any }) {
           Send invite
         </Button>
 
-        {managers.length > 0 && (
+        {supervisors.length > 0 && (
           <ul className="mt-5 flex flex-col gap-1 border-t border-divider pt-4">
-            {managers.map((m) => (
-              <li key={m.email} className="flex items-center justify-between text-label">
-                <span className="text-ink">{m.email}</span>
-                <StatusChip status={m.status} />
+            {supervisors.map((s) => (
+              <li key={s.email} className="flex items-center justify-between text-label">
+                <span className="text-ink">{s.email}</span>
+                <StatusChip status={s.status} />
               </li>
             ))}
           </ul>
         )}
       </form>
 
-      <FarmSetup workspace={workspace} />
-      <NextStepNote>Once your cycle is running, capture today&apos;s round from the Home dashboard or the Capture tab.</NextStepNote>
-    </Shell>
-  );
-}
-
-/* ---------------------------------------------------------------- Manager -- */
-
-function ManagerOnboarding({ workspace }: { workspace: any }) {
-  if (!workspace.farm) return <PendingState email={workspace.email} />;
-  return (
-    <Shell title={workspace.farm.name} subtitle={`Manager · ${workspace.email}`}>
-      <FarmCard farm={workspace.farm} />
       <ReviewPanel />
       <FarmSetup workspace={workspace} />
       <NextStepNote>Your full dashboard — projections, benchmark curve and alerts — appears here the moment your cycle is running.</NextStepNote>
