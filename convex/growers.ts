@@ -244,6 +244,9 @@ export const contractorGrowerDetail = query({
     let placed = 0;
     let remaining = 0;
     let cumMort = 0;
+    let feedKg = 0;
+    let weightNum = 0; // Σ avgWeight × birds (birds-weighted site weight)
+    let weightDen = 0;
     const houses = [];
     for (const p of placements) {
       const house = await ctx.db.query("houses").withIndex("by_extId", (q) => q.eq("extId", p.houseId)).first();
@@ -259,6 +262,11 @@ export const contractorGrowerDetail = query({
       placed += p.placedCount;
       remaining += houseRemaining;
       cumMort += latest?.cumMort ?? 0;
+      feedKg += p.entries.reduce((s, e) => s + e.feedAddedKg, 0);
+      if (avgWeightG) {
+        weightNum += avgWeightG * houseRemaining;
+        weightDen += houseRemaining;
+      }
 
       houses.push({
         houseId: p.houseId,
@@ -283,6 +291,38 @@ export const contractorGrowerDetail = query({
 
     const mortPct = placed ? Number(((cumMort / placed) * 100).toFixed(2)) : 0;
 
+    // Settlement (Phase 2): grower margin from the linked contract's prices.
+    // Collected kg = real recorded collection weights if any, else a projection
+    // (site avg weight × birds remaining). Chargeable chicks net the FOC%.
+    const events = await ctx.db.query("catchingEvents").withIndex("by_batch", (q) => q.eq("batchId", batch.extId)).collect();
+    const realKg = events.reduce((s, e) => s + (e.collectionWeightKg ?? 0), 0);
+    const siteAvgWeightG = weightDen ? weightNum / weightDen : 0;
+    const collectedKg = realKg > 0 ? realKg : (siteAvgWeightG / 1000) * remaining;
+    const contract = batch.contractId
+      ? await ctx.db.query("contracts").withIndex("by_extId", (q) => q.eq("extId", batch.contractId)).first()
+      : null;
+    const settlement = contract
+      ? (() => {
+          const chargeablePlaced = Math.round(placed * (1 - contract.focPct / 100));
+          const revenue = collectedKg * contract.buyBackPerKg;
+          const chickCost = chargeablePlaced * contract.chickPrice;
+          const feedCost = feedKg * contract.feedPricePerKg;
+          return {
+            contractLinked: true as const,
+            estimated: realKg === 0,
+            focPct: contract.focPct,
+            chargeablePlaced,
+            collectedKg: Math.round(collectedKg),
+            feedKg: Math.round(feedKg),
+            buyBackPerKg: contract.buyBackPerKg,
+            revenue: Math.round(revenue),
+            chickCost: Math.round(chickCost),
+            feedCost: Math.round(feedCost),
+            margin: Math.round(revenue - chickCost - feedCost),
+          };
+        })()
+      : { contractLinked: false as const };
+
     return {
       siteName: site.name,
       farmCode: site.farmCode,
@@ -291,6 +331,7 @@ export const contractorGrowerDetail = query({
       killDate: batch.killDate,
       rollup: { placed, remaining, cumMort, mortPct, houseCount: placements.length },
       houses,
+      settlement,
       pastCycles: [], // no closed-cycle history for a live-onboarded farm yet
     };
   },

@@ -204,8 +204,12 @@ export interface CatchingEvent {
   batchId: ID;
   /** Night label, e.g. "Sunday night". */
   night: string;
+  /** Contractor's scheduled target for the night. */
   count: number;
+  /** Birds the supervisor recorded actually caught this night. */
+  caughtCount?: number;
   collectionWeightKg?: number;
+  caughtAt?: ISODate;
 }
 
 // ---------------------------------------------------------------------------
@@ -356,6 +360,8 @@ export interface Manifest {
   /** Birds held for this catching round (the gate-verification count). */
   heldCount: number;
   vehicles: Vehicle[];
+  /** Plates the supervisor has ticked off at the gate. */
+  verifiedPlates?: string[];
 }
 
 /** A finished cycle on a site — the grower's track record (ROADMAP §8 Phase 2). */

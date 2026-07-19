@@ -178,8 +178,12 @@ export default defineSchema({
     extId: v.string(),
     batchId: v.string(),
     night: v.string(),
+    // `count` is the contractor's scheduled target for the night; `caughtCount` +
+    // `collectionWeightKg` are what the supervisor records once the trucks leave.
     count: v.number(),
+    caughtCount: v.optional(v.number()),
     collectionWeightKg: v.optional(v.number()),
+    caughtAt: v.optional(v.string()),
   })
     .index("by_extId", ["extId"])
     .index("by_batch", ["batchId"]),
@@ -188,6 +192,8 @@ export default defineSchema({
     batchId: v.string(),
     heldCount: v.number(),
     vehicles: v.array(v.object({ plate: v.string(), driver: v.string() })),
+    // Plates the supervisor has ticked off at the gate (verification).
+    verifiedPlates: v.optional(v.array(v.string())),
   }).index("by_batch", ["batchId"]),
 
   // Attributed manager corrections (maker-checker; ROADMAP §5/§9). Grows as

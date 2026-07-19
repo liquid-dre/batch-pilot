@@ -462,3 +462,36 @@ export const closeCycle = mutation({
     return { cycleNo: batch.cycleNo, finalWeightG, finalCumMortPct, epef };
   },
 });
+
+/**
+ * Contractor: set the contract terms (prices + FOC%) for a farm's active cycle.
+ * Creates/updates a `contracts` row and links it to the batch, which unblocks the
+ * grower-margin settlement (a real cycle otherwise has no prices). The contract
+ * is per-batch and contractor-owned (BRD §7).
+ */
+export const setContract = mutation({
+  args: {
+    siteId: v.string(),
+    chickPrice: v.number(),
+    feedPricePerKg: v.number(),
+    buyBackPerKg: v.number(),
+    focPct: v.number(),
+  },
+  handler: async (ctx, { siteId, chickPrice, feedPricePerKg, buyBackPerKg, focPct }) => {
+    await requireOwnedFarm(ctx, siteId);
+    const batch = await ctx.db
+      .query("batches")
+      .withIndex("by_site", (q) => q.eq("siteId", siteId))
+      .filter((q) => q.eq(q.field("closedAt"), undefined))
+      .first();
+    if (!batch) throw new Error("This farm has no active cycle");
+
+    const extId = `contract_${batch.extId}`;
+    const prices = { chickPrice, feedPricePerKg, buyBackPerKg, focPct };
+    const existing = await ctx.db.query("contracts").withIndex("by_extId", (q) => q.eq("extId", extId)).first();
+    if (existing) await ctx.db.patch(existing._id, prices);
+    else await ctx.db.insert("contracts", { extId, ...prices });
+    await ctx.db.patch(batch._id, { contractId: extId, focPct });
+    return { ok: true as const };
+  },
+});
