@@ -246,6 +246,21 @@ export default defineSchema({
     .index("by_siteId", ["siteId"])
     .index("by_contractor", ["contractorId"]),
 
+  // Per-user dismissed alerts (an overlay on the reactively-derived alerts; the
+  // alert itself is never stored). Keyed by house + metric + level so a
+  // dismissed alert re-appears when that house's flagged metric or severity
+  // changes. Scoped to the signed-in grower's farm.
+  dismissedAlerts: defineTable({
+    userId: v.string(),
+    siteId: v.string(),
+    houseId: v.string(),
+    metric: v.string(),
+    level: v.string(),
+    dismissedAt: v.string(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_house", ["userId", "houseId"]),
+
   // --- Onboarding invites (multi-tenant) -------------------------------------
   // A contractor invites supervisor(s) to a farm; a supervisor invites
   // manager(s) to the same farm. When someone signs up with an invited email,

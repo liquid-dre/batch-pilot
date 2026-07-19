@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useQuery } from "convex/react";
+import { useEffect, useMemo, useState } from "react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Dataset } from "@/lib/data/dataset";
 import type { FlockAlert } from "@/lib/types";
 import { getAlerts } from "@/lib/data";
+import { alertKey, flockAlertKey } from "@/lib/alertKey";
 import { AlertsList } from "./AlertsList";
 import { Card, CardBody } from "@/components/ui/Card";
 
@@ -16,6 +17,8 @@ import { Card, CardBody } from "@/components/ui/Card";
  */
 export function AlertsConvex() {
   const raw = useQuery(api.dataset.myDataset);
+  const dismissedRows = useQuery(api.alerts.myDismissedAlerts);
+  const dismiss = useMutation(api.alerts.dismissAlert);
   const [alerts, setAlerts] = useState<FlockAlert[] | undefined>();
 
   useEffect(() => {
@@ -36,6 +39,15 @@ export function AlertsConvex() {
     };
   }, [raw]);
 
+  const dismissedSet = useMemo(
+    () => new Set((dismissedRows ?? []).map((d) => alertKey(d.houseId, d.metric, d.level))),
+    [dismissedRows],
+  );
+  const visible = useMemo(
+    () => (alerts ?? []).filter((a) => !dismissedSet.has(flockAlertKey(a))),
+    [alerts, dismissedSet],
+  );
+
   if (alerts === undefined) {
     return (
       <Card>
@@ -45,5 +57,12 @@ export function AlertsConvex() {
       </Card>
     );
   }
-  return <AlertsList alerts={alerts} />;
+  return (
+    <AlertsList
+      alerts={visible}
+      onDismiss={(a) => {
+        void dismiss({ houseId: a.houseId, metric: a.status.metric, level: a.status.level });
+      }}
+    />
+  );
 }

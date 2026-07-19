@@ -15,6 +15,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { getAlerts } from "@/lib/data";
 import type { Dataset } from "@/lib/data/dataset";
+import { alertKey, flockAlertKey } from "@/lib/alertKey";
 import { NAV, NavGlyph, isActive, BADGE_FETCHERS, type NavSection, type NavItem, type BadgeSource } from "./nav-config";
 
 /** True once a Convex deployment is connected — enables real sign-out. */
@@ -64,9 +65,11 @@ function useBadgeCountsMock(sections: NavSection[]): Partial<Record<BadgeSource,
   return counts;
 }
 
-/** Convex path: the alerts badge = this tenant's amber/red houses, reactive. */
+/** Convex path: the alerts badge = this tenant's amber/red houses that the user
+ *  hasn't dismissed, reactive. */
 function useBadgeCountsConvex(_sections: NavSection[]): Partial<Record<BadgeSource, number>> {
   const raw = useQuery(api.dataset.myDataset);
+  const dismissedRows = useQuery(api.alerts.myDismissedAlerts);
   const [alerts, setAlerts] = useState(0);
   useEffect(() => {
     if (!raw) {
@@ -75,12 +78,14 @@ function useBadgeCountsConvex(_sections: NavSection[]): Partial<Record<BadgeSour
     }
     let alive = true;
     getAlerts(raw as unknown as Dataset).then((a) => {
-      if (alive) setAlerts(a.length);
+      if (!alive) return;
+      const dismissed = new Set((dismissedRows ?? []).map((d) => alertKey(d.houseId, d.metric, d.level)));
+      setAlerts(a.filter((x) => !dismissed.has(flockAlertKey(x))).length);
     });
     return () => {
       alive = false;
     };
-  }, [raw]);
+  }, [raw, dismissedRows]);
   return { alerts };
 }
 

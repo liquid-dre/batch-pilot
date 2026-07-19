@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as alerts from "../alerts.js";
 import type * as auth from "../auth.js";
 import type * as dataset from "../dataset.js";
 import type * as farm from "../farm.js";
@@ -27,6 +28,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  alerts: typeof alerts;
   auth: typeof auth;
   dataset: typeof dataset;
   farm: typeof farm;
