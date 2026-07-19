@@ -3,8 +3,17 @@ import { daysBetween } from "@/lib/format";
 import type { ActualMarker } from "@/components/contractor/BenchmarkChart";
 import { ContractorOnly } from "@/components/shell/ContractorOnly";
 import { BenchmarkView } from "@/components/contractor/BenchmarkView";
+import { BenchmarkConvex } from "@/components/contractor/BenchmarkConvex";
 
 export default async function BenchmarkPage() {
+  if (process.env.NEXT_PUBLIC_CONVEX_URL) {
+    return (
+      <ContractorOnly>
+        <BenchmarkConvex />
+      </ContractorOnly>
+    );
+  }
+
   const [benchmark, batch, placements, portfolio, weightBand] = await Promise.all([
     getBenchmark(),
     getActiveBatch(),
