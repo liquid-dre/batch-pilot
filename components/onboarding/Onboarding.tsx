@@ -6,7 +6,7 @@ import { api } from "@/convex/_generated/api";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/Button";
 import { IconCheck, IconSend, IconPlus } from "@/components/icons";
-import { CapturePanel, ReviewPanel } from "./FarmData";
+import { CapturePanel, WeightsPanel, ReviewPanel } from "./FarmData";
 
 /**
  * Onboarding hub (stage 1 — the multi-tenant identity loop). Rendered as the
@@ -70,9 +70,9 @@ function ContractorOnboarding({ workspace }: { workspace: any }) {
   }
 
   return (
-    <Shell title="Your farms" subtitle={`Signed in as ${workspace.email} · contractor`}>
+    <Shell title="Your growers" subtitle={`Signed in as ${workspace.email} · contractor`}>
       {farms.length === 0 ? (
-        <EmptyHint>Add your first farm below, then invite the supervisor who runs it.</EmptyHint>
+        <EmptyHint>Add your first grower&apos;s farm below, then invite the supervisor who runs it.</EmptyHint>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
           {farms.map((f) => (
@@ -205,6 +205,7 @@ function SupervisorOnboarding({ workspace }: { workspace: any }) {
     <Shell title={workspace.farm.name} subtitle={`Supervisor · ${workspace.email}`}>
       <FarmCard farm={workspace.farm} />
       <CapturePanel />
+      <WeightsPanel />
 
       <form onSubmit={onInvite} className="mt-6 rounded-[var(--radius-card)] bg-surface p-5 shadow-card">
         <h3 className="text-h3">Invite your manager(s)</h3>

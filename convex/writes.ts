@@ -7,9 +7,9 @@ import type { Doc, Id } from "./_generated/dataModel";
 /**
  * Writes (ROADMAP §5 — the data seam). Each mirrors a `lib/data/` write-stub,
  * but now actually persists: the daily/feed/weights capture and the attributed
- * manager corrections land in Convex, and any change invalidates `getDataset`
- * so every subscribed screen updates live. Derived flock arithmetic is the same
- * pure `dailyTotals` the capture path always used.
+ * manager corrections land in Convex, and any change invalidates the reactive
+ * queries that read them so every subscribed screen updates live. Derived flock
+ * arithmetic is the same pure `dailyTotals` the capture path always used.
  */
 
 const treatment = v.object({ name: v.string(), amount: v.number(), unit: v.string() });

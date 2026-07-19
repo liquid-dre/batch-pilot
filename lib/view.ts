@@ -361,6 +361,9 @@ export interface ContractorGrowers {
   growers: GrowerPerf[];
   ross: { day: number; weightG: number; fcr: number | null }[];
   maxDay: number;
+  /** Farms the contractor owns that have no cycle / no capture yet (kept out of
+   *  the ranking so it stays honest). Absent on the mock seam. */
+  notReporting?: { siteId: string; name: string; farmCode: string }[];
 }
 
 // ---------------------------------------------------------------------------

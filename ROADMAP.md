@@ -438,14 +438,23 @@ Ross weight curve — that under-performance is the hero story, keep it).
   **Stage 2b (done):** supervisor daily capture (`writes.submitDailyUpdate`,
   tenant-guarded) + a live manager review panel, both on the reactive
   `farm.farmData` query — a saved round shows up live on the manager's screen.
-  **Stage 2c (next):** the full analytics dashboard (projections, weight-vs-Ross
-  curve, alerts, efficiency) and the contractor portfolio, per farm; the nav
-  routes other than the home still show the mock demo until then.
+  **Stage 2c (in progress):** the contractor **Growers** screen is now on Convex —
+  `convex/growers.ts` (`contractorGrowers` + `contractorGrowerDetail`, scoped by
+  `getAuthUserId` → `contractorId`) derives the ranked performance (EPEF, FCR,
+  weight-vs-Ross, on-time, per-day trend) server-side from each owned farm's real
+  captured rows; farms with a cycle but no capture surface as **"not yet
+  reporting"** rather than zeroed rows. Weigh-ins are now captured on Convex too
+  (`WeightsPanel` → `writes.submitWeights`) so the weight-based metrics populate.
+  `/app/growers` (+ `/[siteId]`) read Convex when connected, the mock demo
+  otherwise. The remaining analytics (projections, weight-vs-Ross dashboard,
+  alerts, efficiency) and the other nav routes still show the mock demo until then.
 - **Database + realtime → Convex** — seam: `lib/data/*`. **In progress** (branch
   `claude/convex-integration-setup-g02tm5`): backend scaffolded — `convex/schema.ts`
   (every operational entity, app id kept as indexed `extId`), `convex/seed.ts` +
   `convex/seedData.json` (a byte-identical snapshot of the mock demo),
-  `convex/reads.ts` (`getDataset`, one reactive query) and `convex/writes.ts`
+  per-tenant reactive read queries (`convex/tenancy.ts` `myWorkspace`,
+  `convex/farm.ts` `farmData`, `convex/growers.ts` for the contractor Growers
+  view — each scoped to the signed-in identity) and `convex/writes.ts`
   (daily / feed / weights / manager-edit / saveHouses / confirmAllocation
   mutations, re-deriving the cumulative chain). `<ConvexClientProvider>` wraps
   the app (root layout) and is a no-op until `NEXT_PUBLIC_CONVEX_URL` is set.

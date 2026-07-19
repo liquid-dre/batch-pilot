@@ -48,6 +48,7 @@ const PALETTE = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--ch
 export function ContractorGrowersView({ data }: { data: ContractorGrowers }) {
   const router = useRouter();
   const { growers } = data;
+  const notReporting = data.notReporting ?? [];
   const [metricKey, setMetricKey] = useState<MetricKey>("epef");
   const metric = METRICS.find((m) => m.key === metricKey)!;
 
@@ -75,6 +76,30 @@ export function ContractorGrowersView({ data }: { data: ContractorGrowers }) {
 
   const best = ranked[0];
   const worst = ranked[ranked.length - 1];
+
+  // No farm is reporting yet (fresh account, or every cycle pre-capture).
+  if (growers.length === 0) {
+    return (
+      <div className="mx-auto max-w-6xl space-y-7 px-4 py-8 sm:px-6">
+        <PageHeader
+          eyebrow={`${data.contractorName} · Growers`}
+          title="Grower performance"
+          intro="Every grower you supply, ranked on the metric you choose."
+        />
+        <Card>
+          <CardBody className="space-y-2 py-10 text-center">
+            <p className="text-h3 text-ink">No grower data yet</p>
+            <p className="mx-auto max-w-md text-body text-slate">
+              {notReporting.length > 0
+                ? "Your farms haven't captured a cycle yet. As each grower records daily numbers and weigh-ins, they'll appear here ranked."
+                : "Add a farm and invite its grower from your overview. Once they start capturing, their performance shows up here."}
+            </p>
+          </CardBody>
+        </Card>
+        {notReporting.length > 0 && <NotReportingGroup farms={notReporting} />}
+      </div>
+    );
+  }
 
   const chartSeries: CompareSeries[] = growers.map((g) => ({
     id: g.siteId,
@@ -182,7 +207,35 @@ export function ContractorGrowersView({ data }: { data: ContractorGrowers }) {
           </CardBody>
         </Card>
       </section>
+
+      {notReporting.length > 0 && <NotReportingGroup farms={notReporting} />}
     </div>
+  );
+}
+
+/** Farms the contractor owns that aren't reporting yet — listed, not ranked. */
+function NotReportingGroup({ farms }: { farms: { siteId: string; name: string; farmCode: string }[] }) {
+  return (
+    <section className="space-y-3">
+      <div className="flex items-baseline justify-between">
+        <h2 className="text-h3">Not yet reporting</h2>
+        <span className="text-label text-muted">{farms.length} farm{farms.length === 1 ? "" : "s"} · no cycle captured</span>
+      </div>
+      <Card>
+        <CardBody className="divide-y divide-divider py-1">
+          {farms.map((f) => (
+            <div key={f.siteId} className="flex items-center justify-between py-3">
+              <span className="flex items-center gap-2 text-body text-ink">
+                <span className="inline-block size-2.5 shrink-0 rounded-full border border-border bg-divider" />
+                {f.name}
+              </span>
+              <span className="font-mono text-label text-muted">{f.farmCode}</span>
+            </div>
+          ))}
+        </CardBody>
+      </Card>
+      <p className="text-label text-muted">These farms will join the ranking once their grower captures a cycle.</p>
+    </section>
   );
 }
 

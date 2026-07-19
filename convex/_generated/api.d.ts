@@ -10,9 +10,10 @@
 
 import type * as auth from "../auth.js";
 import type * as farm from "../farm.js";
+import type * as growers from "../growers.js";
 import type * as http from "../http.js";
 import type * as lib from "../lib.js";
-import type * as reads from "../reads.js";
+import type * as ross from "../ross.js";
 import type * as seed from "../seed.js";
 import type * as tenancy from "../tenancy.js";
 import type * as users from "../users.js";
@@ -27,9 +28,10 @@ import type {
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   farm: typeof farm;
+  growers: typeof growers;
   http: typeof http;
   lib: typeof lib;
-  reads: typeof reads;
+  ross: typeof ross;
   seed: typeof seed;
   tenancy: typeof tenancy;
   users: typeof users;
