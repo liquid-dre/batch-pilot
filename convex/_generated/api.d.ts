@@ -10,6 +10,7 @@
 
 import type * as alerts from "../alerts.js";
 import type * as auth from "../auth.js";
+import type * as benchmark from "../benchmark.js";
 import type * as collection from "../collection.js";
 import type * as dataset from "../dataset.js";
 import type * as farm from "../farm.js";
@@ -31,6 +32,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   alerts: typeof alerts;
   auth: typeof auth;
+  benchmark: typeof benchmark;
   collection: typeof collection;
   dataset: typeof dataset;
   farm: typeof farm;

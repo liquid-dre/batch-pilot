@@ -80,6 +80,12 @@ export const myDataset = query({
       await ctx.db.query("historicalBatches").withIndex("by_site", (q) => q.eq("siteId", siteId)).collect()
     ).sort((a, b) => b.cycleNo - a.cycleNo);
 
+    // The contractor's tuned benchmark (Phase 4). Absent → omit, so the engine
+    // falls back to the Ross-308 default (`ctxOf` in lib/data/index.ts).
+    const benchmarkRow = contractorId
+      ? await ctx.db.query("benchmarkSets").withIndex("by_contractor", (q) => q.eq("contractorId", contractorId)).first()
+      : null;
+
     return {
       site: { ...toApp(site), houses },
       contractor: contractorRow ? toApp(contractorRow) : { id: contractorId, name: "" },
@@ -101,6 +107,9 @@ export const myDataset = query({
         mortalityPct: b.finalCumMortPct,
         epef: b.epef,
       })),
+      benchmark: benchmarkRow
+        ? { overlay: benchmarkRow.overlay, thresholds: benchmarkRow.thresholds }
+        : undefined,
     };
   },
 });

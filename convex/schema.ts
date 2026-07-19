@@ -275,6 +275,31 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_user_house", ["userId", "houseId"]),
 
+  // Contractor-tunable benchmark (ROADMAP §8 Phase 4). One tuned set per
+  // contractor: the overlay bands (mortality ceiling + uniformity target) the
+  // status engine scores against, plus optional threshold overrides. The growth
+  // curve itself stays code (`lib/data/ross308.ts` ROSS_308_CURVE) — only this
+  // tunable surface is stored. Absent row → the engine falls back to the
+  // Ross-308 default (see `ctxOf` in `lib/data/index.ts`).
+  benchmarkSets: defineTable({
+    contractorId: v.string(),
+    breed: v.optional(v.string()),
+    overlay: v.object({
+      mortalityBand: v.array(v.object({ day: v.number(), maxCumPct: v.number() })),
+      uniformityTarget: v.array(v.object({ day: v.number(), minPct: v.number() })),
+    }),
+    thresholds: v.optional(
+      v.object({
+        weight: v.object({ green: v.number(), amber: v.number() }),
+        fcr: v.object({ green: v.number(), amber: v.number() }),
+        feedRefillRatio: v.number(),
+        mortality: v.object({ amber: v.number(), red: v.number() }),
+        uniformity: v.object({ green: v.number(), amber: v.number() }),
+      }),
+    ),
+    updatedAt: v.string(),
+  }).index("by_contractor", ["contractorId"]),
+
   // --- Onboarding invites (multi-tenant) -------------------------------------
   // A contractor invites supervisor(s) to a farm; a supervisor invites
   // manager(s) to the same farm. When someone signs up with an invited email,
