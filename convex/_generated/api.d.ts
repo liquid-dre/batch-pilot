@@ -9,6 +9,7 @@
  */
 
 import type * as auth from "../auth.js";
+import type * as dataset from "../dataset.js";
 import type * as farm from "../farm.js";
 import type * as growers from "../growers.js";
 import type * as http from "../http.js";
@@ -27,6 +28,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  dataset: typeof dataset;
   farm: typeof farm;
   growers: typeof growers;
   http: typeof http;
