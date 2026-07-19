@@ -6,7 +6,7 @@ import { api } from "@/convex/_generated/api";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/Button";
 import { IconCheck, IconSend, IconPlus } from "@/components/icons";
-import { CapturePanel, WeightsPanel, ReviewPanel } from "./FarmData";
+import { ReviewPanel } from "./FarmData";
 
 /**
  * Onboarding hub (stage 1 — the multi-tenant identity loop). Rendered as the
@@ -204,8 +204,6 @@ function SupervisorOnboarding({ workspace }: { workspace: any }) {
   return (
     <Shell title={workspace.farm.name} subtitle={`Supervisor · ${workspace.email}`}>
       <FarmCard farm={workspace.farm} />
-      <CapturePanel />
-      <WeightsPanel />
 
       <form onSubmit={onInvite} className="mt-6 rounded-[var(--radius-card)] bg-surface p-5 shadow-card">
         <h3 className="text-h3">Invite your manager(s)</h3>
@@ -238,7 +236,7 @@ function SupervisorOnboarding({ workspace }: { workspace: any }) {
       </form>
 
       <FarmSetup workspace={workspace} />
-      <NextStepNote>Today&apos;s daily capture for this farm arrives next.</NextStepNote>
+      <NextStepNote>Once your cycle is running, capture today&apos;s round from the Home dashboard or the Capture tab.</NextStepNote>
     </Shell>
   );
 }
