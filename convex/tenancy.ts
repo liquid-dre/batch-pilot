@@ -218,6 +218,64 @@ export const inviteManagers = mutation({
   },
 });
 
+/**
+ * Supervisor: invite co-supervisor(s) — same-role peers on their own farm
+ * (ROADMAP §9 — symmetric peer invites). Reuses the `invites` shape (role +
+ * siteId), so the auth hook stamps the joiner as a supervisor on this site.
+ */
+export const inviteCoSupervisors = mutation({
+  args: { emails: v.array(v.string()) },
+  handler: async (ctx, { emails }) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not signed in");
+    const user = await ctx.db.get(userId);
+    if (!user || (user.role as string) !== "supervisor" || !user.siteId) {
+      throw new Error("Only a supervisor can invite co-supervisors");
+    }
+    return inviteSameRolePeers(ctx, userId as string, user.siteId as string, "supervisor", emails);
+  },
+});
+
+/**
+ * Manager: invite co-manager(s) — same-role peers sharing oversight of their own
+ * farm (ROADMAP §9 — symmetric peer invites).
+ */
+export const inviteCoManagers = mutation({
+  args: { emails: v.array(v.string()) },
+  handler: async (ctx, { emails }) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not signed in");
+    const user = await ctx.db.get(userId);
+    if (!user || (user.role as string) !== "manager" || !user.siteId) {
+      throw new Error("Only a manager can invite co-managers");
+    }
+    return inviteSameRolePeers(ctx, userId as string, user.siteId as string, "manager", emails);
+  },
+});
+
+/** Shared insert for a same-role peer invite on a farm (dedups within the site). */
+async function inviteSameRolePeers(
+  ctx: any,
+  userId: string,
+  siteId: string,
+  role: "supervisor" | "manager",
+  emails: string[],
+) {
+  const existing = await ctx.db.query("invites").withIndex("by_site", (q: any) => q.eq("siteId", siteId)).collect();
+  const already = new Set(existing.filter((i: any) => i.role === role).map((i: any) => i.email));
+  const createdAt = new Date().toISOString();
+  const seen = new Set<string>();
+  let invited = 0;
+  for (const raw of emails) {
+    const email = norm(raw);
+    if (!email || seen.has(email) || already.has(email)) continue;
+    seen.add(email);
+    await ctx.db.insert("invites", { email, role, siteId, invitedByUserId: userId, status: "pending", createdAt });
+    invited += 1;
+  }
+  return { invited };
+}
+
 /** The signed-in user's onboarding view, shaped by role. Reactive. */
 export const myWorkspace = query({
   args: {},

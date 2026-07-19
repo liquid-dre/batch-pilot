@@ -484,6 +484,16 @@ Ross weight curve — that under-performance is the hero story, keep it).
   "no auth yet" seam comment updated to the Convex-Auth reality (the account's
   role gates access in Convex mode; the demo role switcher is the no-backend
   fallback).
+  **Account self-service (done):** every signed-in role gets `/app/account`
+  (footer entry, Convex mode) — edit display name (`account.updateName`) and
+  change password (`account.changePassword` action: verifies the current secret
+  via `retrieveAccount`, sets the new one via `modifyAccountCredentials`; current
+  password required, other sessions left alone), with email/role/farm shown
+  read-only. A per-role Team panel is the single home for same-role peer invites:
+  contractor → co-admins (moved here from onboarding), supervisor →
+  co-supervisors (`tenancy.inviteCoSupervisors`), manager → co-managers
+  (`tenancy.inviteCoManagers`); platform admins have no peers, so it's hidden.
+  Cross-role farm-provisioning invites stay in the onboarding hub.
 - **Database + realtime → Convex** — seam: `lib/data/*`. **In progress** (branch
   `claude/convex-integration-setup-g02tm5`): backend scaffolded — `convex/schema.ts`
   (every operational entity, app id kept as indexed `extId`), `convex/seed.ts` +

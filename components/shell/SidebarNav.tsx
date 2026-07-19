@@ -8,7 +8,7 @@ import { useCurrentUser } from "@/lib/auth";
 import { usePersisted } from "@/lib/usePersisted";
 import { cn } from "@/lib/cn";
 import { LogoMark } from "@/components/brand/Logo";
-import { IconChevronDown, IconInfo } from "@/components/icons";
+import { IconChevronDown, IconInfo, IconUser } from "@/components/icons";
 import { SignOutButton } from "./SignOutButton";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { useQuery } from "convex/react";
@@ -161,6 +161,23 @@ export function SidebarNav({ collapsed, onToggleCollapse, onNavigate }: SidebarN
             <div className={cn("flex", collapsed ? "justify-center" : "justify-start")}>
               <ThemeToggle compact={collapsed} />
             </div>
+            {CONVEX_CONNECTED ? (
+              <Link
+                href="/app/account"
+                onClick={onNavigate}
+                aria-current={pathname.startsWith("/app/account") ? "page" : undefined}
+                className={cn(
+                  "group flex h-10 items-center rounded-[var(--radius-control)] text-label font-medium transition-colors duration-[var(--dur-fast)]",
+                  pathname.startsWith("/app/account")
+                    ? "bg-brand-50 text-brand-700"
+                    : "text-muted hover:bg-wash hover:text-slate",
+                  collapsed ? "mx-auto w-10 justify-center" : "w-full gap-2 px-3",
+                )}
+              >
+                <IconUser className="size-4 shrink-0" />
+                {!collapsed ? <span>Account</span> : null}
+              </Link>
+            ) : null}
             {CONVEX_CONNECTED && !collapsed ? <SignOutButton /> : null}
             {CONVEX_CONNECTED ? null : <DemoNote collapsed={collapsed} />}
           </div>
