@@ -454,6 +454,18 @@ Ross weight curve — that under-performance is the hero story, keep it).
   gate-verifies); and grower **settlement/margin** from contractor-set contract
   terms (`tenancy.setContract`; margin = collected kg × buy-back − chick & feed
   inputs, FOC-aware), shown on the contractor grower detail.
+  **Contractor-tunable benchmarks (Phase 4 — done):** the status engine now
+  scores uniformity (`evaluateUniformity`, `ROSS_308_OVERLAY.uniformityTarget`
+  was previously unread) and reads a per-tenant overlay + thresholds instead of a
+  single hardcoded context — `lib/data/index.ts` `ctxOf(ds)` builds the
+  `EngineContext` from `ds.benchmark` (code curve + tenant overlay/thresholds),
+  falling back to the Ross-308 default. Storage is `benchmarkSets` (one tuned set
+  per contractor) with `convex/benchmark.ts` (`myBenchmark` seeded with the
+  default, `setBenchmark` contractor-guarded); `myDataset` threads the grower's
+  contractor's set so their house statuses/alerts re-derive against the tuned
+  bands. The contractor Benchmark screen gains a tuning form
+  (`BenchmarkTuner.tsx`) editing the mortality/uniformity bands + status
+  thresholds (value tuning; CSV curve import deferred).
 - **Database + realtime → Convex** — seam: `lib/data/*`. **In progress** (branch
   `claude/convex-integration-setup-g02tm5`): backend scaffolded — `convex/schema.ts`
   (every operational entity, app id kept as indexed `extId`), `convex/seed.ts` +

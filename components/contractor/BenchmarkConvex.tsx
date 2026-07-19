@@ -3,18 +3,21 @@
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { ROSS_308_CURVE, ROSS_308_OVERLAY } from "@/lib/data/ross308";
+import { DEFAULT_THRESHOLDS } from "@/lib/engine";
 import { pct } from "@/lib/format";
 import { Card, CardBody, CardEyebrow } from "@/components/ui/Card";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { BenchmarkChart, type ActualMarker } from "./BenchmarkChart";
+import { BenchmarkTuner } from "./BenchmarkTuner";
 import { ScreenLoading, ScreenEmpty } from "@/components/shell/ScreenState";
 
 /**
- * Contractor Benchmark on Convex: the static Ross 308 objective curve + overlay
- * bands (tenant-agnostic reference) with each of the contractor's OWN farms
- * plotted against it, reusing the already-scoped `contractorGrowers` data. The
- * single-site per-house overlays (getPortfolio/getWeightBandData) are dropped;
- * per-contractor tunable benchmarks are a later phase.
+ * Contractor Benchmark on Convex: the static Ross 308 objective curve with each
+ * of the contractor's OWN farms plotted against it (from the already-scoped
+ * `contractorGrowers` data), plus their tunable overlay bands (mortality
+ * ceiling + uniformity target) and status thresholds. The bands shown — and the
+ * tuning form — come from `myBenchmark`, so editing them (Phase 4) reflows every
+ * grower's house statuses via `myDataset.benchmark`.
  */
 function LegendDot({ className }: { className: string }) {
   return <span className={`inline-block size-2.5 rounded-full ${className}`} />;
@@ -22,6 +25,7 @@ function LegendDot({ className }: { className: string }) {
 
 export function BenchmarkConvex() {
   const data = useQuery(api.growers.contractorGrowers);
+  const bench = useQuery(api.benchmark.myBenchmark);
 
   if (data === undefined) return <ScreenLoading eyebrow="Benchmark" title="Ross 308 objective" />;
   if (data === null)
@@ -39,6 +43,10 @@ export function BenchmarkConvex() {
     .filter((g) => g.weightG > 0)
     .map((g) => ({ day: g.day, weightG: g.weightG, level: g.level, label: g.name }));
   const killDay = growers.length ? Math.max(...growers.map((g) => g.killDay)) : 35;
+
+  // The tenant's tuned overlay + thresholds (Ross-308 default until they save).
+  const overlay = bench?.overlay ?? ROSS_308_OVERLAY;
+  const thresholds = bench?.thresholds ?? DEFAULT_THRESHOLDS;
 
   return (
     <div className="mx-auto max-w-5xl space-y-8 px-4 py-8 sm:px-6">
@@ -67,13 +75,13 @@ export function BenchmarkConvex() {
         </CardBody>
       </Card>
 
-      {/* Contractor overlay bands (the default Ross overlay; tunable in a later phase). */}
+      {/* Contractor overlay bands — the tenant's tuned set (Ross default until saved). */}
       <section className="grid gap-6 sm:grid-cols-2">
         <Card>
           <CardBody className="pt-5">
             <CardEyebrow>Mortality band · max cumulative</CardEyebrow>
             <ul className="mt-3 divide-y divide-divider">
-              {ROSS_308_OVERLAY.mortalityBand.map((b) => (
+              {overlay.mortalityBand.map((b) => (
                 <li key={b.day} className="flex items-center justify-between py-2">
                   <span className="text-body text-slate">Day {b.day}</span>
                   <span className="text-data text-ink">≤ {pct(b.maxCumPct, 1)}</span>
@@ -86,7 +94,7 @@ export function BenchmarkConvex() {
           <CardBody className="pt-5">
             <CardEyebrow>Uniformity target · minimum</CardEyebrow>
             <ul className="mt-3 divide-y divide-divider">
-              {ROSS_308_OVERLAY.uniformityTarget.map((u) => (
+              {overlay.uniformityTarget.map((u) => (
                 <li key={u.day} className="flex items-center justify-between py-2">
                   <span className="text-body text-slate">Day {u.day}</span>
                   <span className="text-data text-ink">≥ {u.minPct}%</span>
@@ -96,6 +104,11 @@ export function BenchmarkConvex() {
           </CardBody>
         </Card>
       </section>
+
+      {/* Tuning form — contractor edits the bands + thresholds their growers score against. */}
+      {bench !== undefined && bench !== null && (
+        <BenchmarkTuner overlay={overlay} thresholds={thresholds} isDefault={bench.isDefault} />
+      )}
     </div>
   );
 }
