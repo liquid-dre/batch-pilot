@@ -237,7 +237,27 @@ export const contractorGrowerDetail = query({
     const site = await ctx.db.query("sites").withIndex("by_extId", (q) => q.eq("extId", siteId)).first();
     if (!site || !(site.contractorIds ?? []).includes(scope.contractorId)) return null; // not yours
     const farm = await loadFarm(ctx, siteId);
-    if (!farm) return null;
+    if (!farm) {
+      // No ongoing cycle (e.g. just closed) — show the latest closed cycle's
+      // summary instead of a "not found" screen.
+      const closed = (
+        await ctx.db.query("historicalBatches").withIndex("by_site", (q) => q.eq("siteId", siteId)).collect()
+      ).sort((a, b) => b.cycleNo - a.cycleNo)[0];
+      if (!closed) return null;
+      return {
+        closed: true as const,
+        siteName: site.name,
+        farmCode: site.farmCode,
+        cycleNo: closed.cycleNo,
+        placementDate: closed.placementDate,
+        expectedCollectionDate: closed.expectedCollectionDate,
+        finalDay: closed.finalDay,
+        finalWeightG: closed.finalWeightG,
+        finalFcr: closed.finalFcr,
+        finalCumMortPct: closed.finalCumMortPct,
+        epef: closed.epef,
+      };
+    }
     const { batch, placements } = farm;
 
     let placed = 0;

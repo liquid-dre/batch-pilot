@@ -1825,10 +1825,12 @@ export async function getDashboardCycleInfo(ds: Dataset = datasetFromMock(), tod
     const latest = await getLatestDailyEntry(house.id, ds);
     days.push((latest?.day ?? 0) + 1);
   }
-  const placementDate = ds.placements.reduce(
-    (min, p) => (p.placementDate < min ? p.placementDate : min),
-    ds.placements[0]?.placementDate ?? ds.batch.expectedCollectionDate,
-  );
+  // The cycle START date is a batch-level fact (contractor-set). Prefer it; fall
+  // back to the earliest placement's date (legacy), and to "" (never the
+  // collection date — that produced the "Start == Collection" bug).
+  const placementDate =
+    ds.batch.placementDate ||
+    ds.placements.reduce<string>((min, p) => (!min || p.placementDate < min ? p.placementDate : min), "");
   return resolve({
     siteName: ds.site.name,
     cycleNo: ds.batch.cycleNo,

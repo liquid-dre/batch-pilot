@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { cn } from "@/lib/cn";
+import { addDays } from "@/lib/format";
+import { ageAtWeight } from "@/lib/data/ross308";
 import { Button } from "@/components/ui/Button";
 import { notify } from "@/components/ui/notify";
 import { IconCheck, IconSend, IconPlus } from "@/components/icons";
@@ -109,6 +111,8 @@ function ContractorOnboarding({ workspace }: { workspace: any }) {
           Create farm &amp; invite
         </Button>
       </form>
+
+      {farms.length > 0 && <ScheduleCycleForm farms={farms} />}
       {/* Co-admins moved to /app/account (the account Team panel) — one home for peer invites. */}
     </Shell>
   );
@@ -169,6 +173,130 @@ function ContractorFarmCard({ farm }: { farm: any }) {
         </Button>
       </form>
     </div>
+  );
+}
+
+/**
+ * Contractor: schedule a cycle for one of their farms (ROADMAP §9 — cycles are
+ * contractor-owned). Sets the plan the manager then places birds against: breed,
+ * start + collection dates, target weight range (pre-filled from the benchmark
+ * default), total birds. The Estimate button fills the collection date from the
+ * range midpoint via the breed curve.
+ */
+function ScheduleCycleForm({ farms }: { farms: any[] }) {
+  const bench = useQuery(api.benchmark.myBenchmark);
+  const scheduleCycle = useMutation(api.tenancy.scheduleCycle);
+  const [siteId, setSiteId] = useState(farms[0]?.id ?? "");
+  const [cycleNo, setCycleNo] = useState("1");
+  const [breed, setBreed] = useState("Ross 308");
+  const [start, setStart] = useState("");
+  const [end, setEnd] = useState("");
+  const [minG, setMinG] = useState("");
+  const [maxG, setMaxG] = useState("");
+  const [total, setTotal] = useState("");
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Pre-fill the weight range from the contractor's benchmark default once loaded.
+  const defMin = bench?.targetWeightMinG ?? 1600;
+  const defMax = bench?.targetWeightMaxG ?? 1700;
+  const minVal = minG === "" ? String(defMin) : minG;
+  const maxVal = maxG === "" ? String(defMax) : maxG;
+
+  function estimateEnd() {
+    if (!start) return;
+    const mid = (Number(minVal) + Number(maxVal)) / 2;
+    if (!(mid > 0)) return;
+    setEnd(addDays(start, Math.round(ageAtWeight(mid))));
+  }
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (!siteId) return setError("Pick a farm.");
+    if (!start || !end) return setError("Enter the start and collection dates.");
+    setPending(true);
+    try {
+      await notify.promise(
+        scheduleCycle({
+          siteId,
+          cycleNo: Number(cycleNo) || 1,
+          breed,
+          placementDate: start,
+          expectedCollectionDate: end,
+          targetWeightMinG: Number(minVal) || undefined,
+          targetWeightMaxG: Number(maxVal) || undefined,
+          totalBirds: Number(total) || undefined,
+        }),
+        {
+          loading: "Scheduling cycle…",
+          success: () => ({ title: "Cycle scheduled", description: "The manager can now place birds for it." }),
+          error: () => ({ title: "Couldn't schedule the cycle", description: "Check the cycle number isn't already used." }),
+        },
+      );
+      setStart("");
+      setEnd("");
+      setTotal("");
+    } catch {
+      /* toast shown */
+    } finally {
+      setPending(false);
+    }
+  }
+
+  const field = "h-11 rounded-[var(--radius-control)] border border-border bg-surface px-3 text-body text-ink outline-none focus-visible:border-brand-500";
+
+  return (
+    <form onSubmit={submit} className="mt-6 rounded-[var(--radius-card)] bg-surface p-5 shadow-card">
+      <h3 className="text-h3">Schedule a cycle</h3>
+      <p className="mt-1 text-label text-muted">Set the plan — the manager places the birds and captures against it.</p>
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <label className="flex flex-col gap-1.5">
+          <span className="text-label font-medium text-slate">Farm</span>
+          <select value={siteId} onChange={(e) => setSiteId(e.target.value)} className={field}>
+            {farms.map((f) => (
+              <option key={f.id} value={f.id}>{f.name}</option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-label font-medium text-slate">Cycle no.</span>
+          <input value={cycleNo} inputMode="numeric" onChange={(e) => setCycleNo(e.target.value.replace(/[^0-9]/g, ""))} className={`${field} font-mono`} />
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-label font-medium text-slate">Breed</span>
+          <input value={breed} onChange={(e) => setBreed(e.target.value)} className={field} />
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-label font-medium text-slate">Total birds</span>
+          <input value={total} inputMode="numeric" placeholder="e.g. 22000" onChange={(e) => setTotal(e.target.value.replace(/[^0-9]/g, ""))} className={`${field} font-mono`} />
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-label font-medium text-slate">Start date</span>
+          <input type="date" value={start} onChange={(e) => setStart(e.target.value)} className={field} />
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-label font-medium text-slate">Collection date</span>
+          <div className="flex gap-2">
+            <input type="date" value={end} onChange={(e) => setEnd(e.target.value)} className={`${field} flex-1`} />
+            <Button type="button" variant="secondary" size="sm" onClick={estimateEnd} className="shrink-0">Estimate</Button>
+          </div>
+        </label>
+      </div>
+      <div className="mt-3">
+        <span className="text-label font-medium text-slate">Target weight range (g)</span>
+        <div className="mt-1.5 flex items-center gap-2">
+          <input value={minVal} inputMode="numeric" aria-label="Min target weight" onChange={(e) => setMinG(e.target.value.replace(/[^0-9]/g, ""))} className={`${field} w-28 text-right font-mono`} />
+          <span className="text-label text-muted">–</span>
+          <input value={maxVal} inputMode="numeric" aria-label="Max target weight" onChange={(e) => setMaxG(e.target.value.replace(/[^0-9]/g, ""))} className={`${field} w-28 text-right font-mono`} />
+          <span className="text-label text-muted">g</span>
+        </div>
+      </div>
+      {error && <p role="alert" className="mt-3 text-label text-status-bad">{error}</p>}
+      <Button type="submit" size="lg" block loading={pending} affordance={IconCheck} className="mt-4">
+        Schedule cycle
+      </Button>
+    </form>
   );
 }
 
