@@ -72,7 +72,7 @@ export interface NavSection {
 const GROWER_SETUP: NavSection = {
   label: "Setup",
   items: [
-    { key: "houses", label: "Houses", href: "/app/houses", icon: "houses" },
+    { key: "houses", label: "Set up cycle", href: "/app/houses", icon: "houses" },
     { key: "allocate", label: "Allocate a cycle", href: "/app/houses/allocate", icon: "allocate" },
   ],
 };
@@ -124,7 +124,14 @@ export const NAV: Record<Role, NavSection[]> = {
   ],
   contractor: [
     { items: [{ key: "overview", label: "Overview", href: "/app", icon: "dashboard" }] },
-    { items: [{ key: "growers", label: "Growers", href: "/app/growers", icon: "growers" }] },
+    {
+      label: "Growers",
+      items: [
+        { key: "growers", label: "Growers", href: "/app/growers", icon: "growers" },
+        { key: "growers-schedule", label: "Schedule a cycle", href: "/app/growers/schedule", icon: "schedule" },
+        { key: "growers-add", label: "Add a farm", href: "/app/growers/add", icon: "houses" },
+      ],
+    },
     { items: [{ key: "schedule", label: "Collection schedule", href: "/app/schedule", icon: "schedule" }] },
     {
       label: "Benchmarks",
@@ -146,6 +153,9 @@ export function isActive(href: string, pathname: string): boolean {
   if (href === "/app") return pathname === "/app";
   // Allocate is a child of Houses; only light it (not Houses) on the allocate route.
   if (href === "/app/houses") return pathname === "/app/houses";
+  // Growers is a group; the list item is exact so it doesn't light on the
+  // Schedule/Add siblings or the [siteId] drill-down.
+  if (href === "/app/growers") return pathname === "/app/growers";
   // Benchmarks → Current (exact) vs Tune (child), so Current doesn't light on Tune.
   if (href === "/app/benchmark") return pathname === "/app/benchmark";
   return pathname === href || pathname.startsWith(href + "/");

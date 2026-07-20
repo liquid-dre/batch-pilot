@@ -149,6 +149,14 @@ function OrgThemeCard({ org }: { org: Org }) {
                 <ColorField label="Accent / marks (brand-500)" value={d500} onChange={setD500} />
               </div>
             </div>
+            <div className="space-y-3">
+              <CardEyebrow>Preview</CardEyebrow>
+              <p className="text-label text-muted">How the sidebar looks for this org&apos;s users — light and dark, no guessing.</p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <SidebarPreview mode="light" b700={b700} b500={b500} />
+                <SidebarPreview mode="dark" b700={d700} b500={d500} />
+              </div>
+            </div>
             <div className="flex flex-wrap items-center justify-between gap-2">
               {branded ? (
                 <Button variant="ghost" size="sm" onClick={() => save(null)} disabled={pending}>
@@ -176,6 +184,63 @@ function OrgThemeCard({ org }: { org: Org }) {
         )}
       </CardBody>
     </Card>
+  );
+}
+
+/**
+ * A static mock of the app sidebar in a fixed mode (light or dark), painted with
+ * the chosen brand pair so the platform admin sees the real active-row treatment
+ * — brand fill tint + brand text/marks — instead of guessing from two swatches.
+ * The neutral chrome is hardcoded per mode (not theme tokens) so both modes render
+ * at once regardless of the admin's own theme; the only brand-coloured pieces are
+ * the two values being previewed.
+ */
+const PREVIEW_ROWS = ["Overview", "Growers", "Benchmarks", "Account"];
+
+function SidebarPreview({ mode, b700, b500 }: { mode: "light" | "dark"; b700: string; b500: string }) {
+  const brand700 = HEX.test(b700) ? b700 : mode === "dark" ? DEFAULT_D700 : DEFAULT_700;
+  const brand500 = HEX.test(b500) ? b500 : mode === "dark" ? DEFAULT_D500 : DEFAULT_500;
+  const dark = mode === "dark";
+  const c = dark
+    ? { bg: "#0f172a", border: "#1f2937", ink: "#e2e8f0", muted: "#94a3b8", activeText: brand500 }
+    : { bg: "#ffffff", border: "#e5e7eb", ink: "#0f172a", muted: "#64748b", activeText: brand700 };
+
+  return (
+    <figure className="space-y-1.5">
+      <div className="overflow-hidden rounded-[var(--radius-card)] border" style={{ borderColor: c.border, background: c.bg }}>
+        {/* Brand row */}
+        <div className="flex items-center gap-2 border-b px-3 py-2.5" style={{ borderColor: c.border }}>
+          <span className="size-5 rounded-[6px]" style={{ background: brand700 }} aria-hidden />
+          <span className="text-label font-bold" style={{ color: c.ink }}>BatchPilot</span>
+        </div>
+        {/* Nav rows — the first is active. */}
+        <ul className="space-y-1 p-2">
+          {PREVIEW_ROWS.map((label, i) => {
+            const active = i === 0;
+            return (
+              <li
+                key={label}
+                className="flex items-center gap-2 rounded-[var(--radius-control)] px-2.5 py-1.5"
+                style={active ? { background: `${brand700}22` } : undefined}
+              >
+                <span
+                  className="size-2 rounded-full"
+                  style={{ background: active ? brand500 : c.muted, opacity: active ? 1 : 0.5 }}
+                  aria-hidden
+                />
+                <span
+                  className="text-[0.8125rem]"
+                  style={{ color: active ? c.activeText : c.muted, fontWeight: active ? 600 : 500 }}
+                >
+                  {label}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+      <figcaption className="text-center text-[0.6875rem] uppercase tracking-[0.08em] text-hint">{dark ? "Dark" : "Light"}</figcaption>
+    </figure>
   );
 }
 
