@@ -76,21 +76,21 @@ export function PortfolioDashboard({ data, siteId }: { data: PortfolioData; site
     );
   }
 
-  const readyVsKill = daysBetween(summary.killDate, summary.projectedReadyDate);
+  const readyVsKill = daysBetween(summary.expectedCollectionDate, summary.projectedReadyDate);
   const readyVerdict =
     readyVsKill > 0
-      ? `Projected ready ${readyVsKill} day${readyVsKill === 1 ? "" : "s"} after the kill date`
-      : "Projected ready on or before the kill date";
+      ? `Projected ready ${readyVsKill} day${readyVsKill === 1 ? "" : "s"} after the collection date`
+      : "Projected ready on or before the collection date";
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6">
       <PageHeader
         eyebrow={`${summary.farmCode}/0${summary.cycleNo} · ${summary.siteName}`}
         title="Portfolio"
-        intro="Active flocks ranked by production efficiency, measured against the contractor kill date."
+        intro="Active flocks ranked by production efficiency, measured against the contractor collection date."
       />
 
-      {/* Batch summary + projected-ready vs kill date */}
+      {/* Batch summary + projected-ready vs collection */}
       <Card className="animate-rise">
         <CardBody className="pt-5">
           <div className="flex items-start justify-between gap-4">
@@ -102,7 +102,7 @@ export function PortfolioDashboard({ data, siteId }: { data: PortfolioData; site
             <SummaryStat label="Avg mortality" value={pct(summary.avgMortPct)} />
             <SummaryStat label="Avg EPEF" value={String(summary.avgEpef)} estimated />
             <SummaryStat label="Projected avg" value={grams(summary.projectedAvgWeightG)} sub={`${summary.pctOfTarget}% of target`} />
-            <SummaryStat label="Kill date" value={shortDate(summary.killDate)} sub={`${summary.daysToKill === 0 ? "today" : `${summary.daysToKill} days`}`} />
+            <SummaryStat label="Collection date" value={shortDate(summary.expectedCollectionDate)} sub={`${summary.daysToCollection === 0 ? "today" : `${summary.daysToCollection} days`}`} />
             <SummaryStat label="Projected ready" value={shortDate(summary.projectedReadyDate)} />
           </div>
           <div

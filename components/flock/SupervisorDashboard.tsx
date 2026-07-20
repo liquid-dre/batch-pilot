@@ -22,7 +22,7 @@ export function SupervisorDashboard({ data }: { data: DashboardView }) {
   const ctaLabel = done === 0 ? "Capture today's results" : done < total ? "Add the rest" : "Review today's round";
 
   return (
-    <div className="mx-auto max-w-xl space-y-6 px-4 py-7 sm:px-6 sm:py-9">
+    <div className="mx-auto max-w-5xl space-y-6 px-4 py-8 sm:px-6 sm:py-10">
       <CycleInfo cycle={data.cycle} />
 
       <Button size="lg" block onClick={() => router.push("/app/capture")}>
@@ -30,8 +30,13 @@ export function SupervisorDashboard({ data }: { data: DashboardView }) {
       </Button>
 
       <OnTrackCards metrics={data.metrics} variant="supervisor" />
-      <PreviousDayEntries entries={data.yesterday} variant="supervisor" />
-      <ProjectionChart projection={data.projection} variant="supervisor" />
+
+      {/* On wide screens the projection and yesterday's round sit side by side
+          so the dashboard uses the width instead of one tall narrow column. */}
+      <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
+        <ProjectionChart projection={data.projection} variant="supervisor" />
+        <PreviousDayEntries entries={data.yesterday} variant="supervisor" />
+      </div>
     </div>
   );
 }

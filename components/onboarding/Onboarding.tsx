@@ -4,9 +4,11 @@ import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { cn } from "@/lib/cn";
+import { addDays } from "@/lib/format";
+import { ageAtWeight } from "@/lib/data/ross308";
 import { Button } from "@/components/ui/Button";
 import { IconCheck, IconSend, IconPlus } from "@/components/icons";
-import { CapturePanel, ReviewPanel } from "./FarmData";
+import { ReviewPanel } from "./FarmData";
 
 /**
  * Onboarding hub (stage 1 — the multi-tenant identity loop). Rendered as the
@@ -59,7 +61,7 @@ function ContractorOnboarding({ workspace }: { workspace: any }) {
     }
     setPending(true);
     try {
-      await createFarm({ name: name.trim(), supervisorEmails: splitEmails(emails) });
+      await createFarm({ name: name.trim(), managerEmails: splitEmails(emails) });
       setName("");
       setEmails("");
     } catch {
@@ -70,9 +72,9 @@ function ContractorOnboarding({ workspace }: { workspace: any }) {
   }
 
   return (
-    <Shell title="Your farms" subtitle={`Signed in as ${workspace.email} · contractor`}>
+    <Shell title="Your growers" subtitle={`Signed in as ${workspace.email} · contractor`}>
       {farms.length === 0 ? (
-        <EmptyHint>Add your first farm below, then invite the supervisor who runs it.</EmptyHint>
+        <EmptyHint>Add your first grower&apos;s farm below, then invite the manager who runs it.</EmptyHint>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
           {farms.map((f) => (
@@ -93,12 +95,12 @@ function ContractorOnboarding({ workspace }: { workspace: any }) {
           />
         </label>
         <label className="mt-4 flex flex-col gap-1.5">
-          <span className="text-label font-medium text-slate">Supervisor email(s)</span>
+          <span className="text-label font-medium text-slate">Manager email(s)</span>
           <textarea
             value={emails}
             onChange={(e) => setEmails(e.target.value)}
             rows={2}
-            placeholder="supervisor@example.com, another@example.com"
+            placeholder="manager@example.com, another@example.com"
             className="rounded-[var(--radius-control)] border border-border bg-surface p-3.5 text-body text-ink outline-none focus-visible:border-brand-500"
           />
           <span className="text-[0.8125rem] text-muted">Separate multiple emails with commas or new lines. They join when they sign up with that email.</span>
@@ -108,15 +110,16 @@ function ContractorOnboarding({ workspace }: { workspace: any }) {
           Create farm &amp; invite
         </Button>
       </form>
+      {/* Co-admins moved to /app/account (the account Team panel) — one home for peer invites. */}
     </Shell>
   );
 }
 
 function ContractorFarmCard({ farm }: { farm: any }) {
   // The farm name is set once at creation and is read-only thereafter for the
-  // contractor (there is no rename path — UI or mutation). Supervisors are still
-  // theirs to invite.
-  const inviteSupervisors = useMutation(api.tenancy.inviteSupervisors);
+  // contractor (there is no rename path — UI or mutation). Managers are the
+  // contractor's to invite; the manager then brings in the foremen.
+  const inviteManagers = useMutation(api.tenancy.inviteManagers);
   const [newEmail, setNewEmail] = useState("");
   const [inviting, setInviting] = useState(false);
 
@@ -125,7 +128,7 @@ function ContractorFarmCard({ farm }: { farm: any }) {
     if (!newEmail.trim()) return;
     setInviting(true);
     try {
-      await inviteSupervisors({ siteId: farm.id, emails: splitEmails(newEmail) });
+      await inviteManagers({ siteId: farm.id, emails: splitEmails(newEmail) });
       setNewEmail("");
     } finally {
       setInviting(false);
@@ -140,12 +143,12 @@ function ContractorFarmCard({ farm }: { farm: any }) {
       </div>
       <p className="mt-1 text-label text-muted">{farm.houseCount} house(s) set up</p>
 
-      <p className="mt-4 mb-1.5 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-hint">Supervisors</p>
-      {farm.supervisors.length === 0 ? (
+      <p className="mt-4 mb-1.5 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-hint">Managers</p>
+      {farm.managers.length === 0 ? (
         <p className="text-label text-muted">None invited yet.</p>
       ) : (
         <ul className="flex flex-col gap-1">
-          {farm.supervisors.map((s: any) => (
+          {farm.managers.map((s: any) => (
             <li key={s.email} className="flex items-center justify-between text-label">
               <span className="text-ink">{s.email}</span>
               <StatusChip status={s.status} />
@@ -159,7 +162,7 @@ function ContractorFarmCard({ farm }: { farm: any }) {
           value={newEmail}
           onChange={(e) => setNewEmail(e.target.value)}
           type="email"
-          placeholder="Invite another supervisor"
+          placeholder="Invite another manager"
           className="h-10 min-w-0 flex-1 rounded-[var(--radius-control)] border border-border bg-surface px-3 text-label text-ink outline-none focus-visible:border-brand-500"
         />
         <Button type="submit" size="sm" affordance={IconSend} loading={inviting} className="shrink-0">
@@ -171,9 +174,32 @@ function ContractorFarmCard({ farm }: { farm: any }) {
 }
 
 /* ------------------------------------------------------------- Supervisor -- */
+// The foreman captures the daily numbers — they don't set the farm up. Before a
+// cycle is running there's nothing for them to do but wait on the manager; once
+// it starts, the home becomes the capture dashboard (GrowerHomeConvex).
 
 function SupervisorOnboarding({ workspace }: { workspace: any }) {
-  const inviteManagers = useMutation(api.tenancy.inviteManagers);
+  if (!workspace.farm) return <PendingState email={workspace.email} />;
+  return (
+    <Shell title={workspace.farm.name} subtitle={`Foreman · ${workspace.email}`}>
+      <FarmCard farm={workspace.farm} />
+      <div className="mt-6 rounded-[var(--radius-card)] bg-surface p-5 shadow-card">
+        <h3 className="text-h3">Waiting on the cycle</h3>
+        <p className="mt-2 text-body text-slate">
+          Your manager sets up the houses and starts the cycle. The moment it&apos;s running, this
+          becomes your daily capture home — today&apos;s numbers, weigh-ins and feed.
+        </p>
+      </div>
+    </Shell>
+  );
+}
+
+/* ---------------------------------------------------------------- Manager -- */
+// The manager runs the farm: invites the foremen, sets up houses, starts the
+// cycle, and reviews/corrects captured numbers.
+
+function ManagerOnboarding({ workspace }: { workspace: any }) {
+  const inviteSupervisors = useMutation(api.tenancy.inviteSupervisors);
   const [emails, setEmails] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -190,7 +216,7 @@ function SupervisorOnboarding({ workspace }: { workspace: any }) {
     }
     setPending(true);
     try {
-      await inviteManagers({ emails: list });
+      await inviteSupervisors({ emails: list });
       setEmails("");
     } catch {
       setError("Could not send the invites. Try again.");
@@ -199,23 +225,22 @@ function SupervisorOnboarding({ workspace }: { workspace: any }) {
     }
   }
 
-  const managers: any[] = workspace.managers ?? [];
+  const supervisors: any[] = workspace.supervisors ?? [];
 
   return (
-    <Shell title={workspace.farm.name} subtitle={`Supervisor · ${workspace.email}`}>
+    <Shell title={workspace.farm.name} subtitle={`Manager · ${workspace.email}`}>
       <FarmCard farm={workspace.farm} />
-      <CapturePanel />
 
       <form onSubmit={onInvite} className="mt-6 rounded-[var(--radius-card)] bg-surface p-5 shadow-card">
-        <h3 className="text-h3">Invite your manager(s)</h3>
-        <p className="mt-1 text-label text-muted">Managers oversee performance and can correct captured numbers.</p>
+        <h3 className="text-h3">Invite your foreman(s)</h3>
+        <p className="mt-1 text-label text-muted">Foremen capture the daily numbers, weigh-ins and feed on the ground.</p>
         <label className="mt-4 flex flex-col gap-1.5">
-          <span className="text-label font-medium text-slate">Manager email(s)</span>
+          <span className="text-label font-medium text-slate">Foreman email(s)</span>
           <textarea
             value={emails}
             onChange={(e) => setEmails(e.target.value)}
             rows={2}
-            placeholder="manager@example.com"
+            placeholder="foreman@example.com"
             className="rounded-[var(--radius-control)] border border-border bg-surface p-3.5 text-body text-ink outline-none focus-visible:border-brand-500"
           />
         </label>
@@ -224,34 +249,21 @@ function SupervisorOnboarding({ workspace }: { workspace: any }) {
           Send invite
         </Button>
 
-        {managers.length > 0 && (
+        {supervisors.length > 0 && (
           <ul className="mt-5 flex flex-col gap-1 border-t border-divider pt-4">
-            {managers.map((m) => (
-              <li key={m.email} className="flex items-center justify-between text-label">
-                <span className="text-ink">{m.email}</span>
-                <StatusChip status={m.status} />
+            {supervisors.map((s) => (
+              <li key={s.email} className="flex items-center justify-between text-label">
+                <span className="text-ink">{s.email}</span>
+                <StatusChip status={s.status} />
               </li>
             ))}
           </ul>
         )}
       </form>
 
-      <FarmSetup workspace={workspace} />
-      <NextStepNote>Today&apos;s daily capture for this farm arrives next.</NextStepNote>
-    </Shell>
-  );
-}
-
-/* ---------------------------------------------------------------- Manager -- */
-
-function ManagerOnboarding({ workspace }: { workspace: any }) {
-  if (!workspace.farm) return <PendingState email={workspace.email} />;
-  return (
-    <Shell title={workspace.farm.name} subtitle={`Manager · ${workspace.email}`}>
-      <FarmCard farm={workspace.farm} />
       <ReviewPanel />
       <FarmSetup workspace={workspace} />
-      <NextStepNote>The full analytics dashboard (projections, benchmark curve, alerts) arrives next.</NextStepNote>
+      <NextStepNote>Your full dashboard — projections, benchmark curve and alerts — appears here the moment your cycle is running.</NextStepNote>
     </Shell>
   );
 }
@@ -266,7 +278,7 @@ function FarmSetup({ workspace }: { workspace: any }) {
   return (
     <div className="mt-6 flex flex-col gap-6">
       <HousesEditor initial={houses} />
-      <CycleSection houses={houses} cycle={cycle} />
+      <CycleSection houses={houses} cycle={cycle} targetWeightG={workspace.targetWeightG ?? null} />
     </div>
   );
 }
@@ -351,15 +363,31 @@ function HousesEditor({ initial }: { initial: any[] }) {
   );
 }
 
-function CycleSection({ houses, cycle }: { houses: any[]; cycle: any }) {
+function CycleSection({ houses, cycle, targetWeightG }: { houses: any[]; cycle: any; targetWeightG: number | null }) {
   const startCycle = useMutation(api.tenancy.startCycle);
   const [cycleNo, setCycleNo] = useState("1");
   const [breed, setBreed] = useState("Ross 308");
-  const [placingDate, setPlacingDate] = useState("");
-  const [killDate, setKillDate] = useState("");
+  const [placementDate, setPlacementDate] = useState("");
+  const [expectedCollectionDate, setExpectedCollectionDate] = useState("");
+  // Track whether the manager has hand-edited the collection date, so the
+  // auto-derived value only pre-fills until they take it over.
+  const [collectionTouched, setCollectionTouched] = useState(false);
   const [counts, setCounts] = useState<Record<string, string>>({});
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  /** The expected collection date implied by a placement date + contractor target. */
+  function derivedCollection(placement: string): string {
+    if (!placement || !targetWeightG) return "";
+    return addDays(placement, Math.round(ageAtWeight(targetWeightG)));
+  }
+
+  function onPlacementChange(v: string) {
+    setPlacementDate(v);
+    // Pre-fill (or refresh) the collection date from the target until the manager
+    // overrides it themselves.
+    if (!collectionTouched) setExpectedCollectionDate(derivedCollection(v));
+  }
 
   if (cycle) {
     return (
@@ -369,8 +397,8 @@ function CycleSection({ houses, cycle }: { houses: any[]; cycle: any }) {
           <dt className="text-muted">Breed</dt><dd className="text-right font-mono text-ink">{cycle.breed}</dd>
           <dt className="text-muted">Placed</dt><dd className="text-right font-mono text-ink">{cycle.placed.toLocaleString()}</dd>
           <dt className="text-muted">Houses</dt><dd className="text-right font-mono text-ink">{cycle.houseCount}</dd>
-          <dt className="text-muted">Placed on</dt><dd className="text-right font-mono text-ink">{cycle.placingDate}</dd>
-          <dt className="text-muted">Kill date</dt><dd className="text-right font-mono text-ink">{cycle.killDate}</dd>
+          <dt className="text-muted">Placement date</dt><dd className="text-right font-mono text-ink">{cycle.placementDate}</dd>
+          <dt className="text-muted">Expected collection</dt><dd className="text-right font-mono text-ink">{cycle.expectedCollectionDate}</dd>
         </dl>
       </div>
     );
@@ -383,8 +411,8 @@ function CycleSection({ houses, cycle }: { houses: any[]; cycle: any }) {
   async function start(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!placingDate || !killDate) {
-      setError("Enter the placing and kill dates.");
+    if (!placementDate || !expectedCollectionDate) {
+      setError("Enter the placement and collection dates.");
       return;
     }
     setPending(true);
@@ -392,8 +420,8 @@ function CycleSection({ houses, cycle }: { houses: any[]; cycle: any }) {
       await startCycle({
         cycleNo: Number(cycleNo) || 1,
         breed,
-        placingDate,
-        killDate,
+        placementDate,
+        expectedCollectionDate,
         houses: houses.map((h) => ({ houseId: h.id, placedCount: Number(counts[h.id]) || 0 })),
       });
     } catch {
@@ -406,7 +434,7 @@ function CycleSection({ houses, cycle }: { houses: any[]; cycle: any }) {
   return (
     <form onSubmit={start} className="rounded-[var(--radius-card)] bg-surface p-5 shadow-card">
       <h3 className="text-h3">Start a cycle</h3>
-      <div className="mt-4 grid grid-cols-2 gap-3">
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label className="flex flex-col gap-1.5">
           <span className="text-label font-medium text-slate">Cycle no.</span>
           <input value={cycleNo} onChange={(e) => setCycleNo(e.target.value.replace(/[^0-9]/g, ""))} inputMode="numeric" className="h-11 rounded-[var(--radius-control)] border border-border bg-surface px-3 font-mono text-body text-ink outline-none focus-visible:border-brand-500" />
@@ -416,12 +444,22 @@ function CycleSection({ houses, cycle }: { houses: any[]; cycle: any }) {
           <input value={breed} onChange={(e) => setBreed(e.target.value)} className="h-11 rounded-[var(--radius-control)] border border-border bg-surface px-3 text-body text-ink outline-none focus-visible:border-brand-500" />
         </label>
         <label className="flex flex-col gap-1.5">
-          <span className="text-label font-medium text-slate">Placing date</span>
-          <input type="date" value={placingDate} onChange={(e) => setPlacingDate(e.target.value)} className="h-11 rounded-[var(--radius-control)] border border-border bg-surface px-3 text-body text-ink outline-none focus-visible:border-brand-500" />
+          <span className="text-label font-medium text-slate">Placement date</span>
+          <input type="date" value={placementDate} onChange={(e) => onPlacementChange(e.target.value)} className="h-11 rounded-[var(--radius-control)] border border-border bg-surface px-3 text-body text-ink outline-none focus-visible:border-brand-500" />
         </label>
         <label className="flex flex-col gap-1.5">
-          <span className="text-label font-medium text-slate">Kill date</span>
-          <input type="date" value={killDate} onChange={(e) => setKillDate(e.target.value)} className="h-11 rounded-[var(--radius-control)] border border-border bg-surface px-3 text-body text-ink outline-none focus-visible:border-brand-500" />
+          <span className="text-label font-medium text-slate">Expected collection date</span>
+          <input
+            type="date"
+            value={expectedCollectionDate}
+            onChange={(e) => { setCollectionTouched(true); setExpectedCollectionDate(e.target.value); }}
+            className="h-11 rounded-[var(--radius-control)] border border-border bg-surface px-3 text-body text-ink outline-none focus-visible:border-brand-500"
+          />
+          <span className="text-[0.8125rem] text-muted">
+            {targetWeightG
+              ? `Auto-filled from the ${targetWeightG.toLocaleString()} g target weight — adjust if collection shifts.`
+              : "No target weight set — enter the date, or ask your contractor to set a target weight to auto-fill it."}
+          </span>
         </label>
       </div>
 

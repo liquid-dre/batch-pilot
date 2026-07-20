@@ -41,7 +41,7 @@ interface Column {
   cell: (r: BatchArchiveRow) => ReactNode;
 }
 
-function KillCell({ days }: { days: number }) {
+function CollectionCell({ days }: { days: number }) {
   const tone = days <= 0 ? "text-status-good" : days <= 3 ? "text-status-warn" : "text-status-bad";
   const label = days < 0 ? `${Math.abs(days)}d ahead` : days === 0 ? "on date" : `${days}d over`;
   return <span className={cn("font-medium", tone)}>{label}</span>;
@@ -50,8 +50,8 @@ function KillCell({ days }: { days: number }) {
 const COLUMNS: Column[] = [
   { key: "batch", label: "Batch", type: "text", raw: (r) => r.title, cell: (r) => <BatchCell row={r} /> },
   { key: "placed", label: "Placed", type: "number", raw: (r) => r.placed, cell: (r) => num(r.placed) },
-  { key: "placingDate", label: "Start", type: "date", raw: (r) => r.placingDate, cell: (r) => shortDate(r.placingDate) },
-  { key: "killDate", label: "End", type: "date", raw: (r) => r.killDate, cell: (r) => shortDate(r.killDate) },
+  { key: "placementDate", label: "Start", type: "date", raw: (r) => r.placementDate, cell: (r) => shortDate(r.placementDate) },
+  { key: "expectedCollectionDate", label: "End", type: "date", raw: (r) => r.expectedCollectionDate, cell: (r) => shortDate(r.expectedCollectionDate) },
   { key: "growOutDays", label: "Days", type: "number", raw: (r) => r.growOutDays, cell: (r) => `${r.growOutDays} d` },
   { key: "totalMortality", label: "Mortality", type: "number", raw: (r) => r.totalMortality, cell: (r) => num(r.totalMortality) },
   { key: "cumMortPct", label: "Cum %", type: "number", raw: (r) => r.cumMortPct, cell: (r) => pct(r.cumMortPct) },
@@ -61,7 +61,7 @@ const COLUMNS: Column[] = [
   { key: "epef", label: "EPEF", type: "number", est: true, raw: (r) => r.epef, cell: (r) => num(r.epef) },
   { key: "feedUsedKg", label: "Feed", type: "number", raw: (r) => r.feedUsedKg, cell: (r) => kg(r.feedUsedKg) },
   { key: "vaccineCount", label: "Vaccines", type: "number", raw: (r) => r.vaccineCount, cell: (r) => num(r.vaccineCount) },
-  { key: "readyVsKillDays", label: "vs kill date", type: "number", raw: (r) => r.readyVsKillDays, cell: (r) => <KillCell days={r.readyVsKillDays} /> },
+  { key: "readyVsCollectionDays", label: "vs collection", type: "number", raw: (r) => r.readyVsCollectionDays, cell: (r) => <CollectionCell days={r.readyVsCollectionDays} /> },
 ];
 
 const COL_BY_KEY: Record<string, Column> = Object.fromEntries(COLUMNS.map((c) => [c.key, c]));
@@ -89,7 +89,7 @@ interface GridState {
 
 const DEFAULT_STATE: GridState = {
   order: DEFAULT_ORDER,
-  sort: { key: "placingDate", dir: "desc" },
+  sort: { key: "placementDate", dir: "desc" },
   filters: {},
 };
 
@@ -189,7 +189,7 @@ export function PreviousBatchesTable({ rows }: { rows: BatchArchiveRow[] }) {
   // --- derive rows ---------------------------------------------------------
   const filtered = useMemo(() => {
     const kept = rows.filter((r) => COLUMNS.every((c) => passes(c, r, filters[c.key])));
-    const col = COL_BY_KEY[sort.key] ?? COL_BY_KEY.placingDate;
+    const col = COL_BY_KEY[sort.key] ?? COL_BY_KEY.placementDate;
     const sorted = [...kept].sort((a, b) => {
       const av = col.raw(a);
       const bv = col.raw(b);

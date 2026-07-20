@@ -44,11 +44,11 @@ function metricValue(p: ComparePoint, key: MetricKey): number | undefined {
   }
 }
 
-function killVerdict(days: number): { label: string; tone: string } {
-  if (days <= -1) return { label: `${Math.abs(days)}d ahead of kill date`, tone: "text-status-good" };
-  if (days === 0) return { label: "on the kill date", tone: "text-status-good" };
-  if (days <= 3) return { label: `${days}d past kill date`, tone: "text-status-warn" };
-  return { label: `${days}d past kill date`, tone: "text-status-bad" };
+function collectionVerdict(days: number): { label: string; tone: string } {
+  if (days <= -1) return { label: `${Math.abs(days)}d ahead of collection date`, tone: "text-status-good" };
+  if (days === 0) return { label: "on the collection date", tone: "text-status-good" };
+  if (days <= 3) return { label: `${days}d past collection date`, tone: "text-status-warn" };
+  return { label: `${days}d past collection date`, tone: "text-status-bad" };
 }
 
 export function CompareView({ data }: { data: CompareData }) {
@@ -175,12 +175,12 @@ export function CompareView({ data }: { data: CompareData }) {
               <TH num>Cum mort</TH>
               <TH num>FCR<EstTag /></TH>
               <TH num>Days to target</TH>
-              <TH>vs kill date</TH>
+              <TH>vs collection</TH>
             </TR>
           </THead>
           <TBody>
             {selectedBatches.map((b) => {
-              const v = killVerdict(b.readyVsKillDays);
+              const v = collectionVerdict(b.readyVsCollectionDays);
               return (
                 <TR key={b.id}>
                   <TD className="font-medium text-ink">
@@ -202,7 +202,7 @@ export function CompareView({ data }: { data: CompareData }) {
           </TBody>
         </Table>
         <p className="text-label text-muted">
-          Weight is the final figure for closed batches and the latest weigh-in for the current one. Target is the Ross 308 weight at each batch&apos;s kill date ({selectedBatches.length ? shortDate(selectedBatches[0].killDate) : "—"} for the current cycle).
+          Weight is the final figure for closed batches and the latest weigh-in for the current one. Target is the Ross 308 weight at each batch&apos;s collection date ({selectedBatches.length ? shortDate(selectedBatches[0].expectedCollectionDate) : "—"} for the current cycle).
         </p>
         <EstFootnote />
       </section>

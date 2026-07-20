@@ -18,12 +18,13 @@ import { createContext, useContext, useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Role, User } from "@/lib/types";
-import { CONTRACTOR_USER, MANAGER_USER, SUPERVISOR_USER } from "@/lib/data/mock";
+import { CONTRACTOR_USER, MANAGER_USER, PLATFORM_ADMIN_USER, SUPERVISOR_USER } from "@/lib/data/mock";
 
 const USERS: Record<Role, User> = {
   supervisor: SUPERVISOR_USER,
   manager: MANAGER_USER,
   contractor: CONTRACTOR_USER,
+  platformAdmin: PLATFORM_ADMIN_USER,
 };
 
 interface AuthContextValue {

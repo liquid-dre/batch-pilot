@@ -37,7 +37,7 @@ function Stat({
   );
 }
 
-function killLabel(days: number): { label: string; tone: string } {
+function collectionLabel(days: number): { label: string; tone: string } {
   if (days < 0) return { label: `${Math.abs(days)}d ahead`, tone: "text-status-good" };
   if (days === 0) return { label: "On the date", tone: "text-status-good" };
   if (days <= 3) return { label: `${days}d over`, tone: "text-status-warn" };
@@ -49,7 +49,7 @@ function killLabel(days: number): { label: string; tone: string } {
  * of the cycle's key results above the full History & Charts detail.
  */
 export function BatchHighlights({ row }: { row: BatchArchiveRow }) {
-  const kill = killLabel(row.readyVsKillDays);
+  const collection = collectionLabel(row.readyVsCollectionDays);
   const vsRossTone = row.level === "green" ? "text-status-good" : row.level === "amber" ? "text-status-warn" : "text-status-bad";
 
   return (
@@ -84,8 +84,8 @@ export function BatchHighlights({ row }: { row: BatchArchiveRow }) {
         sub={row.status === "current" ? <StatusPill level={row.level} size="sm" /> : "of the Ross 308 target"}
       />
       <Stat
-        label="vs kill date"
-        value={<span className={kill.tone}>{kill.label}</span>}
+        label="vs collection"
+        value={<span className={collection.tone}>{collection.label}</span>}
         sub="reached target weight"
       />
     </div>

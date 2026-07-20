@@ -36,7 +36,7 @@ export function GrowerDashboard({ data, plannedBatch }: { data: DashboardView; p
             </Button>
           }
         >
-          Cycle {plannedBatch.cycleNo} · {num(plannedBatch.totalPlaced)} birds, placing {shortDate(plannedBatch.placingDate)}. Split them across the houses to start daily capture.
+          Cycle {plannedBatch.cycleNo} · {num(plannedBatch.totalPlaced)} birds, placed {shortDate(plannedBatch.placementDate)}. Split them across the houses to start daily capture.
         </Alert>
       ) : null}
 

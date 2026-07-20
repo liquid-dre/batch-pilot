@@ -24,6 +24,8 @@ export interface StatusThresholds {
   feedRefillRatio: number;
   /** Cumulative mortality as a fraction of the contractor band ceiling. */
   mortality: { amber: number; red: number };
+  /** Uniformity as a fraction of the contractor target (higher is better). */
+  uniformity: { green: number; amber: number };
 }
 
 export const DEFAULT_THRESHOLDS: StatusThresholds = {
@@ -31,4 +33,5 @@ export const DEFAULT_THRESHOLDS: StatusThresholds = {
   fcr: { green: 0.03, amber: 0.08 }, // ≤+3% green · +3–8% amber · >+8% red
   feedRefillRatio: 1.2, // >120% of intake target → likely a bin refill
   mortality: { amber: 0.85, red: 1.0 }, // vs the contractor cumulative band
+  uniformity: { green: 0.97, amber: 0.9 }, // ≥97% of target green · 90–97% amber · <90% red
 };

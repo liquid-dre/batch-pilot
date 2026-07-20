@@ -21,7 +21,7 @@ type Mode = "signIn" | "signUp";
 type JoinAs = "contractor" | "invited";
 
 const JOIN_OPTIONS: { value: JoinAs; label: string; hint: string }[] = [
-  { value: "invited", label: "I was invited to a farm", hint: "Supervisor or manager — your role comes from your invite" },
+  { value: "invited", label: "I was invited", hint: "Supervisor, manager or co-admin — your role comes from your invite" },
   { value: "contractor", label: "I run the contractor / supply side", hint: "Create farms and invite growers" },
 ];
 

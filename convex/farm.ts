@@ -20,7 +20,11 @@ export const farmData = query({
     const site = await ctx.db.query("sites").withIndex("by_extId", (q) => q.eq("extId", siteId)).first();
     if (!site) return null;
 
-    const batch = await ctx.db.query("batches").withIndex("by_site", (q) => q.eq("siteId", siteId)).first();
+    const batch = await ctx.db
+      .query("batches")
+      .withIndex("by_site", (q) => q.eq("siteId", siteId))
+      .filter((q) => q.eq(q.field("closedAt"), undefined))
+      .first();
     if (!batch) return { role, farmName: site.name, today: new Date().toISOString().slice(0, 10), cycle: null, houses: [] };
 
     const placements = (
@@ -71,7 +75,7 @@ export const farmData = query({
       role,
       farmName: site.name,
       today,
-      cycle: { cycleNo: batch.cycleNo, breed: batch.breed, killDate: batch.killDate },
+      cycle: { cycleNo: batch.cycleNo, breed: batch.breed, expectedCollectionDate: batch.expectedCollectionDate },
       houses,
     };
   },

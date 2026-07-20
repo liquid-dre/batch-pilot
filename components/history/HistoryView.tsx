@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { EditableField, EditRecord } from "@/lib/types";
 import type { BatchDayRow, BatchHistory, HouseDayRow } from "@/lib/view";
 import { getBatchHistory, getEditLog, submitManagerEdit } from "@/lib/data";
@@ -61,6 +61,7 @@ export function HistoryView({
   editLog,
   embedded = false,
   editable = true,
+  save,
 }: {
   data: BatchHistory;
   editLog: EditRecord[];
@@ -68,6 +69,9 @@ export function HistoryView({
   embedded?: boolean;
   /** Closed/archived batches are read-only — no maker-checker pencil. */
   editable?: boolean;
+  /** Convex path: persist a correction via the mutation; the reactive dataset
+   *  then re-feeds `data`/`editLog`. Omitted on the mock path (which refetches). */
+  save?: (input: { entityId: string; changes: Partial<Record<EditableField, number | null>> }) => Promise<{ records: unknown[] }>;
 }) {
   const { user } = useCurrentUser();
   const isManager = user.role === "manager";
@@ -86,6 +90,12 @@ export function HistoryView({
   const [seriesId, setSeriesId] = useState<string>("batch"); // "batch" | houseId
   const [metricKey, setMetricKey] = useState<MetricKey>("cumPct");
   const [flashDay, setFlashDay] = useState<number | null>(null);
+
+  // Convex path: when the reactive dataset re-fires (e.g. after a correction),
+  // re-seed the local copies so the re-derived chain + audit badge render. No-op
+  // on the mock path, where these props are stable references.
+  useEffect(() => setHistory(data), [data]);
+  useEffect(() => setEdits(editLog), [editLog]);
 
   // Sticky jump-to-day: scroll the batch table's matching row into view and
   // flash it briefly. Honours reduced-motion (instant jump, no smooth scroll).
@@ -114,6 +124,20 @@ export function HistoryView({
   }, [edits]);
 
   async function handleSave(entryId: string, changes: Partial<Record<EditableField, number | null>>) {
+    if (save) {
+      // Convex path: persist via the injected mutation; the reactive dataset
+      // re-fires and re-seeds history/edits above — no manual refetch.
+      try {
+        await notify.promise(save({ entityId: entryId, changes }), {
+          loading: SAVING,
+          success: (r) => correctionSavedToast(r.records.length),
+          error: saveFailedToast,
+        });
+      } catch {
+        /* error toast already shown */
+      }
+      return;
+    }
     try {
       // One toast covers the write + the two re-fetches (history + audit log).
       const { h, log } = await notify.promise(

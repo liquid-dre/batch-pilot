@@ -5,7 +5,7 @@ import { Card, CardBody } from "@/components/ui/Card";
 /**
  * Cycle info at the top of both dashboards: cycle number + breed, the current
  * day of cycle (a per-house range while placings are staggered), and the key
- * dates with a plain countdown to the kill date. Pure/presentational.
+ * dates with a plain countdown to the collection date. Pure/presentational.
  */
 function countdown(days: number): string {
   if (days === 0) return "today";
@@ -28,12 +28,12 @@ export function CycleInfo({ cycle }: { cycle: DashboardCycleInfo }) {
         <dl className="grid grid-cols-2 gap-x-6 gap-y-3 border-t border-divider pt-4">
           <div>
             <dt className="text-label text-muted">Placed</dt>
-            <dd className="mt-0.5 text-data text-[0.9375rem] tabular-nums text-ink">{shortDate(cycle.placingDate)}</dd>
+            <dd className="mt-0.5 text-data text-[0.9375rem] tabular-nums text-ink">{shortDate(cycle.placementDate)}</dd>
           </div>
           <div>
-            <dt className="text-label text-muted">Kill date</dt>
+            <dt className="text-label text-muted">Collection date</dt>
             <dd className="mt-0.5 text-data text-[0.9375rem] tabular-nums text-ink">
-              {shortDate(cycle.killDate)} · <span className="text-slate">{countdown(cycle.daysToKill)}</span>
+              {shortDate(cycle.expectedCollectionDate)} · <span className="text-slate">{countdown(cycle.daysToCollection)}</span>
             </dd>
           </div>
         </dl>

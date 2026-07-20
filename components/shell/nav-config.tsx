@@ -88,8 +88,15 @@ export const NAV: Record<Role, NavSection[]> = {
   // Manager so this non-technical role never feels flooded.
   supervisor: [
     { items: [{ key: "home", label: "Home", href: "/app", icon: "dashboard" }] },
-    { items: [{ key: "capture", label: "Today's capture", href: "/app/capture", icon: "daily" }] },
+    {
+      label: "Today's capture",
+      items: [
+        { key: "capture", label: "Daily capture", href: "/app/capture", icon: "daily" },
+        { key: "weights", label: "Weigh-ins", href: "/app/weights", icon: "weights" },
+      ],
+    },
     { items: [{ key: "feed", label: "Feed deliveries", href: "/app/feed", icon: "feed" }] },
+    { items: [{ key: "collection", label: "Collection", href: "/app/collection", icon: "schedule" }] },
     {
       label: "Records",
       items: [
@@ -102,6 +109,7 @@ export const NAV: Record<Role, NavSection[]> = {
   // analytics-first, with setup + alerts. Capture is the supervisor's job.
   manager: [
     { items: [{ key: "dashboard", label: "Dashboard", href: "/app", icon: "dashboard" }] },
+    { items: [{ key: "collection", label: "Collection", href: "/app/collection", icon: "schedule" }] },
     {
       label: "Analytics",
       items: [
@@ -118,6 +126,11 @@ export const NAV: Record<Role, NavSection[]> = {
     { items: [{ key: "growers", label: "Growers", href: "/app/growers", icon: "growers" }] },
     { items: [{ key: "schedule", label: "Collection schedule", href: "/app/schedule", icon: "schedule" }] },
     { items: [{ key: "benchmark", label: "Benchmarks", href: "/app/benchmark", icon: "benchmark" }] },
+  ],
+  // Platform Admin (BatchPilot operator) — the sole above-tenant surface today is
+  // white-label theming across contractor orgs, edited inline on the org list.
+  platformAdmin: [
+    { items: [{ key: "orgs", label: "Contractor orgs", href: "/app", icon: "growers" }] },
   ],
 };
 

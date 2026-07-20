@@ -16,7 +16,7 @@ export const currentUser = query({
     return {
       id: u._id as string,
       name: u.name ?? "",
-      role: (u.role as "supervisor" | "manager" | "contractor") ?? "supervisor",
+      role: (u.role as "supervisor" | "manager" | "contractor" | "platformAdmin") ?? "supervisor",
       org: u.org ?? "",
       siteId: u.siteId,
       contractorId: u.contractorId,

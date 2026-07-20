@@ -88,9 +88,12 @@ export default defineSchema({
     contractorId: v.string(),
     cycleNo: v.number(),
     breed: v.string(),
-    killDate: v.string(),
+    expectedCollectionDate: v.string(),
     focPct: v.number(),
     contractId: v.string(),
+    // Set when the contractor closes the cycle; an absent value = active. The
+    // active-batch reads filter on this so a closed cycle frees the farm.
+    closedAt: v.optional(v.string()),
   })
     .index("by_extId", ["extId"])
     .index("by_site", ["siteId"]),
@@ -101,8 +104,8 @@ export default defineSchema({
     contractorId: v.string(),
     cycleNo: v.number(),
     breed: v.string(),
-    placingDate: v.string(),
-    killDate: v.string(),
+    placementDate: v.string(),
+    expectedCollectionDate: v.string(),
     focPct: v.number(),
     totalPlaced: v.number(),
     allocated: v.boolean(),
@@ -113,7 +116,7 @@ export default defineSchema({
     batchId: v.string(),
     houseId: v.string(),
     placedCount: v.number(),
-    placingDate: v.string(),
+    placementDate: v.string(),
     dayCount: v.number(),
   })
     .index("by_extId", ["extId"])
@@ -175,8 +178,12 @@ export default defineSchema({
     extId: v.string(),
     batchId: v.string(),
     night: v.string(),
+    // `count` is the contractor's scheduled target for the night; `caughtCount` +
+    // `collectionWeightKg` are what the supervisor records once the trucks leave.
     count: v.number(),
+    caughtCount: v.optional(v.number()),
     collectionWeightKg: v.optional(v.number()),
+    caughtAt: v.optional(v.string()),
   })
     .index("by_extId", ["extId"])
     .index("by_batch", ["batchId"]),
@@ -185,6 +192,8 @@ export default defineSchema({
     batchId: v.string(),
     heldCount: v.number(),
     vehicles: v.array(v.object({ plate: v.string(), driver: v.string() })),
+    // Plates the supervisor has ticked off at the gate (verification).
+    verifiedPlates: v.optional(v.array(v.string())),
   }).index("by_batch", ["batchId"]),
 
   // Attributed manager corrections (maker-checker; ROADMAP §5/§9). Grows as
@@ -215,15 +224,20 @@ export default defineSchema({
   // record and the grower comparison view (their day-by-day curves are still
   // generated deterministically by the seam from these seeds).
   historicalBatches: defineTable({
+    // Optional so the demo seed (site-less) still validates; a cycle closed live
+    // always stamps its site, and the per-tenant reads query `by_site`.
+    siteId: v.optional(v.string()),
     cycleNo: v.number(),
-    placingDate: v.string(),
-    killDate: v.string(),
+    placementDate: v.string(),
+    expectedCollectionDate: v.string(),
     finalDay: v.number(),
     finalCumMortPct: v.number(),
     finalWeightG: v.number(),
     finalFcr: v.number(),
     epef: v.number(),
-  }).index("by_cycle", ["cycleNo"]),
+  })
+    .index("by_cycle", ["cycleNo"])
+    .index("by_site", ["siteId"]),
 
   // Other growers supplying a contractor (tenant-isolation + generated screens).
   // Their per-house/day-by-day data is generated on demand from these profiles.
@@ -246,6 +260,51 @@ export default defineSchema({
     .index("by_siteId", ["siteId"])
     .index("by_contractor", ["contractorId"]),
 
+  // Per-user dismissed alerts (an overlay on the reactively-derived alerts; the
+  // alert itself is never stored). Keyed by house + metric + level so a
+  // dismissed alert re-appears when that house's flagged metric or severity
+  // changes. Scoped to the signed-in grower's farm.
+  dismissedAlerts: defineTable({
+    userId: v.string(),
+    siteId: v.string(),
+    houseId: v.string(),
+    metric: v.string(),
+    level: v.string(),
+    dismissedAt: v.string(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_house", ["userId", "houseId"]),
+
+  // Contractor-tunable benchmark (ROADMAP §8 Phase 4). One tuned set per
+  // contractor: the overlay bands (mortality ceiling + uniformity target) the
+  // status engine scores against, plus optional threshold overrides. The growth
+  // curve itself stays code (`lib/data/ross308.ts` ROSS_308_CURVE) — only this
+  // tunable surface is stored. Absent row → the engine falls back to the
+  // Ross-308 default (see `ctxOf` in `lib/data/index.ts`).
+  benchmarkSets: defineTable({
+    contractorId: v.string(),
+    breed: v.optional(v.string()),
+    // The market/target weight a cycle is grown to. Drives the auto-derived
+    // expected collection date at cycle start (placement date + the day the
+    // breed curve reaches this weight). Optional — absent → the grower enters
+    // the collection date manually.
+    targetWeightG: v.optional(v.number()),
+    overlay: v.object({
+      mortalityBand: v.array(v.object({ day: v.number(), maxCumPct: v.number() })),
+      uniformityTarget: v.array(v.object({ day: v.number(), minPct: v.number() })),
+    }),
+    thresholds: v.optional(
+      v.object({
+        weight: v.object({ green: v.number(), amber: v.number() }),
+        fcr: v.object({ green: v.number(), amber: v.number() }),
+        feedRefillRatio: v.number(),
+        mortality: v.object({ amber: v.number(), red: v.number() }),
+        uniformity: v.object({ green: v.number(), amber: v.number() }),
+      }),
+    ),
+    updatedAt: v.string(),
+  }).index("by_contractor", ["contractorId"]),
+
   // --- Onboarding invites (multi-tenant) -------------------------------------
   // A contractor invites supervisor(s) to a farm; a supervisor invites
   // manager(s) to the same farm. When someone signs up with an invited email,
@@ -253,12 +312,16 @@ export default defineSchema({
   // siteId, then marks it accepted. Email is stored lowercased for matching.
   invites: defineTable({
     email: v.string(),
-    role: v.string(), // "supervisor" | "manager"
-    siteId: v.string(),
+    role: v.string(), // "supervisor" | "manager" | "contractor" (org co-admin)
+    // A farm invite carries `siteId` (supervisor/manager); an org co-admin invite
+    // carries `contractorId` and no site — they join the whole org, not one farm.
+    siteId: v.optional(v.string()),
+    contractorId: v.optional(v.string()),
     invitedByUserId: v.string(),
     status: v.string(), // "pending" | "accepted"
     createdAt: v.string(),
   })
     .index("by_email", ["email"])
-    .index("by_site", ["siteId"]),
+    .index("by_site", ["siteId"])
+    .index("by_contractor", ["contractorId"]),
 });

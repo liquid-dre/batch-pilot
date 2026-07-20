@@ -438,14 +438,83 @@ Ross weight curve — that under-performance is the hero story, keep it).
   **Stage 2b (done):** supervisor daily capture (`writes.submitDailyUpdate`,
   tenant-guarded) + a live manager review panel, both on the reactive
   `farm.farmData` query — a saved round shows up live on the manager's screen.
-  **Stage 2c (next):** the full analytics dashboard (projections, weight-vs-Ross
-  curve, alerts, efficiency) and the contractor portfolio, per farm; the nav
-  routes other than the home still show the mock demo until then.
+  **Stage 2c (done):** the **whole app** is per-tenant on Convex when connected —
+  grower Dashboard/Capture/Weigh-ins/Feed/Alerts/History/Compare/Batches/Houses and
+  contractor Overview/Growers/Benchmark/Schedule. The `lib/data` view-builders were
+  made `Dataset`-pure and run on a scoped `convex/dataset.ts` `myDataset` (grower
+  single-site) or bespoke scoped queries (`convex/growers.ts` for the contractor
+  cross-farm views); the status engine lights up on real data unchanged. Every
+  built write is wired (daily/weights/feed/manager-edit); alerts are dismissable
+  (`convex/alerts.ts` + per-user overlay). Vestigial screens (allocate, logbook)
+  are hidden in Convex mode. The mock seam stays the no-backend fallback.
+  **Cycle lifecycle + collection (Phase 2 — done):** contractor-driven close
+  (`tenancy.closeCycle` → archives finals to `historicalBatches`, frees a new
+  cycle); collection capture (`convex/collection.ts` — contractor posts the night
+  schedule + vehicle manifest, the farm's supervisor records catches +
+  gate-verifies); and grower **settlement/margin** from contractor-set contract
+  terms (`tenancy.setContract`; margin = collected kg × buy-back − chick & feed
+  inputs, FOC-aware), shown on the contractor grower detail.
+  **Contractor-tunable benchmarks (Phase 4 — done):** the status engine now
+  scores uniformity (`evaluateUniformity`, `ROSS_308_OVERLAY.uniformityTarget`
+  was previously unread) and reads a per-tenant overlay + thresholds instead of a
+  single hardcoded context — `lib/data/index.ts` `ctxOf(ds)` builds the
+  `EngineContext` from `ds.benchmark` (code curve + tenant overlay/thresholds),
+  falling back to the Ross-308 default. Storage is `benchmarkSets` (one tuned set
+  per contractor) with `convex/benchmark.ts` (`myBenchmark` seeded with the
+  default, `setBenchmark` contractor-guarded); `myDataset` threads the grower's
+  contractor's set so their house statuses/alerts re-derive against the tuned
+  bands. The contractor Benchmark screen gains a tuning form
+  (`BenchmarkTuner.tsx`) editing the mortality/uniformity bands + status
+  thresholds (value tuning; CSV curve import deferred).
+  **Admin roles (Phase 5 — done):** a **Platform Admin** tier (BatchPilot
+  operator) sits above every tenant — created only via the
+  `PLATFORM_ADMIN_EMAILS` allowlist (`convex/auth.ts`), never self-serve. Its one
+  above-tenant surface is **white-label theming**: `convex/admin.ts`
+  (`listContractors`, `setContractorTheme`, `myTheme`, all platform-admin
+  guarded) + the org console (`PlatformAdminHome.tsx`) edits any contractor org's
+  brand, and `TenantThemeProvider` overrides the `--brand-*` tokens at runtime
+  for every user under that org (branding as configuration, per BRD §12-P). The
+  BRD's **Contractor Org Admin** is the existing `contractor` role; a contractor
+  can now invite **co-admins** into their own org (`tenancy.inviteOrgAdmins` →
+  an org invite carrying `contractorId`; the auth hook / `claimInvite` stamp the
+  joiner as a full contractor), so an org is run by a team, not one login.
+  **Polish (Phase 6 — done):** removed contradictory onboarding copy (the manager
+  dashboard no longer reads as "arrives next" — it's shipped); the start-a-cycle
+  form stacks to one column on mobile (date/breed inputs); every stale "Clerk" /
+  "no auth yet" seam comment updated to the Convex-Auth reality (the account's
+  role gates access in Convex mode; the demo role switcher is the no-backend
+  fallback).
+  **Role hierarchy + derived collection date (done):** the invite chain now runs
+  contractor → **manager** → foreman (was contractor → supervisor → manager):
+  `createFarm`/`inviteManagers` invite managers (contractor-guarded), the manager
+  invites foremen (`inviteSupervisors`, manager-guarded); the foreman is
+  capture-only. House setup + cycle start are manager-only (`requireManager`
+  guard; `/app/houses` under `ManagerOnly`). Domain vocabulary renamed
+  everywhere — `placingDate`→`placementDate`, `killDate`→`expectedCollectionDate`
+  (schema + types + seed + ~60 sites), no "kill" wording remains. The contractor
+  sets a **target weight** on their benchmark (`benchmarkSets.targetWeightG`,
+  edited in `BenchmarkTuner`); at cycle start the expected collection date
+  **auto-derives** from placement date + the breed curve (`ageAtWeight` inverse
+  in `lib/data/ross308.ts`, threaded to the manager via `myWorkspace`), as an
+  editable default (manual + hint when no target). Re-seed the dev deployment
+  (schema field names changed).
+  **Account self-service (done):** every signed-in role gets `/app/account`
+  (footer entry, Convex mode) — edit display name (`account.updateName`) and
+  change password (`account.changePassword` action: verifies the current secret
+  via `retrieveAccount`, sets the new one via `modifyAccountCredentials`; current
+  password required, other sessions left alone), with email/role/farm shown
+  read-only. A per-role Team panel is the single home for same-role peer invites:
+  contractor → co-admins (moved here from onboarding), supervisor →
+  co-supervisors (`tenancy.inviteCoSupervisors`), manager → co-managers
+  (`tenancy.inviteCoManagers`); platform admins have no peers, so it's hidden.
+  Cross-role farm-provisioning invites stay in the onboarding hub.
 - **Database + realtime → Convex** — seam: `lib/data/*`. **In progress** (branch
   `claude/convex-integration-setup-g02tm5`): backend scaffolded — `convex/schema.ts`
   (every operational entity, app id kept as indexed `extId`), `convex/seed.ts` +
   `convex/seedData.json` (a byte-identical snapshot of the mock demo),
-  `convex/reads.ts` (`getDataset`, one reactive query) and `convex/writes.ts`
+  per-tenant reactive read queries (`convex/tenancy.ts` `myWorkspace`,
+  `convex/farm.ts` `farmData`, `convex/growers.ts` for the contractor Growers
+  view — each scoped to the signed-in identity) and `convex/writes.ts`
   (daily / feed / weights / manager-edit / saveHouses / confirmAllocation
   mutations, re-deriving the cumulative chain). `<ConvexClientProvider>` wraps
   the app (root layout) and is a no-op until `NEXT_PUBLIC_CONVEX_URL` is set.

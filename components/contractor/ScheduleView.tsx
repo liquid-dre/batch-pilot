@@ -9,10 +9,10 @@ interface ScheduleViewProps {
   manifest: Manifest;
   siteName: string;
   cycleNo: number;
-  killDate: string;
+  expectedCollectionDate: string;
 }
 
-export function ScheduleView({ events, manifest, siteName, cycleNo, killDate }: ScheduleViewProps) {
+export function ScheduleView({ events, manifest, siteName, cycleNo, expectedCollectionDate }: ScheduleViewProps) {
   const total = events.reduce((s, e) => s + e.count, 0);
 
   return (
@@ -20,7 +20,7 @@ export function ScheduleView({ events, manifest, siteName, cycleNo, killDate }: 
       <PageHeader
         eyebrow={`${siteName} · Cycle ${cycleNo}`}
         title="Collection"
-        intro={`Phased night catching around the kill date (${shortDate(killDate)}), and the authorised vehicles for the round.`}
+        intro={`Phased night catching around the collection date (${shortDate(expectedCollectionDate)}), and the authorised vehicles for the round.`}
       />
 
       {/* Catching schedule */}

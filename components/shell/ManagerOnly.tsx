@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/Button";
 /**
  * Oversight screens that belong to the Manager profile only (e.g. the batch
  * archive). Supervisors capture; the manager reviews. A calm switch prompt
- * stands in for route-based access until Clerk lands (ROADMAP §5/§9).
+ * stands in for the demo; in Convex mode the account's role gates access
+ * (ROADMAP §5/§9).
  */
 export function ManagerOnly({ children }: { children: React.ReactNode }) {
   const { role, setRole } = useCurrentUser();

@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/Button";
 /**
  * Phase-2 screens are the contractor register. If the demo is in the Grower
  * role, show a calm switch prompt rather than contractor tooling out of context.
- * (Clerk will replace this with session-based access.)
+ * In Convex mode the signed-in account's role is authoritative (the switch
+ * prompt only ever shows in the no-backend demo).
  */
 export function ContractorOnly({ children }: { children: React.ReactNode }) {
   const { role, setRole } = useCurrentUser();

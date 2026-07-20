@@ -4,9 +4,50 @@ import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { dailySaved, SAVING, saveFailedToast } from "@/lib/copy";
+import { ross308At } from "@/lib/data/ross308";
 import { notify } from "@/components/ui/notify";
 import { Button } from "@/components/ui/Button";
+import { WizardSteps } from "@/components/ui/WizardSteps";
 import { IconCheck } from "@/components/icons";
+
+/** One house at a time: a wizard-step house switcher + prev/next, so capture and
+ *  weigh-ins page through houses instead of a long vertical scroll. */
+function HouseStepper({
+  houses,
+  saved,
+  render,
+}: {
+  houses: any[];
+  saved: Set<string>;
+  render: (house: any, goNext: () => void) => React.ReactNode;
+}) {
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const currentId = activeId && houses.some((h) => h.houseId === activeId) ? activeId : houses[0].houseId;
+  const idx = houses.findIndex((h) => h.houseId === currentId);
+  const active = houses[idx];
+  const steps = houses.map((h) => ({ id: h.houseId, label: h.name, complete: saved.has(h.houseId) }));
+  const goTo = (i: number) => {
+    const h = houses[i];
+    if (h) setActiveId(h.houseId);
+  };
+  return (
+    <div className="space-y-4">
+      <WizardSteps steps={steps} activeId={currentId} onSelect={setActiveId} ariaLabel="Houses" />
+      {render(active, () => goTo(idx + 1))}
+      <div className="flex items-center justify-between">
+        <Button type="button" variant="secondary" size="sm" onClick={() => goTo(idx - 1)} disabled={idx === 0}>
+          Previous
+        </Button>
+        <span className="text-label text-muted">
+          House {idx + 1} of {houses.length}
+        </span>
+        <Button type="button" variant="secondary" size="sm" onClick={() => goTo(idx + 1)} disabled={idx === houses.length - 1}>
+          Next
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 /**
  * Stage 2b — the capture → review loop, both on the reactive `farm.farmData`
@@ -18,21 +59,28 @@ import { IconCheck } from "@/components/icons";
 
 export function CapturePanel() {
   const data = useQuery(api.farm.farmData);
+  const [saved, setSaved] = useState<Set<string>>(() => new Set());
   if (!data || !data.cycle || data.houses.length === 0) return null;
   return (
-    <div className="mt-6">
-      <h3 className="text-h3">Today&apos;s capture</h3>
-      <p className="mt-1 text-label text-muted">Enter what you counted this round. The cumulative maths is done for you.</p>
-      <div className="mt-4 flex flex-col gap-3">
-        {data.houses.map((h: any) => (
-          <CaptureHouseCard key={h.houseId} house={h} today={data.today} />
-        ))}
-      </div>
-    </div>
+    <HouseStepper
+      houses={data.houses}
+      saved={saved}
+      render={(house, goNext) => (
+        <CaptureHouseCard
+          key={house.houseId}
+          house={house}
+          today={data.today}
+          onSaved={() => {
+            setSaved((prev) => new Set(prev).add(house.houseId));
+            goNext();
+          }}
+        />
+      )}
+    />
   );
 }
 
-function CaptureHouseCard({ house, today }: { house: any; today: string }) {
+function CaptureHouseCard({ house, today, onSaved }: { house: any; today: string; onSaved?: () => void }) {
   const submit = useMutation(api.writes.submitDailyUpdate);
   const [dayM, setDayM] = useState("");
   const [nightM, setNightM] = useState("");
@@ -75,6 +123,7 @@ function CaptureHouseCard({ house, today }: { house: any; today: string }) {
       setNightM("");
       setCulls("");
       setFeed("");
+      onSaved?.();
     } catch {
       /* error toast already shown */
     } finally {
@@ -119,6 +168,93 @@ function Field({ label, value, onChange, decimal }: { label: string; value: stri
         className="h-14 rounded-[var(--radius-control)] border border-border bg-surface px-3.5 text-right font-mono text-body-l text-ink outline-none placeholder:text-hint focus-visible:border-brand-500"
       />
     </label>
+  );
+}
+
+/* -------------------------------------------------------- Supervisor: weigh-ins -- */
+
+/**
+ * Weigh-in capture — the same reactive `farm.farmData` houses, written through
+ * `writes.submitWeights`. This is what lets the contractor's Growers view show
+ * real weight-vs-Ross, FCR and EPEF for the farm (mortality alone can't).
+ */
+export function WeightsPanel() {
+  const data = useQuery(api.farm.farmData);
+  const [saved, setSaved] = useState<Set<string>>(() => new Set());
+  if (!data || !data.cycle || data.houses.length === 0) return null;
+  return (
+    <HouseStepper
+      houses={data.houses}
+      saved={saved}
+      render={(house, goNext) => (
+        <WeighHouseCard
+          key={house.houseId}
+          house={house}
+          onSaved={() => {
+            setSaved((prev) => new Set(prev).add(house.houseId));
+            goNext();
+          }}
+        />
+      )}
+    />
+  );
+}
+
+function WeighHouseCard({ house, onSaved }: { house: any; onSaved?: () => void }) {
+  const submit = useMutation(api.writes.submitWeights);
+  const day = house.dayToRecord as number;
+  const target = ross308At(day).weightG;
+  const [avg, setAvg] = useState(String(target));
+  const [adg, setAdg] = useState(String(ross308At(day).dailyGainG ?? 85));
+  const [uniformity, setUniformity] = useState("70");
+  const [pending, setPending] = useState(false);
+
+  const avgN = Number(avg) || 0;
+  const pctOfTarget = target ? Math.round((avgN / target) * 100) : 0;
+
+  async function save() {
+    setPending(true);
+    const avgWeightG = Number(avg) || 0;
+    const adgG = Number(adg) || 0;
+    const uniformityPct = Number(uniformity) || 0;
+    // Growth ratio here = weight as a fraction of the Ross objective for the day.
+    const growthRatio = target ? Number((avgWeightG / target).toFixed(2)) : 1;
+    try {
+      await notify.promise(submit({ houseId: house.houseId, day, avgWeightG, adgG, growthRatio, uniformityPct }), {
+        loading: SAVING,
+        success: () => ({
+          title: `${house.name} weighed`,
+          description: `${avgWeightG.toLocaleString()} g on day ${day} · ${pctOfTarget}% of Ross target`,
+          tone: pctOfTarget >= 98 ? "success" : "warning",
+        }),
+        error: saveFailedToast,
+      });
+      onSaved?.();
+    } catch {
+      /* error toast already shown */
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <div className="rounded-[var(--radius-card)] bg-surface p-5 shadow-card">
+      <div className="flex items-baseline justify-between">
+        <h4 className="text-h3">{house.name}</h4>
+        <span className="text-label text-muted">Day {day} · Ross target {target.toLocaleString()} g</span>
+      </div>
+      <div className="mt-4 grid grid-cols-2 gap-3">
+        <Field label="Average weight (g)" value={avg} onChange={setAvg} />
+        <Field label="Avg daily gain (g)" value={adg} onChange={setAdg} />
+        <Field label="Uniformity (%)" value={uniformity} onChange={setUniformity} />
+      </div>
+      <p className="mt-2 text-label text-muted">
+        Against Ross: <span className="font-mono text-ink">{pctOfTarget}%</span> of target
+      </p>
+      <Button type="button" size="lg" block loading={pending} affordance={IconCheck} onClick={save} className="mt-4">
+        Save weigh-in
+      </Button>
+    </div>
   );
 }
 

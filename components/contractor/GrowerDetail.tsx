@@ -1,5 +1,6 @@
-import type { GrowerDetailData } from "@/lib/view";
+import type { GrowerDetailData, SettlementView } from "@/lib/view";
 import { num, pct, grams, shortDate } from "@/lib/format";
+import { cn } from "@/lib/cn";
 import { Card, CardBody, CardEyebrow } from "@/components/ui/Card";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/Table";
@@ -21,6 +22,41 @@ function Metric({ label, value, sub }: { label: string; value: string; sub?: str
   );
 }
 
+const money = (n?: number) => (n ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 });
+
+/** Grower margin from the linked contract (revenue − chick & feed inputs, FOC-aware). */
+function SettlementCard({ s }: { s: SettlementView }) {
+  return (
+    <Card>
+      <CardBody className="space-y-4 pt-5">
+        <div className="flex items-center justify-between">
+          <CardEyebrow>Settlement{s.estimated ? " · projected" : ""}</CardEyebrow>
+          <span className="text-label text-muted">{s.focPct}% FOC</span>
+        </div>
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="text-label text-muted">Grower margin</p>
+            <p className={cn("text-data text-[1.75rem] font-medium", (s.margin ?? 0) >= 0 ? "text-status-good" : "text-status-bad")}>
+              {money(s.margin)}
+            </p>
+          </div>
+          <dl className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-label sm:grid-cols-4">
+            <Metric label="Collected" value={`${num(s.collectedKg ?? 0)} kg`} />
+            <Metric label="Revenue" value={money(s.revenue)} />
+            <Metric label="Chicks" value={`−${money(s.chickCost)}`} />
+            <Metric label="Feed" value={`−${money(s.feedCost)}`} />
+          </dl>
+        </div>
+        {s.estimated ? (
+          <p className="text-label text-muted">
+            Projected from current weight × birds remaining; finalises once collection weights are recorded.
+          </p>
+        ) : null}
+      </CardBody>
+    </Card>
+  );
+}
+
 export function GrowerDetail({ data }: { data: GrowerDetailData }) {
   return (
     <div className="mx-auto max-w-5xl space-y-8 px-4 py-8 sm:px-6">
@@ -28,10 +64,12 @@ export function GrowerDetail({ data }: { data: GrowerDetailData }) {
         back={{ href: "/app/growers", label: "Growers" }}
         eyebrow={`${data.farmCode}/0${data.cycleNo} · ${data.breed}`}
         title={data.siteName}
-        intro={`Per-house detail and trends for cycle ${data.cycleNo}, against a kill date of ${shortDate(data.killDate)}.`}
+        intro={`Per-house detail and trends for cycle ${data.cycleNo}, against a collection date of ${shortDate(data.expectedCollectionDate)}.`}
       />
 
       <SiteRollupCard rollup={data.rollup} />
+
+      {data.settlement?.contractLinked ? <SettlementCard s={data.settlement} /> : null}
 
       {/* Per-house detail + trends */}
       <section className="space-y-4">
@@ -85,7 +123,7 @@ export function GrowerDetail({ data }: { data: GrowerDetailData }) {
             {data.pastCycles.map((c) => (
               <TR key={c.cycleNo}>
                 <TD className="font-medium text-ink">Cycle {c.cycleNo}</TD>
-                <TD>{shortDate(c.killDate)}</TD>
+                <TD>{shortDate(c.expectedCollectionDate)}</TD>
                 <TD num>{grams(c.finalAvgWeightG)}</TD>
                 <TD num>{pct(c.mortalityPct)}</TD>
                 <TD num className="font-semibold text-ink">{c.epef}</TD>

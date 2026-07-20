@@ -7,9 +7,9 @@ import type { Doc, Id } from "./_generated/dataModel";
 /**
  * Writes (ROADMAP §5 — the data seam). Each mirrors a `lib/data/` write-stub,
  * but now actually persists: the daily/feed/weights capture and the attributed
- * manager corrections land in Convex, and any change invalidates `getDataset`
- * so every subscribed screen updates live. Derived flock arithmetic is the same
- * pure `dailyTotals` the capture path always used.
+ * manager corrections land in Convex, and any change invalidates the reactive
+ * queries that read them so every subscribed screen updates live. Derived flock
+ * arithmetic is the same pure `dailyTotals` the capture path always used.
  */
 
 const treatment = v.object({ name: v.string(), amount: v.number(), unit: v.string() });
@@ -130,8 +130,16 @@ export const submitFeedDelivery = mutation({
     netWeightKg: v.number(),
   },
   handler: async (ctx, input) => {
+    // Server-authoritative tenant scope: a signed-in grower can only log feed
+    // against their own farm, whatever siteId the client passed.
+    const authId = await getAuthUserId(ctx);
+    let siteId = input.siteId;
+    if (authId) {
+      const u = await ctx.db.get(authId);
+      if (u?.siteId) siteId = u.siteId as string;
+    }
     const count = (await ctx.db.query("feedDeliveries").collect()).length;
-    await ctx.db.insert("feedDeliveries", { extId: `fd${count + 1}`, ...input });
+    await ctx.db.insert("feedDeliveries", { extId: `fd${count + 1}`, ...input, siteId });
 
     const nominalKg = input.bagSizeKg * input.bagCount;
     const diffKg = nominalKg - input.netWeightKg;
@@ -331,7 +339,7 @@ export const confirmAllocation = mutation({
     if (!planned) throw new Error(`Planned batch not found: ${input.plannedBatchId}`);
 
     // Whole days from the planned placing date to today (0 = placed today).
-    const dayCount = Math.max(0, daysBetween(planned.placingDate, input.today));
+    const dayCount = Math.max(0, daysBetween(planned.placementDate, input.today));
     await ctx.db.patch(planned._id, { allocated: true });
 
     const out = [];

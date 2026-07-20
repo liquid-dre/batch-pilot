@@ -12,6 +12,7 @@
 import type {
   Amount,
   BatchProjection,
+  BenchmarkOverlay,
   BenchmarkSet,
   Batch,
   CatchingEvent,
@@ -88,6 +89,7 @@ import {
 import { ROSS_308_CURVE, ROSS_308_OVERLAY, mortalityBandPctAt, ross308At } from "./ross308";
 import { addDays, daysBetween } from "@/lib/format";
 import { dailyTotals } from "@/lib/calc";
+import { type Dataset, datasetFromMock } from "./dataset";
 import {
   DEFAULT_THRESHOLDS,
   evaluateFcr,
@@ -99,16 +101,27 @@ import {
   type PlacementMetrics,
 } from "@/lib/engine";
 
-/** Benchmark context the status engine scores against (Ross 308 + overlay). */
-const ENGINE_CTX: EngineContext = { curve: ROSS_308_CURVE, overlay: ROSS_308_OVERLAY };
+/**
+ * Benchmark context the status engine scores against. The growth curve stays
+ * code (`ROSS_308_CURVE`); the tunable surface — mortality/uniformity overlay
+ * bands + threshold overrides — comes from the tenant's `ds.benchmark` when
+ * present (a contractor's tuned set), else falls back to the Ross-308 default.
+ */
+function ctxOf(ds: Dataset): EngineContext {
+  return {
+    curve: ROSS_308_CURVE,
+    overlay: ds.benchmark?.overlay ?? ROSS_308_OVERLAY,
+    thresholds: ds.benchmark?.thresholds,
+  };
+}
 
 /** Build the engine's metric inputs for a placement from its latest figures. */
-function metricInputFor(placementId: string): PlacementMetrics | null {
-  const placement = PLACEMENTS.find((p) => p.id === placementId);
+function metricInputFor(placementId: string, ds: Dataset = datasetFromMock()): PlacementMetrics | null {
+  const placement = ds.placements.find((p) => p.id === placementId);
   if (!placement) return null;
-  const daily = DAILY_ENTRIES.filter((e) => e.placementId === placementId).sort((a, b) => a.day - b.day);
+  const daily = ds.dailyEntries.filter((e) => e.placementId === placementId).sort((a, b) => a.day - b.day);
   const latest = daily[daily.length - 1];
-  const weights = WEIGHT_ENTRIES.filter((w) => w.placementId === placementId).sort((a, b) => a.day - b.day);
+  const weights = ds.weightEntries.filter((w) => w.placementId === placementId).sort((a, b) => a.day - b.day);
   const weight = weights[weights.length - 1];
 
   let fcr: number | undefined;
@@ -126,19 +139,20 @@ function metricInputFor(placementId: string): PlacementMetrics | null {
     fcr,
     cumMortPct: latest?.cumPct,
     feedAddedPerBirdG: latest && latest.birdsRemaining ? (latest.feedAddedKg * 1000) / latest.birdsRemaining : undefined,
+    uniformityPct: weight?.uniformityPct,
   };
 }
 
 /** Engine-scored status breakdown for one house (sync core). */
-function houseDiagnostics(houseId: string): { overall: Status; metrics: MetricStatus[] } {
-  const placement = PLACEMENTS.find((p) => p.houseId === houseId);
-  const input = placement ? metricInputFor(placement.id) : null;
+function houseDiagnostics(houseId: string, ds: Dataset = datasetFromMock()): { overall: Status; metrics: MetricStatus[] } {
+  const placement = ds.placements.find((p) => p.houseId === houseId);
+  const input = placement ? metricInputFor(placement.id, ds) : null;
   if (!input) return { overall: { metric: "Status", level: "green", actualVsTarget: "No data yet" }, metrics: [] };
-  return evaluatePlacement(input, ENGINE_CTX);
+  return evaluatePlacement(input, ctxOf(ds));
 }
 
-function houseStatusSync(houseId: string): Status {
-  return houseDiagnostics(houseId).overall;
+function houseStatusSync(houseId: string, ds: Dataset = datasetFromMock()): Status {
+  return houseDiagnostics(houseId, ds).overall;
 }
 
 /** The demo "now" — the day the Nhunge cycle-85 figures were captured against. */
@@ -192,16 +206,16 @@ export function getPlacementForHouse(houseId: string): Promise<Placement | undef
 // --- Daily entries ---------------------------------------------------------
 
 /** All daily entries for a house, oldest → newest. */
-export async function getHouseDailyEntries(houseId: string): Promise<DailyEntry[]> {
-  const placement = PLACEMENTS.find((p) => p.houseId === houseId);
+export async function getHouseDailyEntries(houseId: string, ds: Dataset = datasetFromMock()): Promise<DailyEntry[]> {
+  const placement = ds.placements.find((p) => p.houseId === houseId);
   if (!placement) return [];
   return resolve(
-    DAILY_ENTRIES.filter((e) => e.placementId === placement.id).sort((a, b) => a.day - b.day),
+    ds.dailyEntries.filter((e) => e.placementId === placement.id).sort((a, b) => a.day - b.day),
   );
 }
 
-export async function getLatestDailyEntry(houseId: string): Promise<DailyEntry | undefined> {
-  const entries = await getHouseDailyEntries(houseId);
+export async function getLatestDailyEntry(houseId: string, ds: Dataset = datasetFromMock()): Promise<DailyEntry | undefined> {
+  const entries = await getHouseDailyEntries(houseId, ds);
   return entries[entries.length - 1];
 }
 
@@ -220,8 +234,9 @@ export async function getLatestWeight(houseId: string): Promise<WeightEntry | un
 
 // --- Feed / catching / benchmark -------------------------------------------
 
-export function getFeedDeliveries(siteId: string = SITE.id): Promise<FeedDelivery[]> {
-  return resolve(FEED_DELIVERIES.filter((f) => f.siteId === siteId));
+export function getFeedDeliveries(siteId?: string, ds: Dataset = datasetFromMock()): Promise<FeedDelivery[]> {
+  const sid = siteId ?? ds.site.id;
+  return resolve(ds.feedDeliveries.filter((f) => f.siteId === sid));
 }
 
 export function getCatchingEvents(batchId: string = BATCH.id): Promise<CatchingEvent[]> {
@@ -239,8 +254,8 @@ export function getHouseStatus(houseId: string): Promise<Status | undefined> {
 }
 
 /** Every house's current status, in house order. */
-export function getHouseStatuses(): Promise<{ houseId: string; status: Status }[]> {
-  return resolve(SITE.houses.map((h) => ({ houseId: h.id, status: houseStatusSync(h.id) })));
+export function getHouseStatuses(ds: Dataset = datasetFromMock()): Promise<{ houseId: string; status: Status }[]> {
+  return resolve(ds.site.houses.map((h) => ({ houseId: h.id, status: houseStatusSync(h.id, ds) })));
 }
 
 /** Full per-metric breakdown for a house (weight, mortality, FCR, feed). */
@@ -249,10 +264,10 @@ export function getHouseDiagnostics(houseId: string): Promise<{ overall: Status;
 }
 
 /** Houses needing attention (amber/red), red first — the grower alerts list. */
-export async function getAlerts(): Promise<FlockAlert[]> {
+export async function getAlerts(ds: Dataset = datasetFromMock()): Promise<FlockAlert[]> {
   const order: Record<StatusLevel, number> = { red: 0, amber: 1, green: 2 };
-  const alerts = SITE.houses
-    .map((h) => ({ houseId: h.id, houseName: h.name, status: houseStatusSync(h.id) }))
+  const alerts = ds.site.houses
+    .map((h) => ({ houseId: h.id, houseName: h.name, status: houseStatusSync(h.id, ds) }))
     .filter((a) => a.status.level !== "green");
   alerts.sort((a, b) => order[a.status.level] - order[b.status.level]);
   return resolve(alerts);
@@ -261,23 +276,23 @@ export async function getAlerts(): Promise<FlockAlert[]> {
 // --- Projection (formula-based; ROADMAP §9 — ML deferred) ------------------
 
 /**
- * Projects each house's weight to the contractor kill date from its latest
+ * Projects each house's weight to the contractor collection date from its latest
  * weigh-in and daily gain, compared to the Ross 308 objective at that age.
  * Deliberately simple and explainable: current weight + dailyGain × days left.
  */
-export async function getProjection(today: string = DEMO_TODAY): Promise<BatchProjection> {
+export async function getProjection(today: string = DEMO_TODAY, ds: Dataset = datasetFromMock()): Promise<BatchProjection> {
   const levelFor = (pct: number): StatusLevel => (pct >= 98 ? "green" : pct >= 90 ? "amber" : "red");
 
   const houses: HouseProjection[] = [];
-  for (const placement of PLACEMENTS) {
-    const house = SITE.houses.find((h) => h.id === placement.houseId);
-    const weights = WEIGHT_ENTRIES.filter((w) => w.placementId === placement.id).sort((a, b) => a.day - b.day);
+  for (const placement of ds.placements) {
+    const house = ds.site.houses.find((h) => h.id === placement.houseId);
+    const weights = ds.weightEntries.filter((w) => w.placementId === placement.id).sort((a, b) => a.day - b.day);
     const weight = weights[weights.length - 1];
     if (!house || !weight) continue;
-    const killDay = daysBetween(placement.placingDate, BATCH.killDate);
-    const daysLeft = Math.max(0, killDay - weight.day);
+    const collectionDay = daysBetween(placement.placementDate, ds.batch.expectedCollectionDate);
+    const daysLeft = Math.max(0, collectionDay - weight.day);
     const projectedWeightG = Math.round(weight.avgWeightG + weight.adgG * daysLeft);
-    const targetWeightG = ross308At(killDay).weightG;
+    const targetWeightG = ross308At(collectionDay).weightG;
     const pctOfTarget = Math.round((projectedWeightG / targetWeightG) * 100);
     houses.push({
       houseId: house.id,
@@ -285,7 +300,7 @@ export async function getProjection(today: string = DEMO_TODAY): Promise<BatchPr
       weightDay: weight.day,
       currentWeightG: weight.avgWeightG,
       dailyGainG: weight.adgG,
-      killDay,
+      collectionDay,
       projectedWeightG,
       targetWeightG,
       pctOfTarget,
@@ -304,12 +319,12 @@ export async function getProjection(today: string = DEMO_TODAY): Promise<BatchPr
   const under = 100 - pctOfTarget;
   const verdict =
     level === "green"
-      ? "On track to meet the target weight by the kill date."
-      : `Projected about ${under}% under target weight by the kill date. Lift feed intake to close the gap.`;
+      ? "On track to meet the target weight by the collection date."
+      : `Projected about ${under}% under target weight by the collection date. Lift feed intake to close the gap.`;
 
   return resolve({
-    killDate: BATCH.killDate,
-    daysToKill: daysBetween(today, BATCH.killDate),
+    expectedCollectionDate: ds.batch.expectedCollectionDate,
+    daysToCollection: daysBetween(today, ds.batch.expectedCollectionDate),
     projectedAvgWeightG,
     targetAvgWeightG,
     pctOfTarget,
@@ -330,13 +345,13 @@ export interface SiteRollup {
 }
 
 /** Site average across all houses' latest entries (the block growers hand-tally). */
-export async function getSiteRollup(): Promise<SiteRollup> {
+export async function getSiteRollup(ds: Dataset = datasetFromMock()): Promise<SiteRollup> {
   let placed = 0;
   let remaining = 0;
   let cumMort = 0;
-  for (const placement of PLACEMENTS) {
+  for (const placement of ds.placements) {
     placed += placement.placedCount;
-    const entries = DAILY_ENTRIES.filter((e) => e.placementId === placement.id).sort((a, b) => a.day - b.day);
+    const entries = ds.dailyEntries.filter((e) => e.placementId === placement.id).sort((a, b) => a.day - b.day);
     const latest = entries[entries.length - 1];
     if (latest) {
       remaining += latest.birdsRemaining;
@@ -344,7 +359,7 @@ export async function getSiteRollup(): Promise<SiteRollup> {
     }
   }
   const mortPct = placed ? Number(((cumMort / placed) * 100).toFixed(2)) : 0;
-  return resolve({ placed, remaining, cumMort, mortPct, houseCount: PLACEMENTS.length });
+  return resolve({ placed, remaining, cumMort, mortPct, houseCount: ds.placements.length });
 }
 
 // --- Supervisor capture (the single, minimal capture screen) ---------------
@@ -357,12 +372,12 @@ export async function getSiteRollup(): Promise<SiteRollup> {
  * vaccination day for the house. Computed server-side so the calm capture
  * screen stays a thin client. Becomes a Convex query behind the same signature.
  */
-export async function getSupervisorCapture(): Promise<SupervisorCaptureData> {
+export async function getSupervisorCapture(ds: Dataset = datasetFromMock()): Promise<SupervisorCaptureData> {
   const houses: CaptureHouse[] = [];
-  for (const house of SITE.houses) {
-    const placement = PLACEMENTS.find((p) => p.houseId === house.id);
+  for (const house of ds.site.houses) {
+    const placement = ds.placements.find((p) => p.houseId === house.id);
     if (!placement) continue;
-    const entries = DAILY_ENTRIES.filter((e) => e.placementId === placement.id).sort((a, b) => a.day - b.day);
+    const entries = ds.dailyEntries.filter((e) => e.placementId === placement.id).sort((a, b) => a.day - b.day);
     const latest = entries[entries.length - 1];
     const day = (latest?.day ?? 0) + 1;
     const placed = placement.placedCount;
@@ -380,14 +395,14 @@ export async function getSupervisorCapture(): Promise<SupervisorCaptureData> {
       lastFeedKg: latest?.feedAddedKg ?? 0,
       rossTargetWeightG: ross.weightG,
       rossIntakeG: ross.dailyIntakeG,
-      standardCumMortPct: Number(mortalityBandPctAt(day).toFixed(2)),
+      standardCumMortPct: Number(mortalityBandPctAt(day, ctxOf(ds).overlay).toFixed(2)),
       vaccination: vac ? { vaccines: vac.vaccines, method: vac.method } : undefined,
     });
   }
   return resolve({
-    siteName: SITE.name,
-    cycleNo: BATCH.cycleNo,
-    breed: BATCH.breed,
+    siteName: ds.site.name,
+    cycleNo: ds.batch.cycleNo,
+    breed: ds.batch.breed,
     today: DEMO_TODAY,
     houses,
   });
@@ -518,7 +533,7 @@ export async function submitWeights(input: WeightsInput): Promise<WeightsResult>
   });
 }
 
-// --- Manager corrections (maker-checker; ROADMAP §5/§9 — Clerk seam) --------
+// --- Manager corrections (maker-checker; ROADMAP §5/§9 — Convex Auth seam) --
 
 /** Plain labels for the audit trail and the edit panel. */
 const EDITABLE_FIELD_LABELS: Record<EditableField, string> = {
@@ -532,7 +547,7 @@ const EDITABLE_FIELD_LABELS: Record<EditableField, string> = {
 export interface ManagerEditInput {
   /** The DailyEntry id being corrected. */
   entityId: string;
-  /** Who is making the correction (the auth-stub manager today → Clerk later). */
+  /** Who is making the correction (the signed-in manager; the mock manager in demo). */
   editor: { id: string; name: string; role: Role };
   /** Only the fields that changed; `null` clears an optional field (temp). */
   changes: Partial<Record<EditableField, number | null>>;
@@ -624,8 +639,8 @@ export async function submitManagerEdit(input: ManagerEditInput): Promise<Manage
 }
 
 /** The audit trail — all corrections, or those for one entry, newest first. */
-export function getEditLog(entityId?: string): Promise<EditRecord[]> {
-  const rows = entityId ? EDIT_LOG.filter((r) => r.entityId === entityId) : [...EDIT_LOG];
+export function getEditLog(entityId?: string, ds: Dataset = datasetFromMock()): Promise<EditRecord[]> {
+  const rows = entityId ? ds.editLog.filter((r) => r.entityId === entityId) : [...ds.editLog];
   rows.sort((a, b) => (a.editedAt < b.editedAt ? 1 : a.editedAt > b.editedAt ? -1 : 0));
   return resolve(rows);
 }
@@ -693,15 +708,15 @@ export async function getPortfolio(today: string = DEMO_TODAY): Promise<Portfoli
   const projection = await getProjection(today);
 
   // Latest date any house is projected to reach the Ross target weight.
-  let projectedReadyDate = BATCH.killDate;
+  let projectedReadyDate = BATCH.expectedCollectionDate;
   for (const placement of PLACEMENTS) {
     const weights = WEIGHT_ENTRIES.filter((w) => w.placementId === placement.id).sort((a, b) => a.day - b.day);
     const weight = weights[weights.length - 1];
     if (!weight) continue;
-    const killDay = daysBetween(placement.placingDate, BATCH.killDate);
-    const target = ross308At(killDay).weightG;
+    const collectionDay = daysBetween(placement.placementDate, BATCH.expectedCollectionDate);
+    const target = ross308At(collectionDay).weightG;
     const daysToTarget = weight.adgG > 0 ? Math.ceil((target - weight.avgWeightG) / weight.adgG) : 0;
-    const readyDate = addDays(placement.placingDate, weight.day + Math.max(0, daysToTarget));
+    const readyDate = addDays(placement.placementDate, weight.day + Math.max(0, daysToTarget));
     if (daysBetween(projectedReadyDate, readyDate) > 0) projectedReadyDate = readyDate;
   }
 
@@ -714,8 +729,8 @@ export async function getPortfolio(today: string = DEMO_TODAY): Promise<Portfoli
       siteName: SITE.name,
       farmCode: SITE.farmCode,
       cycleNo: BATCH.cycleNo,
-      killDate: BATCH.killDate,
-      daysToKill: projection.daysToKill,
+      expectedCollectionDate: BATCH.expectedCollectionDate,
+      daysToCollection: projection.daysToCollection,
       houseCount: rows.length,
       birdsOnSite,
       avgMortPct,
@@ -760,7 +775,7 @@ export async function getGrowerDetail(): Promise<GrowerDetailData> {
     farmCode: SITE.farmCode,
     cycleNo: BATCH.cycleNo,
     breed: BATCH.breed,
-    killDate: BATCH.killDate,
+    expectedCollectionDate: BATCH.expectedCollectionDate,
     rollup,
     houses,
     pastCycles: PAST_CYCLES,
@@ -843,7 +858,7 @@ export interface AllocatedHouse {
   houseId: string;
   houseName: string;
   count: number;
-  /** House age on `placingDate` relative to today (0 = placed today). */
+  /** House age on `placementDate` relative to today (0 = placed today). */
   dayCount: number;
 }
 
@@ -857,7 +872,7 @@ export async function confirmAllocation(
   allocations: { houseId: string; count: number }[],
   today: string = DEMO_TODAY,
 ): Promise<AllocatedHouse[]> {
-  const dayCount = Math.max(0, daysBetween(PLANNED_BATCH.placingDate, today));
+  const dayCount = Math.max(0, daysBetween(PLANNED_BATCH.placementDate, today));
   PLANNED_BATCH.allocated = true;
   return resolve(
     allocations
@@ -888,6 +903,7 @@ function assembleBatchHistory(
   daily: DailyEntry[],
   weights: WeightEntry[],
   nameOf: (houseId: string) => string,
+  overlay: BenchmarkOverlay = ROSS_308_OVERLAY,
 ): BatchHistory {
   const maxDay = Math.max(
     ...placements.map((p) => p.dayCount),
@@ -1067,22 +1083,23 @@ function assembleBatchHistory(
     houses: prepared.map((ph) => ph.series),
     batch,
     ross,
-    mortalityBand: ROSS_308_OVERLAY.mortalityBand,
+    mortalityBand: overlay.mortalityBand,
   };
 }
 
 /** The current batch's full day-by-day history (real captured data). */
-export function getBatchHistory(): Promise<BatchHistory> {
+export function getBatchHistory(ds: Dataset = datasetFromMock()): Promise<BatchHistory> {
   return resolve(
-    assembleBatchHistory(PLACEMENTS, DAILY_ENTRIES, WEIGHT_ENTRIES, (id) =>
-      SITE.houses.find((h) => h.id === id)?.name ?? id,
+    assembleBatchHistory(ds.placements, ds.dailyEntries, ds.weightEntries, (id) =>
+      ds.site.houses.find((h) => h.id === id)?.name ?? id,
+      ctxOf(ds).overlay,
     ),
   );
 }
 
 /** ISO date for a placement's day-of-cycle (placing date = day 0). */
 function dateForDay(p: Placement, day: number): string {
-  return addDays(p.placingDate, day);
+  return addDays(p.placementDate, day);
 }
 
 // ===========================================================================
@@ -1106,7 +1123,7 @@ function projectDaysToTarget(series: ComparePoint[], target: number, finalDay: n
 
 /** Build a closed batch's day-of-cycle curve toward its documented final result. */
 function genComparable(seed: (typeof HISTORICAL_BATCHES)[number]): ComparableBatch {
-  const killDay = daysBetween(seed.placingDate, seed.killDate);
+  const collectionDay = daysBetween(seed.placementDate, seed.expectedCollectionDate);
   const finalRossW = rossOf(seed.finalDay).weightG || seed.finalWeightG;
   const finalFactor = seed.finalWeightG / finalRossW;
   const k = 2.4;
@@ -1133,7 +1150,7 @@ function genComparable(seed: (typeof HISTORICAL_BATCHES)[number]): ComparableBat
   last.cumPct = seed.finalCumMortPct;
   last.fcr = seed.finalFcr;
 
-  const targetWeightG = rossOf(killDay).weightG;
+  const targetWeightG = rossOf(collectionDay).weightG;
   const daysToTarget = projectDaysToTarget(series, targetWeightG, seed.finalDay);
 
   return {
@@ -1141,9 +1158,9 @@ function genComparable(seed: (typeof HISTORICAL_BATCHES)[number]): ComparableBat
     cycleNo: seed.cycleNo,
     label: `Cycle ${seed.cycleNo}`,
     status: "closed",
-    placingDate: seed.placingDate,
-    killDate: seed.killDate,
-    killDay,
+    placementDate: seed.placementDate,
+    expectedCollectionDate: seed.expectedCollectionDate,
+    collectionDay,
     finalDay: seed.finalDay,
     series,
     weightG: seed.finalWeightG,
@@ -1152,7 +1169,7 @@ function genComparable(seed: (typeof HISTORICAL_BATCHES)[number]): ComparableBat
     fcr: seed.finalFcr,
     targetWeightG,
     daysToTarget,
-    readyVsKillDays: daysToTarget - killDay,
+    readyVsCollectionDays: daysToTarget - collectionDay,
   };
 }
 
@@ -1161,10 +1178,10 @@ function genComparable(seed: (typeof HISTORICAL_BATCHES)[number]): ComparableBat
  * day-by-day history) plus the closed historical batches (generated curves),
  * each aligned by day of cycle, with a summary of key results.
  */
-export async function getComparableBatches(): Promise<CompareData> {
-  const history = await getBatchHistory();
-  const placing = PLACEMENTS.reduce((min, p) => (p.placingDate < min ? p.placingDate : min), PLACEMENTS[0].placingDate);
-  const killDay = daysBetween(placing, BATCH.killDate);
+export async function getComparableBatches(ds: Dataset = datasetFromMock()): Promise<CompareData> {
+  const history = await getBatchHistory(ds);
+  const placing = ds.placements.reduce((min, p) => (p.placementDate < min ? p.placementDate : min), ds.placements[0]?.placementDate ?? ds.batch.expectedCollectionDate);
+  const collectionDay = daysBetween(placing, ds.batch.expectedCollectionDate);
 
   const series: ComparePoint[] = history.batch.map((r) => ({
     day: r.day,
@@ -1176,17 +1193,17 @@ export async function getComparableBatches(): Promise<CompareData> {
   }));
   const lastWeighed = [...history.batch].reverse().find((r) => r.avgWeightG != null);
   const lastRow = history.batch[history.batch.length - 1];
-  const targetWeightG = rossOf(killDay).weightG;
+  const targetWeightG = rossOf(collectionDay).weightG;
   const daysToTarget = projectDaysToTarget(series, targetWeightG, history.maxDay);
 
   const current: ComparableBatch = {
-    id: BATCH.id,
-    cycleNo: BATCH.cycleNo,
-    label: `Cycle ${BATCH.cycleNo}`,
+    id: ds.batch.id,
+    cycleNo: ds.batch.cycleNo,
+    label: `Cycle ${ds.batch.cycleNo}`,
     status: "current",
-    placingDate: placing,
-    killDate: BATCH.killDate,
-    killDay,
+    placementDate: placing,
+    expectedCollectionDate: ds.batch.expectedCollectionDate,
+    collectionDay,
     finalDay: history.maxDay,
     series,
     weightG: lastWeighed?.avgWeightG ?? 0,
@@ -1195,11 +1212,11 @@ export async function getComparableBatches(): Promise<CompareData> {
     fcr: lastWeighed?.fcr ?? 0,
     targetWeightG,
     daysToTarget,
-    readyVsKillDays: daysToTarget - killDay,
+    readyVsCollectionDays: daysToTarget - collectionDay,
   };
 
-  const batches = [current, ...HISTORICAL_BATCHES.map(genComparable)].sort((a, b) => b.cycleNo - a.cycleNo);
-  const maxDay = Math.max(...batches.map((b) => Math.max(b.finalDay, b.killDay)));
+  const batches = [current, ...ds.historicalBatches.map(genComparable)].sort((a, b) => b.cycleNo - a.cycleNo);
+  const maxDay = Math.max(...batches.map((b) => Math.max(b.finalDay, b.collectionDay)));
   const ross = Array.from({ length: maxDay }, (_, i) => {
     const day = i + 1;
     const pt = rossOf(day);
@@ -1247,7 +1264,7 @@ function genClosedBatchData(seed: HistoricalBatchSeed): GeneratedBatch {
     const hCumPct = Number(Math.max(0, seed.finalCumMortPct * (1 + centered * 0.08)).toFixed(2));
     const hFinalWeight = Math.round(seed.finalWeightG * (1 + centered * 0.006));
 
-    placements.push({ id: placementId, batchId, houseId, placedCount: placed, placingDate: seed.placingDate, dayCount: finalDay });
+    placements.push({ id: placementId, batchId, houseId, placedCount: placed, placementDate: seed.placementDate, dayCount: finalDay });
 
     // Front-loaded daily mortality summing to the house's cumulative %.
     const { mortSeries } = genHouseDaily(placed, finalDay, hCumPct);
@@ -1262,7 +1279,7 @@ function genClosedBatchData(seed: HistoricalBatchSeed): GeneratedBatch {
       daily.push({
         id: `${placementId}-d${d}`,
         placementId,
-        date: addDays(seed.placingDate, d),
+        date: addDays(seed.placementDate, d),
         day: d,
         dayMortality: mort - nightMortality,
         nightMortality,
@@ -1314,17 +1331,17 @@ function vaccinesUpTo(finalDay: number): string[] {
  * the real captured data; a closed batch is assembled from its generated
  * records. Returns null for an unknown id (the detail route 404s).
  */
-export async function getArchivedBatchHistory(batchId: string): Promise<BatchHistory | null> {
-  if (batchId === BATCH.id) return getBatchHistory();
-  const seed = HISTORICAL_BATCHES.find((b) => `batch_c${b.cycleNo}` === batchId);
+export async function getArchivedBatchHistory(batchId: string, ds: Dataset = datasetFromMock()): Promise<BatchHistory | null> {
+  if (ds.batch && batchId === ds.batch.id) return getBatchHistory(ds);
+  const seed = ds.historicalBatches.find((b) => `batch_c${b.cycleNo}` === batchId);
   if (!seed) return resolve(null);
   const g = genClosedBatchData(seed);
   return resolve(assembleBatchHistory(g.placements, g.daily, g.weights, g.nameOf));
 }
 
 /** The live batch as an archive row (real captured totals + estimated EPEF). */
-async function currentArchiveRow(): Promise<BatchArchiveRow> {
-  const [history, compare, rollup] = await Promise.all([getBatchHistory(), getComparableBatches(), getSiteRollup()]);
+async function currentArchiveRow(ds: Dataset = datasetFromMock()): Promise<BatchArchiveRow> {
+  const [history, compare, rollup] = await Promise.all([getBatchHistory(ds), getComparableBatches(ds), getSiteRollup(ds)]);
   const cb = compare.batches.find((b) => b.status === "current")!;
   const finalDay = history.maxDay;
   const feedUsedKg = history.batch.reduce((s, r) => s + r.feedAddedKg, 0);
@@ -1332,12 +1349,12 @@ async function currentArchiveRow(): Promise<BatchArchiveRow> {
   const epef = cb.fcr && finalDay ? Math.round(((livability * (cb.weightG / 1000)) / (finalDay * cb.fcr)) * 100) : 0;
   const vaccineNames = vaccinesUpTo(finalDay);
   return {
-    id: BATCH.id,
-    cycleNo: BATCH.cycleNo,
-    title: `Batch ${BATCH.cycleNo}`,
+    id: ds.batch.id,
+    cycleNo: ds.batch.cycleNo,
+    title: `Batch ${ds.batch.cycleNo}`,
     status: "current",
-    placingDate: cb.placingDate,
-    killDate: BATCH.killDate,
+    placementDate: cb.placementDate,
+    expectedCollectionDate: ds.batch.expectedCollectionDate,
     growOutDays: finalDay,
     placed: rollup.placed,
     totalMortality: rollup.cumMort,
@@ -1349,7 +1366,7 @@ async function currentArchiveRow(): Promise<BatchArchiveRow> {
     feedUsedKg,
     vaccineCount: vaccineNames.length,
     vaccineNames,
-    readyVsKillDays: cb.readyVsKillDays,
+    readyVsCollectionDays: cb.readyVsCollectionDays,
     level: growerLevel(cb.vsRossPct),
   };
 }
@@ -1367,8 +1384,8 @@ function closedArchiveRow(seed: HistoricalBatchSeed): BatchArchiveRow {
     cycleNo: seed.cycleNo,
     title: `Batch ${seed.cycleNo}`,
     status: "closed",
-    placingDate: seed.placingDate,
-    killDate: seed.killDate,
+    placementDate: seed.placementDate,
+    expectedCollectionDate: seed.expectedCollectionDate,
     growOutDays: seed.finalDay,
     placed,
     totalMortality,
@@ -1380,22 +1397,22 @@ function closedArchiveRow(seed: HistoricalBatchSeed): BatchArchiveRow {
     feedUsedKg,
     vaccineCount: vaccineNames.length,
     vaccineNames,
-    readyVsKillDays: comp.readyVsKillDays,
+    readyVsCollectionDays: comp.readyVsCollectionDays,
     level: growerLevel(comp.vsRossPct),
   };
 }
 
 /** Every batch on the site for the Previous Batches archive (newest first). */
-export async function getBatchArchive(): Promise<BatchArchiveData> {
-  const current = await currentArchiveRow();
-  const closed = HISTORICAL_BATCHES.map(closedArchiveRow);
+export async function getBatchArchive(ds: Dataset = datasetFromMock()): Promise<BatchArchiveData> {
+  const current = await currentArchiveRow(ds);
+  const closed = ds.historicalBatches.map(closedArchiveRow);
   const rows = [current, ...closed].sort((a, b) => b.cycleNo - a.cycleNo);
   return resolve({ rows });
 }
 
 /** One archive row by batch id (for the detail page header + highlights). */
-export async function getBatchArchiveRow(id: string): Promise<BatchArchiveRow | null> {
-  const { rows } = await getBatchArchive();
+export async function getBatchArchiveRow(id: string, ds: Dataset = datasetFromMock()): Promise<BatchArchiveRow | null> {
+  const { rows } = await getBatchArchive(ds);
   return resolve(rows.find((r) => r.id === id) ?? null);
 }
 
@@ -1466,7 +1483,7 @@ function genGrowerPerf(profile: GrowerProfile): GrowerPerf {
     cycleNo: profile.cycleNo,
     status: profile.status,
     day: profile.age,
-    killDay: profile.growOut,
+    collectionDay: profile.growOut,
     placed,
     remaining,
     epef,
@@ -1474,7 +1491,7 @@ function genGrowerPerf(profile: GrowerProfile): GrowerPerf {
     cumMortPct: profile.cumMortPct,
     weightG,
     vsRossPct,
-    readyVsKillDays: daysToTarget - profile.growOut,
+    readyVsCollectionDays: daysToTarget - profile.growOut,
     level: growerLevel(vsRossPct),
     trend: genGrowerTrend(profile),
   };
@@ -1493,7 +1510,7 @@ async function murrayPerf(): Promise<GrowerPerf> {
     cycleNo: BATCH.cycleNo,
     status: "active",
     day: cb.finalDay,
-    killDay: cb.killDay,
+    collectionDay: cb.collectionDay,
     placed: rollup.placed,
     remaining: rollup.remaining,
     epef,
@@ -1501,7 +1518,7 @@ async function murrayPerf(): Promise<GrowerPerf> {
     cumMortPct: cb.cumMortPct,
     weightG: cb.weightG,
     vsRossPct: cb.vsRossPct,
-    readyVsKillDays: cb.readyVsKillDays,
+    readyVsCollectionDays: cb.readyVsCollectionDays,
     level: growerLevel(cb.vsRossPct),
     trend: cb.series.map((p) => ({
       day: p.day,
@@ -1537,7 +1554,7 @@ function genGrowerPastCycles(profile: GrowerProfile, today: string) {
     const mortalityPct = Number((profile.cumMortPct * (0.95 + 0.05 * n)).toFixed(1));
     const liv = 100 - mortalityPct;
     const epef = Math.round((liv * (finalAvgWeightG / 1000)) / (35 * profile.fcr) * 100);
-    return { cycleNo, killDate: addDays(today, -45 * n), finalAvgWeightG, mortalityPct, epef };
+    return { cycleNo, expectedCollectionDate: addDays(today, -45 * n), finalAvgWeightG, mortalityPct, epef };
   });
 }
 
@@ -1587,7 +1604,7 @@ export async function getGrowerDetailById(siteId: string): Promise<GrowerDetailD
     farmCode: profile.farmCode,
     cycleNo: profile.cycleNo,
     breed: "Ross 308",
-    killDate: addDays(placing, profile.growOut),
+    expectedCollectionDate: addDays(placing, profile.growOut),
     rollup: {
       placed: placedTotal,
       remaining: remainingTotal,
@@ -1611,11 +1628,11 @@ function pctFix(n: number): string {
  * its shaded green/amber/red bands. Band fractions come from the engine
  * thresholds so the chart and the status engine stay in lockstep.
  */
-export async function getWeightBandData(): Promise<WeightBandData> {
+export async function getWeightBandData(ds: Dataset = datasetFromMock()): Promise<WeightBandData> {
   const maxDay = 35;
-  const houses: WeightBandData["houses"] = PLACEMENTS.map((p) => {
-    const house = SITE.houses.find((h) => h.id === p.houseId);
-    const points = WEIGHT_ENTRIES.filter((w) => w.placementId === p.id)
+  const houses: WeightBandData["houses"] = ds.placements.map((p) => {
+    const house = ds.site.houses.find((h) => h.id === p.houseId);
+    const points = ds.weightEntries.filter((w) => w.placementId === p.id)
       .sort((a, b) => a.day - b.day)
       .map((w) => ({ day: w.day, weightG: w.avgWeightG }));
     return { houseId: p.houseId, houseName: house?.name ?? p.houseId, points };
@@ -1624,13 +1641,14 @@ export async function getWeightBandData(): Promise<WeightBandData> {
     const day = i + 1;
     return { day, weightG: ROSS_308_CURVE[day]?.weightG ?? 0 };
   });
+  const weightBands = (ctxOf(ds).thresholds ?? DEFAULT_THRESHOLDS).weight;
   return resolve({
     ross,
     houses,
     maxDay,
     yMax: 2400,
-    greenFrac: DEFAULT_THRESHOLDS.weight.green,
-    amberFrac: DEFAULT_THRESHOLDS.weight.amber,
+    greenFrac: weightBands.green,
+    amberFrac: weightBands.amber,
   });
 }
 
@@ -1639,8 +1657,8 @@ export async function getWeightBandData(): Promise<WeightBandData> {
 const mean = (xs: number[]): number => (xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : 0);
 
 /** Cumulative feed added per (surviving) bird for a placement, grams. */
-function cumFeedPerBirdG(placementId: string): number | undefined {
-  const daily = DAILY_ENTRIES.filter((e) => e.placementId === placementId).sort((a, b) => a.day - b.day);
+function cumFeedPerBirdG(placementId: string, ds: Dataset = datasetFromMock()): number | undefined {
+  const daily = ds.dailyEntries.filter((e) => e.placementId === placementId).sort((a, b) => a.day - b.day);
   const latest = daily[daily.length - 1];
   if (!latest || !latest.birdsRemaining) return undefined;
   const cumFeedKg = daily.reduce((s, e) => s + e.feedAddedKg, 0);
@@ -1654,20 +1672,21 @@ function cumFeedPerBirdG(placementId: string): number | undefined {
  * bird vs the Ross cumulative intake — an estimate (added ≠ consumed), banded
  * symmetrically around the guideline rather than via the refill flag.
  */
-export async function getDashboardMetrics(): Promise<DashboardMetric[]> {
-  const inputs = PLACEMENTS.map((p) => metricInputFor(p.id)).filter((x): x is PlacementMetrics => x != null);
-  const rollup = await getSiteRollup();
+export async function getDashboardMetrics(ds: Dataset = datasetFromMock()): Promise<DashboardMetric[]> {
+  const inputs = ds.placements.map((p) => metricInputFor(p.id, ds)).filter((x): x is PlacementMetrics => x != null);
+  const rollup = await getSiteRollup(ds);
 
   const weightG = mean(inputs.map((i) => i.weightG).filter((x): x is number => x != null));
   const weightDay = Math.round(mean(inputs.map((i) => i.weightDay).filter((x): x is number => x != null)));
   const fcr = mean(inputs.map((i) => i.fcr).filter((x): x is number => x != null));
   const siteDay = Math.round(mean(inputs.map((i) => i.day)));
   const cumMortPct = rollup.mortPct;
-  const feedPerBird = mean(PLACEMENTS.map((p) => cumFeedPerBirdG(p.id)).filter((x): x is number => x != null));
+  const feedPerBird = mean(ds.placements.map((p) => cumFeedPerBirdG(p.id, ds)).filter((x): x is number => x != null));
 
-  const weight = evaluateWeight(weightDay, weightG, ENGINE_CTX);
-  const mortality = evaluateMortality(siteDay, cumMortPct, ENGINE_CTX);
-  const fcrStatus = evaluateFcr(weightDay, fcr, ENGINE_CTX);
+  const ctx = ctxOf(ds);
+  const weight = evaluateWeight(weightDay, weightG, ctx);
+  const mortality = evaluateMortality(siteDay, cumMortPct, ctx);
+  const fcrStatus = evaluateFcr(weightDay, fcr, ctx);
 
   const metrics: DashboardMetric[] = [
     {
@@ -1686,7 +1705,7 @@ export async function getDashboardMetrics(): Promise<DashboardMetric[]> {
       label: "Mortality",
       level: mortality.level,
       actual: Number(cumMortPct.toFixed(2)),
-      target: Number(mortalityBandPctAt(siteDay).toFixed(2)),
+      target: Number(mortalityBandPctAt(siteDay, ctx.overlay).toFixed(2)),
       unit: "pp",
       targetWord: "band",
       cause: mortality.cause,
@@ -1726,10 +1745,10 @@ function feedLevel(actual: number, target: number): StatusLevel {
 }
 
 /** Yesterday's captured round per house (the mock's latest entry). */
-export async function getYesterdayEntries(): Promise<YesterdayEntry[]> {
+export async function getYesterdayEntries(ds: Dataset = datasetFromMock()): Promise<YesterdayEntry[]> {
   const out: YesterdayEntry[] = [];
-  for (const house of SITE.houses) {
-    const latest = await getLatestDailyEntry(house.id);
+  for (const house of ds.site.houses) {
+    const latest = await getLatestDailyEntry(house.id, ds);
     if (!latest) continue;
     out.push({
       houseId: house.id,
@@ -1747,24 +1766,24 @@ export async function getYesterdayEntries(): Promise<YesterdayEntry[]> {
 }
 
 /** Actual weigh-ins + a projected forward line (current + ADG × days) to the kill day. */
-export async function getWeightProjection(): Promise<WeightProjection> {
-  const proj = await getProjection();
-  const killDay = proj.houses.length ? Math.max(...proj.houses.map((h) => h.killDay)) : 35;
+export async function getWeightProjection(ds: Dataset = datasetFromMock(), today: string = DEMO_TODAY): Promise<WeightProjection> {
+  const proj = await getProjection(today, ds);
+  const collectionDay = proj.houses.length ? Math.max(...proj.houses.map((h) => h.collectionDay)) : 35;
 
-  const ross: ProjectionPoint[] = Array.from({ length: killDay + 1 }, (_, day) => ({
+  const ross: ProjectionPoint[] = Array.from({ length: collectionDay + 1 }, (_, day) => ({
     day,
     weightG: ross308At(day).weightG,
   }));
 
   const houseLines: ProjectionLine[] = proj.houses.map((h) => {
-    const placement = PLACEMENTS.find((p) => p.houseId === h.houseId);
+    const placement = ds.placements.find((p) => p.houseId === h.houseId);
     const actual: ProjectionPoint[] = placement
-      ? WEIGHT_ENTRIES.filter((w) => w.placementId === placement.id)
+      ? ds.weightEntries.filter((w) => w.placementId === placement.id)
           .sort((a, b) => a.day - b.day)
           .map((w) => ({ day: w.day, weightG: w.avgWeightG }))
       : [{ day: h.weightDay, weightG: h.currentWeightG }];
     const projected: ProjectionPoint[] = [];
-    for (let d = h.weightDay; d <= h.killDay; d++) {
+    for (let d = h.weightDay; d <= h.collectionDay; d++) {
       projected.push({ day: d, weightG: Math.round(h.currentWeightG + h.dailyGainG * (d - h.weightDay)) });
     }
     return { houseId: h.houseId, name: h.houseName, actual, projected };
@@ -1781,55 +1800,56 @@ export async function getWeightProjection(): Promise<WeightProjection> {
   const siteCurrent = Math.round(mean(proj.houses.map((h) => h.currentWeightG)));
   const siteAdg = mean(proj.houses.map((h) => h.dailyGainG));
   const siteProjected: ProjectionPoint[] = [];
-  for (let d = siteWeighDay; d <= killDay; d++) {
+  for (let d = siteWeighDay; d <= collectionDay; d++) {
     siteProjected.push({ day: d, weightG: Math.round(siteCurrent + siteAdg * (d - siteWeighDay)) });
   }
 
-  const yMax = Math.ceil((ross308At(killDay).weightG * 1.05) / 500) * 500;
+  const yMax = Math.ceil((ross308At(collectionDay).weightG * 1.05) / 500) * 500;
+  const projWeightBands = (ctxOf(ds).thresholds ?? DEFAULT_THRESHOLDS).weight;
   return resolve({
     ross,
-    killDay,
+    collectionDay,
     yMax,
-    greenFrac: DEFAULT_THRESHOLDS.weight.green,
-    amberFrac: DEFAULT_THRESHOLDS.weight.amber,
+    greenFrac: projWeightBands.green,
+    amberFrac: projWeightBands.amber,
     site: { name: "Site average", actual: siteActual, projected: siteProjected },
     houses: houseLines,
   });
 }
 
 /** Cycle info for the dashboard header (day-of-cycle = latest captured + 1, per-house range). */
-export async function getDashboardCycleInfo(): Promise<DashboardCycleInfo> {
-  const proj = await getProjection();
+export async function getDashboardCycleInfo(ds: Dataset = datasetFromMock(), today: string = DEMO_TODAY): Promise<DashboardCycleInfo> {
+  const proj = await getProjection(today, ds);
   const days: number[] = [];
-  for (const house of SITE.houses) {
-    const latest = await getLatestDailyEntry(house.id);
+  for (const house of ds.site.houses) {
+    const latest = await getLatestDailyEntry(house.id, ds);
     days.push((latest?.day ?? 0) + 1);
   }
-  const placingDate = PLACEMENTS.reduce(
-    (min, p) => (p.placingDate < min ? p.placingDate : min),
-    PLACEMENTS[0]?.placingDate ?? BATCH.killDate,
+  const placementDate = ds.placements.reduce(
+    (min, p) => (p.placementDate < min ? p.placementDate : min),
+    ds.placements[0]?.placementDate ?? ds.batch.expectedCollectionDate,
   );
   return resolve({
-    siteName: SITE.name,
-    cycleNo: BATCH.cycleNo,
-    breed: BATCH.breed,
-    today: DEMO_TODAY,
+    siteName: ds.site.name,
+    cycleNo: ds.batch.cycleNo,
+    breed: ds.batch.breed,
+    today,
     dayLow: days.length ? Math.min(...days) : 0,
     dayHigh: days.length ? Math.max(...days) : 0,
-    placingDate,
-    killDate: BATCH.killDate,
-    daysToKill: proj.daysToKill,
-    houseCount: SITE.houses.length,
+    placementDate,
+    expectedCollectionDate: ds.batch.expectedCollectionDate,
+    daysToCollection: proj.daysToCollection,
+    houseCount: ds.site.houses.length,
   });
 }
 
 /** The whole dashboard bundle — one call feeds both role dashboards. */
-export async function getDashboardView(): Promise<DashboardView> {
+export async function getDashboardView(ds: Dataset = datasetFromMock(), today: string = DEMO_TODAY): Promise<DashboardView> {
   const [cycle, metrics, yesterday, projection] = await Promise.all([
-    getDashboardCycleInfo(),
-    getDashboardMetrics(),
-    getYesterdayEntries(),
-    getWeightProjection(),
+    getDashboardCycleInfo(ds, today),
+    getDashboardMetrics(ds),
+    getYesterdayEntries(ds),
+    getWeightProjection(ds, today),
   ]);
   return { cycle, metrics, yesterday, projection };
 }

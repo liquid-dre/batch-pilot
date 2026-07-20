@@ -77,7 +77,7 @@
       "contractorId": "ct_irvines",
       "cycleNo": 85,
       "breed": "Ross 308",
-      "killDate": "2026-06-16",
+      "expectedCollectionDate": "2026-06-16",
       "focPct": 1,
       "contractId": "contract_zbnh_085"
     }
@@ -89,8 +89,8 @@
       "contractorId": "ct_irvines",
       "cycleNo": 86,
       "breed": "Ross 308",
-      "placingDate": "2026-06-16",
-      "killDate": "2026-07-17",
+      "placementDate": "2026-06-16",
+      "expectedCollectionDate": "2026-07-17",
       "focPct": 1,
       "totalPlaced": 95000,
       "allocated": false
@@ -102,7 +102,7 @@
       "batchId": "batch_zbnh_085",
       "houseId": "h1",
       "placedCount": 16153,
-      "placingDate": "2026-05-15",
+      "placementDate": "2026-05-15",
       "dayCount": 27
     },
     {
@@ -110,7 +110,7 @@
       "batchId": "batch_zbnh_085",
       "houseId": "h2",
       "placedCount": 16156,
-      "placingDate": "2026-05-15",
+      "placementDate": "2026-05-15",
       "dayCount": 27
     },
     {
@@ -118,7 +118,7 @@
       "batchId": "batch_zbnh_085",
       "houseId": "h3",
       "placedCount": 16153,
-      "placingDate": "2026-05-16",
+      "placementDate": "2026-05-16",
       "dayCount": 26
     },
     {
@@ -126,7 +126,7 @@
       "batchId": "batch_zbnh_085",
       "houseId": "h4",
       "placedCount": 16156,
-      "placingDate": "2026-05-16",
+      "placementDate": "2026-05-16",
       "dayCount": 26
     },
     {
@@ -134,7 +134,7 @@
       "batchId": "batch_zbnh_085",
       "houseId": "h5",
       "placedCount": 16139,
-      "placingDate": "2026-05-16",
+      "placementDate": "2026-05-16",
       "dayCount": 26
     },
     {
@@ -142,7 +142,7 @@
       "batchId": "batch_zbnh_085",
       "houseId": "h6",
       "placedCount": 16146,
-      "placingDate": "2026-05-16",
+      "placementDate": "2026-05-16",
       "dayCount": 26
     }
   ],
@@ -2832,8 +2832,8 @@
   "historicalBatches": [
     {
       "cycleNo": 84,
-      "placingDate": "2026-03-24",
-      "killDate": "2026-04-28",
+      "placementDate": "2026-03-24",
+      "expectedCollectionDate": "2026-04-28",
       "finalDay": 35,
       "finalCumMortPct": 4.1,
       "finalWeightG": 2210,
@@ -2842,8 +2842,8 @@
     },
     {
       "cycleNo": 83,
-      "placingDate": "2026-02-03",
-      "killDate": "2026-03-10",
+      "placementDate": "2026-02-03",
+      "expectedCollectionDate": "2026-03-10",
       "finalDay": 35,
       "finalCumMortPct": 3.4,
       "finalWeightG": 2305,
@@ -2852,8 +2852,8 @@
     },
     {
       "cycleNo": 82,
-      "placingDate": "2025-12-20",
-      "killDate": "2026-01-22",
+      "placementDate": "2025-12-20",
+      "expectedCollectionDate": "2026-01-22",
       "finalDay": 33,
       "finalCumMortPct": 4.8,
       "finalWeightG": 2160,
@@ -2862,8 +2862,8 @@
     },
     {
       "cycleNo": 81,
-      "placingDate": "2025-10-25",
-      "killDate": "2025-12-02",
+      "placementDate": "2025-10-25",
+      "expectedCollectionDate": "2025-12-02",
       "finalDay": 38,
       "finalCumMortPct": 3.9,
       "finalWeightG": 2480,

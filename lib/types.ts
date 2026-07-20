@@ -14,14 +14,16 @@ export type ID = string;
 export type ISODate = string; // 'YYYY-MM-DD'
 
 /**
- * Who's looking. No login yet — a role switcher stands in (ROADMAP §5).
+ * Who's looking. In Convex mode this is the signed-in account's role; the
+ * no-backend demo falls back to a role switcher (ROADMAP §5/§9).
  *
  * The grower experience is split into two profiles that share the same site
  * scope but do different jobs: `supervisor` (the foreman who captures the daily
  * numbers) and `manager` (oversight — analytics and projections). `contractor`
- * is unchanged. When Clerk lands, each becomes a session role (ROADMAP §9).
+ * runs the supply side; `platformAdmin` is the BatchPilot operator above every
+ * tenant (white-label theming — see `isPlatformAdmin`).
  */
-export type Role = "supervisor" | "manager" | "contractor";
+export type Role = "supervisor" | "manager" | "contractor" | "platformAdmin";
 
 /** The two grower-side profiles (both scoped to a site). */
 export type GrowerRole = Extract<Role, "supervisor" | "manager">;
@@ -29,6 +31,17 @@ export type GrowerRole = Extract<Role, "supervisor" | "manager">;
 /** True for either grower profile — use instead of comparing to a single role. */
 export function isGrowerRole(role: Role): role is GrowerRole {
   return role === "supervisor" || role === "manager";
+}
+
+/**
+ * The BatchPilot platform operator (dev team). Sits above every tenant: manages
+ * white-label theming across contractor orgs (ROADMAP §9 / BRD §4). Created via
+ * the `PLATFORM_ADMIN_EMAILS` allowlist at sign-up — never self-serve or
+ * invited, since nothing sits above it. The Contractor Org Admin the BRD
+ * describes is the existing `contractor` role (co-admins share its `contractorId`).
+ */
+export function isPlatformAdmin(role: Role): role is "platformAdmin" {
+  return role === "platformAdmin";
 }
 
 export interface User {
@@ -104,7 +117,7 @@ export interface Batch {
   cycleNo: number;
   breed: Breed;
   /** Contractor's target collection date (a stored target, not computed). */
-  killDate: ISODate;
+  expectedCollectionDate: ISODate;
   /** Free-of-charge allowance, e.g. 1 (%) — excluded from chargeable count. */
   focPct: number;
   contractId: ID;
@@ -121,8 +134,8 @@ export interface PlannedBatch {
   contractorId: ID;
   cycleNo: number;
   breed: Breed;
-  placingDate: ISODate;
-  killDate: ISODate;
+  placementDate: ISODate;
+  expectedCollectionDate: ISODate;
   focPct: number;
   /** Total birds to place across the site, not yet split per house. */
   totalPlaced: number;
@@ -135,7 +148,7 @@ export interface Placement {
   batchId: ID;
   houseId: ID;
   placedCount: number;
-  placingDate: ISODate;
+  placementDate: ISODate;
   /** Age in days as of the latest entry (placing date = day 0). */
   dayCount: number;
 }
@@ -204,8 +217,12 @@ export interface CatchingEvent {
   batchId: ID;
   /** Night label, e.g. "Sunday night". */
   night: string;
+  /** Contractor's scheduled target for the night. */
   count: number;
+  /** Birds the supervisor recorded actually caught this night. */
+  caughtCount?: number;
   collectionWeightKg?: number;
+  caughtAt?: ISODate;
 }
 
 // ---------------------------------------------------------------------------
@@ -279,9 +296,9 @@ export type EditableField = "dayMortality" | "nightMortality" | "culls" | "feedA
  * One attributed correction to a captured value — the maker-checker audit trail.
  * Supervisors capture; managers correct, and every correction is deliberate and
  * recorded: who, when, and old→new. The edited entry stays visibly marked and
- * the change remains viewable. This is the Clerk seam: today the editor is the
- * demo manager from the auth stub; later it's the authed Clerk identity, and
- * these records become a Convex table. Nothing is ever silently overwritten.
+ * the change remains viewable. In Convex mode the editor is the signed-in
+ * manager and these records are the `editLog` table; the demo path attributes
+ * them to the mock manager. Nothing is ever silently overwritten.
  */
 export interface EditRecord {
   id: ID;
@@ -320,8 +337,8 @@ export interface HouseProjection {
   currentWeightG: number;
   /** Daily gain used to project forward (g/day). */
   dailyGainG: number;
-  /** House age on the kill date. */
-  killDay: number;
+  /** House age on the collection date. */
+  collectionDay: number;
   projectedWeightG: number;
   /** Ross 308 objective weight at the kill day (the target to beat). */
   targetWeightG: number;
@@ -330,9 +347,9 @@ export interface HouseProjection {
 }
 
 export interface BatchProjection {
-  killDate: ISODate;
-  /** Whole days from "today" to the kill date (0 = today). */
-  daysToKill: number;
+  expectedCollectionDate: ISODate;
+  /** Whole days from "today" to the collection date (0 = today). */
+  daysToCollection: number;
   projectedAvgWeightG: number;
   targetAvgWeightG: number;
   pctOfTarget: number;
@@ -356,12 +373,14 @@ export interface Manifest {
   /** Birds held for this catching round (the gate-verification count). */
   heldCount: number;
   vehicles: Vehicle[];
+  /** Plates the supervisor has ticked off at the gate. */
+  verifiedPlates?: string[];
 }
 
 /** A finished cycle on a site — the grower's track record (ROADMAP §8 Phase 2). */
 export interface PastCycle {
   cycleNo: number;
-  killDate: ISODate;
+  expectedCollectionDate: ISODate;
   finalAvgWeightG: number;
   mortalityPct: number;
   /** European Production Efficiency Factor for the closed cycle. */

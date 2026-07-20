@@ -96,14 +96,36 @@ export function ross308At(day: number): BenchmarkPoint {
 }
 
 /**
+ * The inverse of `ross308At`: the age (day of cycle, fractional) at which the
+ * breed curve reaches `targetWeightG`, linearly interpolated between points.
+ * Used to derive the expected collection date from a contractor's target weight
+ * (placement date + this many days). Clamps to the curve's range; returns 0 for
+ * a non-positive/absent target.
+ */
+export function ageAtWeight(targetWeightG: number, curve: BenchmarkPoint[] = ROSS_308_CURVE): number {
+  if (!(targetWeightG > 0) || curve.length === 0) return 0;
+  if (targetWeightG <= curve[0].weightG) return curve[0].day;
+  for (let i = 1; i < curve.length; i++) {
+    if (targetWeightG <= curve[i].weightG) {
+      const a = curve[i - 1];
+      const b = curve[i];
+      const span = b.weightG - a.weightG;
+      const f = span > 0 ? (targetWeightG - a.weightG) / span : 0;
+      return a.day + (b.day - a.day) * f;
+    }
+  }
+  return curve[curve.length - 1].day; // beyond the curve — clamp to the last day
+}
+
+/**
  * The contractor's standard cumulative-mortality ceiling (%) for a day,
  * linearly interpolated between the overlay band points. This is the "expected
  * by today" figure the grower screens describe in plain language and compare
  * against. Pure; mirrors the engine's internal band lookup so the descriptive
  * line and the status pill always agree.
  */
-export function mortalityBandPctAt(day: number): number {
-  const band = ROSS_308_OVERLAY.mortalityBand;
+export function mortalityBandPctAt(day: number, overlay: BenchmarkOverlay = ROSS_308_OVERLAY): number {
+  const band = overlay.mortalityBand;
   if (band.length === 0) return 100;
   if (day <= band[0].day) return band[0].maxCumPct;
   for (let i = 1; i < band.length; i++) {

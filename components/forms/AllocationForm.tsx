@@ -73,7 +73,7 @@ export function AllocationForm({ planned, houses, recommended }: AllocationFormP
           title="Cycle allocated"
         />
         <Alert tone="success" title={`${num(confirmedTotal)} birds placed across ${confirmed.length} houses`}>
-          Placed {shortDate(planned.placingDate)}. Each house has its own day-count and is ready for daily updates. This step is done.
+          Placed {shortDate(planned.placementDate)}. Each house has its own day-count and is ready for daily updates. This step is done.
         </Alert>
         <Card>
           <CardBody className="pt-5">
@@ -89,7 +89,7 @@ export function AllocationForm({ planned, houses, recommended }: AllocationFormP
                 <li key={h.houseId} className="flex items-center justify-between py-3">
                   <div>
                     <p className="text-body-l text-ink">{h.houseName}</p>
-                    <p className="text-label text-muted">Day {h.dayCount} · placed {shortDate(planned.placingDate)}</p>
+                    <p className="text-label text-muted">Day {h.dayCount} · placed {shortDate(planned.placementDate)}</p>
                   </div>
                   <span className="text-data text-[1.0625rem] text-ink">{num(h.count)}</span>
                 </li>
@@ -131,8 +131,8 @@ export function AllocationForm({ planned, houses, recommended }: AllocationFormP
       <Card>
         <CardBody className="grid grid-cols-2 gap-5 pt-5 sm:grid-cols-4">
           <Summary label="To place" value={num(target)} />
-          <Summary label="Placing" value={shortDate(planned.placingDate)} />
-          <Summary label="Kill date" value={shortDate(planned.killDate)} />
+          <Summary label="Placement" value={shortDate(planned.placementDate)} />
+          <Summary label="Collection date" value={shortDate(planned.expectedCollectionDate)} />
           <Summary label="Site capacity" value={num(sumCap)} />
         </CardBody>
       </Card>

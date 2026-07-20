@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/Button";
 /**
  * The Phase-1 screens are the grower register (either the supervisor or the
  * manager profile). If the demo is in the Contractor role, show a calm switch
- * prompt rather than grower data out of context. (When Clerk lands, route access
- * comes from the session instead.)
+ * prompt rather than grower data out of context. In Convex mode route access
+ * comes from the signed-in account's role (the prompt only shows in the demo).
  */
 export function GrowerOnly({ children }: { children: React.ReactNode }) {
   const { role, setRole } = useCurrentUser();
