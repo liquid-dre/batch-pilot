@@ -498,6 +498,21 @@ Ross weight curve — that under-performance is the hero story, keep it).
   in `lib/data/ross308.ts`, threaded to the manager via `myWorkspace`), as an
   editable default (manual + hint when no target). Re-seed the dev deployment
   (schema field names changed).
+  **Contractor-owned cycles + dashboards (done):** cycles are now planned and
+  owned by the **contractor** — `scheduleCycle` sets the start + collection
+  dates, target weight **range** (default 1.6–1.7 kg) and total birds on the
+  `batches` row; the cycle is *upcoming* until its start date then *ongoing*
+  (reads select the ongoing batch). The **manager places birds** into houses
+  (`placeBirds`, allowed in advance) and is read-only on the plan; `editCycle`
+  is contractor-only. New surfaces: contractor **Overview** at `/app` (portfolio
+  + current cycles + upcoming) with management moved to `/app/growers`; a manager
+  **Cycles** section (`/app/cycles`, read-only); foreman invites moved to
+  **Account → Team**; **Benchmarks** split into Current + a Tune **wizard**
+  (`/app/benchmark/tune`); **light + dark** white-label brand
+  (`brandTheme.dark`, applied per active mode via the `bp:theme` event). Bugs
+  fixed: "grower not found" after close now shows the closed-cycle summary, and
+  the dashboard shows distinct Start vs Collection dates (start is a batch-level
+  fact).
   **Account self-service (done):** every signed-in role gets `/app/account`
   (footer entry, Convex mode) — edit display name (`account.updateName`) and
   change password (`account.changePassword` action: verifies the current secret
