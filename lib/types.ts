@@ -62,8 +62,8 @@ export interface User {
 export interface Contractor {
   id: ID;
   name: string;
-  /** Optional white-label brand override (themeable Horizon scale). */
-  brandTheme?: { brand700: string; brand500: string };
+  /** Optional white-label brand. Top-level pair = light mode; `dark` overrides in dark mode. */
+  brandTheme?: { brand700: string; brand500: string; dark?: { brand700: string; brand500: string } };
 }
 
 export interface GeoPoint {

@@ -17,7 +17,12 @@ import { ScreenLoading, ScreenEmpty } from "@/components/shell/ScreenState";
  * (`PLATFORM_ADMIN_EMAILS`), so a non-admin never reaches this (query → null).
  */
 
-type Org = { id: string; name: string; brandTheme: { brand700: string; brand500: string } | null; farmCount: number };
+type Org = {
+  id: string;
+  name: string;
+  brandTheme: { brand700: string; brand500: string; dark?: { brand700: string; brand500: string } } | null;
+  farmCount: number;
+};
 
 export function PlatformAdminHome() {
   const orgs = useQuery(api.admin.listContractors);
@@ -63,17 +68,25 @@ const DEFAULT_700 = "#0c62b0";
 const DEFAULT_500 = "#0ea5e9";
 const HEX = /^#[0-9a-fA-F]{6}$/;
 
+// Dark-mode brand defaults (the brighter azure the design uses on dark).
+const DEFAULT_D700 = "#0c62b0";
+const DEFAULT_D500 = "#38bdf8";
+
 function OrgThemeCard({ org }: { org: Org }) {
   const setTheme = useMutation(api.admin.setContractorTheme);
   const [editing, setEditing] = useState(false);
   const [b700, setB700] = useState(org.brandTheme?.brand700 ?? DEFAULT_700);
   const [b500, setB500] = useState(org.brandTheme?.brand500 ?? DEFAULT_500);
+  const [d700, setD700] = useState(org.brandTheme?.dark?.brand700 ?? DEFAULT_D700);
+  const [d500, setD500] = useState(org.brandTheme?.dark?.brand500 ?? DEFAULT_D500);
   const [pending, setPending] = useState(false);
 
-  const valid = HEX.test(b700) && HEX.test(b500);
+  const valid = [b700, b500, d700, d500].every((c) => HEX.test(c));
   const branded = Boolean(org.brandTheme);
 
-  async function save(brandTheme: { brand700: string; brand500: string } | null) {
+  async function save(
+    brandTheme: { brand700: string; brand500: string; dark: { brand700: string; brand500: string } } | null,
+  ) {
     setPending(true);
     try {
       await notify.promise(setTheme({ contractorId: org.id, brandTheme }), {
@@ -84,6 +97,8 @@ function OrgThemeCard({ org }: { org: Org }) {
       if (!brandTheme) {
         setB700(DEFAULT_700);
         setB500(DEFAULT_500);
+        setD700(DEFAULT_D700);
+        setD500(DEFAULT_D500);
       }
       setEditing(false);
     } catch {
@@ -118,11 +133,21 @@ function OrgThemeCard({ org }: { org: Org }) {
         </div>
 
         {editing && (
-          <div className="mt-5 space-y-4 border-t border-divider pt-5">
-            <CardEyebrow>Brand colours</CardEyebrow>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <ColorField label="CTA / active fill (brand-700)" value={b700} onChange={setB700} />
-              <ColorField label="Accent / marks (brand-500)" value={b500} onChange={setB500} />
+          <div className="mt-5 space-y-5 border-t border-divider pt-5">
+            <div className="space-y-3">
+              <CardEyebrow>Light mode</CardEyebrow>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <ColorField label="CTA / active fill (brand-700)" value={b700} onChange={setB700} />
+                <ColorField label="Accent / marks (brand-500)" value={b500} onChange={setB500} />
+              </div>
+            </div>
+            <div className="space-y-3">
+              <CardEyebrow>Dark mode</CardEyebrow>
+              <p className="text-label text-muted">Applied only in dark mode. Leave as-is to reuse the light colours.</p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <ColorField label="CTA / active fill (brand-700)" value={d700} onChange={setD700} />
+                <ColorField label="Accent / marks (brand-500)" value={d500} onChange={setD500} />
+              </div>
             </div>
             <div className="flex flex-wrap items-center justify-between gap-2">
               {branded ? (
@@ -136,12 +161,17 @@ function OrgThemeCard({ org }: { org: Org }) {
                 <Button variant="secondary" size="sm" onClick={() => setEditing(false)} disabled={pending}>
                   Cancel
                 </Button>
-                <Button size="sm" loading={pending} disabled={!valid} onClick={() => save({ brand700: b700, brand500: b500 })}>
+                <Button
+                  size="sm"
+                  loading={pending}
+                  disabled={!valid}
+                  onClick={() => save({ brand700: b700, brand500: b500, dark: { brand700: d700, brand500: d500 } })}
+                >
                   Save brand
                 </Button>
               </div>
             </div>
-            {!valid && <p className="text-label text-status-bad">Both colours must be 6-digit hex (e.g. #0c62b0).</p>}
+            {!valid && <p className="text-label text-status-bad">All colours must be 6-digit hex (e.g. #0c62b0).</p>}
           </div>
         )}
       </CardBody>

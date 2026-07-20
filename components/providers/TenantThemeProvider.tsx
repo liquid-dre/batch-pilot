@@ -20,22 +20,30 @@ import { api } from "@/convex/_generated/api";
 const BRAND_VARS = ["--brand-700", "--brand-600", "--brand-500"] as const;
 
 function ThemedInner({ children }: { children: React.ReactNode }) {
-  const theme = useQuery(api.admin.myTheme); // { brand700, brand500 } | null | undefined
+  // { brand700, brand500, dark?: { brand700, brand500 } } | null | undefined
+  const theme = useQuery(api.admin.myTheme);
 
   useEffect(() => {
     const root = document.documentElement;
-    if (theme) {
-      // 700 is the CTA/active fill; 600 (link/accent text) + 500 (marks) take the
-      // brighter accent so the whole scale moves together.
-      root.style.setProperty("--brand-700", theme.brand700);
-      root.style.setProperty("--brand-600", theme.brand500);
-      root.style.setProperty("--brand-500", theme.brand500);
-    } else {
-      // null (no tenant brand) or undefined (loading) → the globals.css default.
+    const clear = () => {
       for (const v of BRAND_VARS) root.style.removeProperty(v);
-    }
+    };
+    // Inline styles on the root win over the `.dark` CSS block, so we can't rely
+    // on CSS specificity for the dark variant — we read the active mode and write
+    // the mode-appropriate pair, re-running whenever the theme toggles.
+    const apply = () => {
+      if (!theme) return clear();
+      const dark = root.classList.contains("dark");
+      const pair = dark && theme.dark ? theme.dark : theme;
+      root.style.setProperty("--brand-700", pair.brand700);
+      root.style.setProperty("--brand-600", pair.brand500);
+      root.style.setProperty("--brand-500", pair.brand500);
+    };
+    apply();
+    window.addEventListener("bp:theme", apply);
     return () => {
-      for (const v of BRAND_VARS) root.style.removeProperty(v);
+      window.removeEventListener("bp:theme", apply);
+      clear();
     };
   }, [theme]);
 

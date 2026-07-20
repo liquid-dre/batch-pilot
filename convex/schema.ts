@@ -51,7 +51,15 @@ export default defineSchema({
   contractors: defineTable({
     extId: v.string(),
     name: v.string(),
-    brandTheme: v.optional(v.object({ brand700: v.string(), brand500: v.string() })),
+    // White-label brand. The top-level pair is the LIGHT-mode brand; `dark` is an
+    // optional override applied only in dark mode (falls back to light when unset).
+    brandTheme: v.optional(
+      v.object({
+        brand700: v.string(),
+        brand500: v.string(),
+        dark: v.optional(v.object({ brand700: v.string(), brand500: v.string() })),
+      }),
+    ),
   }).index("by_extId", ["extId"]),
 
   contracts: defineTable({
