@@ -259,6 +259,55 @@ async function inviteSameRolePeers(
   return { invited };
 }
 
+/**
+ * The manager/foreman's cycles for their farm — upcoming + ongoing, read-only.
+ * Cycles are contractor-owned; this is the grower's window onto the plan (who
+ * set it up, the dates, the target weight range, delivery/collection nights).
+ */
+export const myCycles = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return null;
+    const user = await ctx.db.get(userId);
+    const role = (user?.role as string) ?? "";
+    if (!user || !user.siteId || (role !== "manager" && role !== "supervisor")) return null;
+    const siteId = user.siteId as string;
+    const today = new Date().toISOString().slice(0, 10);
+
+    const batches = (
+      await ctx.db.query("batches").withIndex("by_site", (q) => q.eq("siteId", siteId)).collect()
+    ).filter((b) => !b.closedAt);
+
+    const rows = [];
+    for (const b of batches) {
+      const contractor = b.contractorId
+        ? await ctx.db.query("contractors").withIndex("by_extId", (q) => q.eq("extId", b.contractorId)).first()
+        : null;
+      const placements = await ctx.db.query("placements").withIndex("by_batch", (q) => q.eq("batchId", b.extId)).collect();
+      const nights = (
+        await ctx.db.query("catchingEvents").withIndex("by_batch", (q) => q.eq("batchId", b.extId)).collect()
+      ).map((e) => e.night);
+      const start = (b.placementDate as string | undefined) ?? "";
+      rows.push({
+        cycleNo: b.cycleNo,
+        breed: b.breed,
+        status: start && start <= today ? ("ongoing" as const) : ("upcoming" as const),
+        placementDate: start,
+        expectedCollectionDate: b.expectedCollectionDate,
+        targetWeightMinG: b.targetWeightMinG ?? null,
+        targetWeightMaxG: b.targetWeightMaxG ?? null,
+        totalBirds: b.totalBirds ?? null,
+        placed: placements.reduce((s, p) => s + p.placedCount, 0),
+        contractorName: contractor?.name ?? "",
+        deliveryDates: nights,
+      });
+    }
+    rows.sort((a, b) => (a.placementDate || "z").localeCompare(b.placementDate || "z"));
+    return { farmName: (await ctx.db.query("sites").withIndex("by_extId", (q) => q.eq("extId", siteId)).first())?.name ?? "", cycles: rows };
+  },
+});
+
 /** The signed-in user's onboarding view, shaped by role. Reactive. */
 export const myWorkspace = query({
   args: {},

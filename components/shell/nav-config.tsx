@@ -109,6 +109,7 @@ export const NAV: Record<Role, NavSection[]> = {
   // analytics-first, with setup + alerts. Capture is the supervisor's job.
   manager: [
     { items: [{ key: "dashboard", label: "Dashboard", href: "/app", icon: "dashboard" }] },
+    { items: [{ key: "cycles", label: "Cycles", href: "/app/cycles", icon: "batches" }] },
     { items: [{ key: "collection", label: "Collection", href: "/app/collection", icon: "schedule" }] },
     {
       label: "Analytics",
