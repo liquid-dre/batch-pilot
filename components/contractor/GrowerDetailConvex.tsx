@@ -12,69 +12,81 @@ import { notify } from "@/components/ui/notify";
 
 /**
  * Convex-backed grower drill-down for the contractor. Tenant-guarded query, plus
- * the contractor-only "End cycle" action (ROADMAP §9 — cycle close is
- * contractor-driven): closing archives the cycle's finals and frees the farm to
- * start the next one, after which this view shows the farm as no-longer-active.
+ * the contractor-only cycle actions collected into one toolbar (ROADMAP §9 —
+ * cycles + settlement are contractor-driven): set/edit the contract terms, edit
+ * the cycle plan, and end the cycle (which archives its finals and frees the farm
+ * to start the next one). All three sit on one row; opening any one form collapses
+ * the others so only a single panel is ever open.
  */
-function CloseCycleBar({ siteId, siteName, cycleNo }: { siteId: string; siteName: string; cycleNo: number }) {
+
+const field =
+  "h-11 rounded-[var(--radius-control)] border border-border bg-surface px-3 text-body text-ink outline-none focus-visible:border-brand-500";
+
+type Panel = "none" | "contract" | "cycle";
+
+/** The single contractor action toolbar for a grower's active cycle. */
+function GrowerActionBar({
+  siteId,
+  siteName,
+  cycleNo,
+  linked,
+}: {
+  siteId: string;
+  siteName: string;
+  cycleNo: number;
+  linked: boolean;
+}) {
+  const setContract = useMutation(api.tenancy.setContract);
+  const editCycle = useMutation(api.tenancy.editCycle);
   const close = useMutation(api.tenancy.closeCycle);
+
+  const [panel, setPanel] = useState<Panel>("none");
   const [confirming, setConfirming] = useState(false);
   const [pending, setPending] = useState(false);
 
-  async function doClose() {
+  // Contract fields
+  const [chick, setChick] = useState("");
+  const [feed, setFeed] = useState("");
+  const [buyback, setBuyback] = useState("");
+  const [foc, setFoc] = useState("1");
+
+  // Cycle-plan fields
+  const [start, setStart] = useState("");
+  const [end, setEnd] = useState("");
+  const [minG, setMinG] = useState("");
+  const [maxG, setMaxG] = useState("");
+
+  function toggle(p: Panel) {
+    setConfirming(false);
+    setPanel((cur) => (cur === p ? "none" : p));
+  }
+
+  async function saveContract() {
     setPending(true);
     try {
-      await notify.promise(close({ siteId }), {
-        loading: "Closing the cycle…",
-        success: (r: { cycleNo: number; finalWeightG: number; finalCumMortPct: number }) => ({
-          title: `Cycle ${r.cycleNo} closed`,
-          description: `Archived at ${r.finalWeightG.toLocaleString()} g · ${r.finalCumMortPct}% mortality. ${siteName} can start a new cycle.`,
+      await notify.promise(
+        setContract({
+          siteId,
+          chickPrice: Number(chick) || 0,
+          feedPricePerKg: Number(feed) || 0,
+          buyBackPerKg: Number(buyback) || 0,
+          focPct: Number(foc) || 0,
         }),
-        error: () => ({ title: "Couldn't close the cycle", description: "Try again." }),
-      });
-      setConfirming(false);
+        {
+          loading: "Saving contract…",
+          success: () => ({ title: "Contract set", description: "Grower margin now shows on this cycle." }),
+          error: () => ({ title: "Couldn't save the contract", description: "Try again." }),
+        },
+      );
+      setPanel("none");
     } catch {
-      /* error toast already shown */
+      /* toast shown */
     } finally {
       setPending(false);
     }
   }
 
-  return (
-    <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-end gap-2 px-4 pt-6 sm:px-6">
-      {confirming ? (
-        <>
-          <span className="text-label text-muted">End cycle {cycleNo} for {siteName}?</span>
-          <Button variant="secondary" size="sm" onClick={() => setConfirming(false)} disabled={pending}>
-            Cancel
-          </Button>
-          <Button size="sm" loading={pending} onClick={doClose}>
-            Confirm end cycle
-          </Button>
-        </>
-      ) : (
-        <Button variant="secondary" size="sm" onClick={() => setConfirming(true)}>
-          End cycle
-        </Button>
-      )}
-    </div>
-  );
-}
-
-/**
- * Contractor: edit the cycle's plan (start + collection dates, weight range).
- * Cycles are contractor-owned; managers see these read-only.
- */
-function EditCycleBar({ siteId }: { siteId: string }) {
-  const editCycle = useMutation(api.tenancy.editCycle);
-  const [open, setOpen] = useState(false);
-  const [start, setStart] = useState("");
-  const [end, setEnd] = useState("");
-  const [minG, setMinG] = useState("");
-  const [maxG, setMaxG] = useState("");
-  const [pending, setPending] = useState(false);
-
-  async function save() {
+  async function saveCycle() {
     setPending(true);
     try {
       await notify.promise(
@@ -91,7 +103,7 @@ function EditCycleBar({ siteId }: { siteId: string }) {
           error: () => ({ title: "Couldn't update the cycle", description: "Try again." }),
         },
       );
-      setOpen(false);
+      setPanel("none");
     } catch {
       /* toast shown */
     } finally {
@@ -99,37 +111,106 @@ function EditCycleBar({ siteId }: { siteId: string }) {
     }
   }
 
-  const field = "h-11 rounded-[var(--radius-control)] border border-border bg-surface px-3 text-body text-ink outline-none focus-visible:border-brand-500";
-
-  if (!open) {
-    return (
-      <div className="mx-auto flex max-w-5xl justify-end px-4 pt-6 sm:px-6">
-        <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>Edit cycle dates</Button>
-      </div>
-    );
+  async function doClose() {
+    setPending(true);
+    try {
+      await notify.promise(close({ siteId }), {
+        loading: "Closing the cycle…",
+        success: (r: { cycleNo: number; finalWeightG: number; finalCumMortPct: number }) => ({
+          title: `Cycle ${r.cycleNo} closed`,
+          description: `Archived at ${r.finalWeightG.toLocaleString()} g · ${r.finalCumMortPct}% mortality. ${siteName} can start a new cycle.`,
+        }),
+        error: () => ({ title: "Couldn't close the cycle", description: "Try again." }),
+      });
+      setConfirming(false);
+    } catch {
+      /* toast shown */
+    } finally {
+      setPending(false);
+    }
   }
+
   return (
     <div className="mx-auto max-w-5xl px-4 pt-6 sm:px-6">
-      <Card>
-        <CardBody className="space-y-4 pt-5">
-          <h3 className="text-h3">Cycle plan</h3>
-          <p className="text-label text-muted">Only fields you fill in are changed. Changing the start date re-syncs the placement.</p>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label className="flex flex-col gap-1.5"><span className="text-label font-medium text-slate">Start date</span>
-              <input type="date" value={start} onChange={(e) => setStart(e.target.value)} className={field} /></label>
-            <label className="flex flex-col gap-1.5"><span className="text-label font-medium text-slate">Collection date</span>
-              <input type="date" value={end} onChange={(e) => setEnd(e.target.value)} className={field} /></label>
-            <label className="flex flex-col gap-1.5"><span className="text-label font-medium text-slate">Target min (g)</span>
-              <input value={minG} inputMode="numeric" onChange={(e) => setMinG(e.target.value.replace(/[^0-9]/g, ""))} className={`${field} text-right font-mono`} /></label>
-            <label className="flex flex-col gap-1.5"><span className="text-label font-medium text-slate">Target max (g)</span>
-              <input value={maxG} inputMode="numeric" onChange={(e) => setMaxG(e.target.value.replace(/[^0-9]/g, ""))} className={`${field} text-right font-mono`} /></label>
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="secondary" size="sm" onClick={() => setOpen(false)} disabled={pending}>Cancel</Button>
-            <Button size="sm" loading={pending} onClick={save}>Save cycle</Button>
-          </div>
-        </CardBody>
-      </Card>
+      {/* One row of actions — no more stacked toolbars. */}
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        {!linked && panel !== "contract" && (
+          <span className="mr-auto text-label text-muted">No contract set — margin hidden.</span>
+        )}
+        {confirming ? (
+          <>
+            <span className="text-label text-muted">End cycle {cycleNo} for {siteName}?</span>
+            <Button variant="secondary" size="sm" onClick={() => setConfirming(false)} disabled={pending}>
+              Cancel
+            </Button>
+            <Button size="sm" loading={pending} onClick={doClose}>
+              Confirm end cycle
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button
+              variant="secondary"
+              size="sm"
+              aria-expanded={panel === "contract"}
+              onClick={() => toggle("contract")}
+            >
+              {linked ? "Edit contract terms" : "Set contract terms"}
+            </Button>
+            <Button variant="secondary" size="sm" aria-expanded={panel === "cycle"} onClick={() => toggle("cycle")}>
+              Edit cycle dates
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => { setPanel("none"); setConfirming(true); }}>
+              End cycle
+            </Button>
+          </>
+        )}
+      </div>
+
+      {panel === "contract" && (
+        <Card className="mt-4">
+          <CardBody className="space-y-4 pt-5">
+            <h3 className="text-h3">Contract terms</h3>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <PriceField label="Chick price" value={chick} onChange={setChick} />
+              <PriceField label="Feed price / kg" value={feed} onChange={setFeed} />
+              <PriceField label="Buy-back / kg" value={buyback} onChange={setBuyback} />
+              <PriceField label="FOC %" value={foc} onChange={setFoc} />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" size="sm" onClick={() => setPanel("none")} disabled={pending}>
+                Cancel
+              </Button>
+              <Button size="sm" loading={pending} onClick={saveContract}>
+                Save contract
+              </Button>
+            </div>
+          </CardBody>
+        </Card>
+      )}
+
+      {panel === "cycle" && (
+        <Card className="mt-4">
+          <CardBody className="space-y-4 pt-5">
+            <h3 className="text-h3">Cycle plan</h3>
+            <p className="text-label text-muted">Only fields you fill in are changed. Changing the start date re-syncs the placement.</p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <label className="flex flex-col gap-1.5"><span className="text-label font-medium text-slate">Start date</span>
+                <input type="date" value={start} onChange={(e) => setStart(e.target.value)} className={field} /></label>
+              <label className="flex flex-col gap-1.5"><span className="text-label font-medium text-slate">Collection date</span>
+                <input type="date" value={end} onChange={(e) => setEnd(e.target.value)} className={field} /></label>
+              <label className="flex flex-col gap-1.5"><span className="text-label font-medium text-slate">Target min (g)</span>
+                <input value={minG} inputMode="numeric" onChange={(e) => setMinG(e.target.value.replace(/[^0-9]/g, ""))} className={`${field} text-right font-mono`} /></label>
+              <label className="flex flex-col gap-1.5"><span className="text-label font-medium text-slate">Target max (g)</span>
+                <input value={maxG} inputMode="numeric" onChange={(e) => setMaxG(e.target.value.replace(/[^0-9]/g, ""))} className={`${field} text-right font-mono`} /></label>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" size="sm" onClick={() => setPanel("none")} disabled={pending}>Cancel</Button>
+              <Button size="sm" loading={pending} onClick={saveCycle}>Save cycle</Button>
+            </div>
+          </CardBody>
+        </Card>
+      )}
     </div>
   );
 }
@@ -193,9 +274,12 @@ export function GrowerDetailConvex({ siteId }: { siteId: string }) {
   const detail = data as GrowerDetailData;
   return (
     <>
-      <ContractBar siteId={siteId} linked={Boolean(detail.settlement?.contractLinked)} />
-      <EditCycleBar siteId={siteId} />
-      <CloseCycleBar siteId={siteId} siteName={detail.siteName} cycleNo={detail.cycleNo} />
+      <GrowerActionBar
+        siteId={siteId}
+        siteName={detail.siteName}
+        cycleNo={detail.cycleNo}
+        linked={Boolean(detail.settlement?.contractLinked)}
+      />
       <GrowerDetail data={detail} />
     </>
   );
@@ -206,77 +290,6 @@ function Final({ label, value }: { label: string; value: string }) {
     <div>
       <dt className="text-label text-muted">{label}</dt>
       <dd className="mt-0.5 text-data text-[0.9375rem] tabular-nums text-ink">{value}</dd>
-    </div>
-  );
-}
-
-/** Contractor: set/edit the contract terms (prices + FOC%) — unblocks settlement. */
-function ContractBar({ siteId, linked }: { siteId: string; linked: boolean }) {
-  const setContract = useMutation(api.tenancy.setContract);
-  const [open, setOpen] = useState(false);
-  const [chick, setChick] = useState("");
-  const [feed, setFeed] = useState("");
-  const [buyback, setBuyback] = useState("");
-  const [foc, setFoc] = useState("1");
-  const [pending, setPending] = useState(false);
-
-  async function save() {
-    setPending(true);
-    try {
-      await notify.promise(
-        setContract({
-          siteId,
-          chickPrice: Number(chick) || 0,
-          feedPricePerKg: Number(feed) || 0,
-          buyBackPerKg: Number(buyback) || 0,
-          focPct: Number(foc) || 0,
-        }),
-        {
-          loading: "Saving contract…",
-          success: () => ({ title: "Contract set", description: "Grower margin now shows on this cycle." }),
-          error: () => ({ title: "Couldn't save the contract", description: "Try again." }),
-        },
-      );
-      setOpen(false);
-    } catch {
-      /* toast shown */
-    } finally {
-      setPending(false);
-    }
-  }
-
-  if (!open) {
-    return (
-      <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-end gap-2 px-4 pt-6 sm:px-6">
-        {!linked && <span className="text-label text-muted">No contract set — margin hidden.</span>}
-        <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>
-          {linked ? "Edit contract terms" : "Set contract terms"}
-        </Button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="mx-auto max-w-5xl px-4 pt-6 sm:px-6">
-      <Card>
-        <CardBody className="space-y-4 pt-5">
-          <h3 className="text-h3">Contract terms</h3>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <PriceField label="Chick price" value={chick} onChange={setChick} />
-            <PriceField label="Feed price / kg" value={feed} onChange={setFeed} />
-            <PriceField label="Buy-back / kg" value={buyback} onChange={setBuyback} />
-            <PriceField label="FOC %" value={foc} onChange={setFoc} />
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="secondary" size="sm" onClick={() => setOpen(false)} disabled={pending}>
-              Cancel
-            </Button>
-            <Button size="sm" loading={pending} onClick={save}>
-              Save contract
-            </Button>
-          </div>
-        </CardBody>
-      </Card>
     </div>
   );
 }

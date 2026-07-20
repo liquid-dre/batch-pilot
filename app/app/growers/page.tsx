@@ -1,16 +1,17 @@
 import { getContractorGrowers } from "@/lib/data";
 import { ContractorOnly } from "@/components/shell/ContractorOnly";
 import { ContractorGrowersView } from "@/components/contractor/ContractorGrowersView";
-import { Onboarding } from "@/components/onboarding/Onboarding";
+import { ContractorGrowerCards } from "@/components/contractor/ContractorGrowerCards";
 
 export default async function GrowersPage() {
-  // Convex-connected: Growers is the contractor's management screen — add farms,
-  // invite managers, schedule cycles (the ranked performance view is now the
-  // Overview at /app). No backend: the mock demo ranked view.
+  // Convex-connected: Growers is the contractor's list of onboarded farms — one
+  // card each, with "Schedule cycle" (deep-links to /app/growers/schedule) and a
+  // click-through to the drill-down. Adding a farm + scheduling live on their own
+  // pages under the Growers nav group. No backend: the mock demo ranked view.
   if (process.env.NEXT_PUBLIC_CONVEX_URL) {
     return (
       <ContractorOnly>
-        <Onboarding />
+        <ContractorGrowerCards />
       </ContractorOnly>
     );
   }

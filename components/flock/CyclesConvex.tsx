@@ -1,10 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { Card, CardBody } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
 import { ScreenLoading, ScreenEmpty } from "@/components/shell/ScreenState";
+import { IconArrowRight } from "@/components/icons";
 
 /**
  * The grower's Cycles view (`/app/cycles`) — upcoming + ongoing cycles for their
@@ -55,6 +58,14 @@ export function CyclesConvex() {
                     <Row label="Placed so far" value={c.placed ? c.placed.toLocaleString() : "—"} mono />
                     <Row label="Delivery nights" value={c.deliveryDates.length ? c.deliveryDates.join(", ") : "—"} />
                   </dl>
+                  {c.status === "upcoming" && (
+                    <div className="mt-4 flex items-center justify-between gap-2 border-t border-divider pt-4">
+                      <p className="text-label text-muted">Ready to set up? Add your houses and place the birds.</p>
+                      <Link href="/app/houses" className="shrink-0">
+                        <Button variant="secondary" size="sm" affordance={IconArrowRight}>Set up cycle</Button>
+                      </Link>
+                    </div>
+                  )}
                 </CardBody>
               </Card>
             </li>

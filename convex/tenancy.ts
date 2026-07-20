@@ -574,13 +574,27 @@ export const scheduleCycle = mutation({
 });
 
 /**
+ * The farm's non-closed batch for a specific `cycleNo`, or null. Lets a caller
+ * target one cycle when a farm holds a concurrent ongoing + upcoming batch
+ * (otherwise `currentBatch` prefers the ongoing one).
+ */
+async function batchByCycleNo(ctx: any, siteId: string, cycleNo: number) {
+  return (
+    await ctx.db.query("batches").withIndex("by_site", (q: any) => q.eq("siteId", siteId)).collect()
+  ).find((b: any) => !b.closedAt && b.cycleNo === cycleNo) ?? null;
+}
+
+/**
  * Contractor: edit a scheduled/ongoing cycle's plan (dates, weight range, breed).
  * Managers are read-only on these. Changing the start date re-syncs every
- * placement's `placementDate` + `dayCount`.
+ * placement's `placementDate` + `dayCount`. Pass `cycleNo` to target a specific
+ * cycle (e.g. an upcoming one on a farm that also has an ongoing cycle);
+ * otherwise the farm's current batch is edited.
  */
 export const editCycle = mutation({
   args: {
     siteId: v.string(),
+    cycleNo: v.optional(v.number()),
     placementDate: v.optional(v.string()),
     expectedCollectionDate: v.optional(v.string()),
     targetWeightMinG: v.optional(v.number()),
@@ -589,7 +603,10 @@ export const editCycle = mutation({
   },
   handler: async (ctx, args) => {
     await requireOwnedFarm(ctx, args.siteId);
-    const batch = await currentBatch(ctx, args.siteId);
+    const batch =
+      args.cycleNo !== undefined
+        ? await batchByCycleNo(ctx, args.siteId, args.cycleNo)
+        : await currentBatch(ctx, args.siteId);
     if (!batch) throw new Error("No cycle to edit on this farm");
     const patch: Record<string, unknown> = {};
     if (args.placementDate) patch.placementDate = args.placementDate;
