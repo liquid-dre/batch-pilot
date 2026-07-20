@@ -1,9 +1,9 @@
 "use client";
 
 import { useCurrentUser } from "@/lib/auth";
-import { Onboarding } from "@/components/onboarding/Onboarding";
 import { GrowerHomeConvex } from "@/components/flock/GrowerHomeConvex";
 import { PlatformAdminHome } from "@/components/admin/PlatformAdminHome";
+import { ContractorOverview } from "@/components/contractor/ContractorOverview";
 
 /**
  * The `/app` home when Convex is connected, split by role. The platform admin
@@ -14,6 +14,6 @@ import { PlatformAdminHome } from "@/components/admin/PlatformAdminHome";
 export function ConvexHome() {
   const { role } = useCurrentUser();
   if (role === "platformAdmin") return <PlatformAdminHome />;
-  if (role === "contractor") return <Onboarding />;
+  if (role === "contractor") return <ContractorOverview />;
   return <GrowerHomeConvex />;
 }

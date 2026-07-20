@@ -37,6 +37,36 @@ async function contractorScope(ctx: any): Promise<{ contractorId: string; org: s
   return { contractorId: user.contractorId as string, org: (user.org as string) ?? "" };
 }
 
+/** The contractor's upcoming cycles (scheduled, start date in the future). */
+export const contractorUpcomingCycles = query({
+  args: {},
+  handler: async (ctx) => {
+    const scope = await contractorScope(ctx);
+    if (!scope) return null;
+    const today = new Date().toISOString().slice(0, 10);
+    const batches = (
+      await ctx.db.query("batches").withIndex("by_contractor", (q) => q.eq("contractorId", scope.contractorId)).collect()
+    ).filter((b) => !b.closedAt && (b.placementDate ?? "") > today);
+    const rows = [];
+    for (const b of batches) {
+      const site = await ctx.db.query("sites").withIndex("by_extId", (q) => q.eq("extId", b.siteId)).first();
+      rows.push({
+        siteId: b.siteId,
+        farmName: site?.name ?? b.siteId,
+        cycleNo: b.cycleNo,
+        breed: b.breed,
+        placementDate: (b.placementDate as string | undefined) ?? "",
+        expectedCollectionDate: b.expectedCollectionDate,
+        targetWeightMinG: b.targetWeightMinG ?? null,
+        targetWeightMaxG: b.targetWeightMaxG ?? null,
+        totalBirds: b.totalBirds ?? null,
+      });
+    }
+    rows.sort((a, b) => a.placementDate.localeCompare(b.placementDate));
+    return rows;
+  },
+});
+
 interface PlacementData {
   placedCount: number;
   entries: any[]; // dailyEntries, sorted by day asc
