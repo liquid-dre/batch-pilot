@@ -126,7 +126,13 @@ export const NAV: Record<Role, NavSection[]> = {
     { items: [{ key: "overview", label: "Overview", href: "/app", icon: "dashboard" }] },
     { items: [{ key: "growers", label: "Growers", href: "/app/growers", icon: "growers" }] },
     { items: [{ key: "schedule", label: "Collection schedule", href: "/app/schedule", icon: "schedule" }] },
-    { items: [{ key: "benchmark", label: "Benchmarks", href: "/app/benchmark", icon: "benchmark" }] },
+    {
+      label: "Benchmarks",
+      items: [
+        { key: "benchmark", label: "Current", href: "/app/benchmark", icon: "benchmark" },
+        { key: "benchmark-tune", label: "Tune", href: "/app/benchmark/tune", icon: "benchmark" },
+      ],
+    },
   ],
   // Platform Admin (BatchPilot operator) — the sole above-tenant surface today is
   // white-label theming across contractor orgs, edited inline on the org list.
@@ -140,5 +146,7 @@ export function isActive(href: string, pathname: string): boolean {
   if (href === "/app") return pathname === "/app";
   // Allocate is a child of Houses; only light it (not Houses) on the allocate route.
   if (href === "/app/houses") return pathname === "/app/houses";
+  // Benchmarks → Current (exact) vs Tune (child), so Current doesn't light on Tune.
+  if (href === "/app/benchmark") return pathname === "/app/benchmark";
   return pathname === href || pathname.startsWith(href + "/");
 }

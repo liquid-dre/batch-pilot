@@ -3,12 +3,12 @@
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { ROSS_308_CURVE, ROSS_308_OVERLAY } from "@/lib/data/ross308";
-import { DEFAULT_THRESHOLDS } from "@/lib/engine";
 import { pct } from "@/lib/format";
 import { Card, CardBody, CardEyebrow } from "@/components/ui/Card";
 import { PageHeader } from "@/components/shell/PageHeader";
+import Link from "next/link";
 import { BenchmarkChart, type ActualMarker } from "./BenchmarkChart";
-import { BenchmarkTuner } from "./BenchmarkTuner";
+import { Button } from "@/components/ui/Button";
 import { ScreenLoading, ScreenEmpty } from "@/components/shell/ScreenState";
 
 /**
@@ -46,15 +46,33 @@ export function BenchmarkConvex() {
 
   // The tenant's tuned overlay + thresholds (Ross-308 default until they save).
   const overlay = bench?.overlay ?? ROSS_308_OVERLAY;
-  const thresholds = bench?.thresholds ?? DEFAULT_THRESHOLDS;
+  const range =
+    bench?.targetWeightMinG && bench?.targetWeightMaxG
+      ? `${(bench.targetWeightMinG / 1000).toFixed(2)}–${(bench.targetWeightMaxG / 1000).toFixed(2)} kg`
+      : "1.60–1.70 kg";
 
   return (
     <div className="mx-auto max-w-5xl space-y-8 px-4 py-8 sm:px-6">
       <PageHeader
         eyebrow="Benchmark"
         title="Ross 308 objective"
-        intro="The breed weight curve with each of your farms plotted against it, plus the mortality and uniformity overlay bands."
+        intro="The breed weight curve with each of your farms plotted against it, plus your overlay bands and target weight."
+        action={
+          <Link href="/app/benchmark/tune">
+            <Button variant="secondary" size="sm">Tune benchmark →</Button>
+          </Link>
+        }
       />
+
+      <Card>
+        <CardBody className="flex flex-wrap items-center justify-between gap-3 pt-5">
+          <div>
+            <CardEyebrow>Target weight range</CardEyebrow>
+            <p className="mt-1 text-data text-ink">{range}</p>
+          </div>
+          <span className="text-label text-muted">Pre-fills each cycle you schedule.</span>
+        </CardBody>
+      </Card>
 
       <Card>
         <CardBody className="pt-5">
@@ -104,11 +122,6 @@ export function BenchmarkConvex() {
           </CardBody>
         </Card>
       </section>
-
-      {/* Tuning form — contractor edits the bands + thresholds their growers score against. */}
-      {bench !== undefined && bench !== null && (
-        <BenchmarkTuner overlay={overlay} thresholds={thresholds} targetWeightMinG={bench.targetWeightMinG} targetWeightMaxG={bench.targetWeightMaxG} isDefault={bench.isDefault} />
-      )}
     </div>
   );
 }
