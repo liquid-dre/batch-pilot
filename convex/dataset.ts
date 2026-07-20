@@ -38,11 +38,13 @@ export const myDataset = query({
       ? await ctx.db.query("contractors").withIndex("by_extId", (q) => q.eq("extId", contractorId)).first()
       : null;
 
-    const batch = await ctx.db
-      .query("batches")
-      .withIndex("by_site", (q) => q.eq("siteId", siteId))
-      .filter((q) => q.eq(q.field("closedAt"), undefined))
-      .first();
+    // The ongoing cycle drives the dashboard: not closed and started (today ≥
+    // its start date; a legacy batch with no start date counts as started). An
+    // upcoming-only farm has no dashboard cycle yet.
+    const todayIso = new Date().toISOString().slice(0, 10);
+    const batch = (await ctx.db.query("batches").withIndex("by_site", (q) => q.eq("siteId", siteId)).collect())
+      .filter((b) => !b.closedAt && (!b.placementDate || b.placementDate <= todayIso))
+      .sort((a, b) => (b.placementDate ?? "").localeCompare(a.placementDate ?? ""))[0] ?? null;
     const placements = batch
       ? await ctx.db.query("placements").withIndex("by_batch", (q) => q.eq("batchId", batch.extId)).collect()
       : [];

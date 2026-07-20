@@ -39,12 +39,14 @@ const fromPct = (s: string, fallback: number) => {
 export function BenchmarkTuner({
   overlay,
   thresholds,
-  targetWeightG,
+  targetWeightMinG,
+  targetWeightMaxG,
   isDefault,
 }: {
   overlay: Overlay;
   thresholds: Thresholds;
-  targetWeightG: number | null;
+  targetWeightMinG: number | null;
+  targetWeightMaxG: number | null;
   isDefault: boolean;
 }) {
   const setBenchmark = useMutation(api.benchmark.setBenchmark);
@@ -57,13 +59,16 @@ export function BenchmarkTuner({
     <TunerForm
       overlay={overlay}
       thresholds={thresholds}
-      targetWeightG={targetWeightG}
+      targetWeightMinG={targetWeightMinG}
+      targetWeightMaxG={targetWeightMaxG}
       pending={pending}
       onCancel={() => setOpen(false)}
-      onSave={async (nextOverlay, nextThresholds, nextTarget) => {
+      onSave={async (nextOverlay, nextThresholds, nextMin, nextMax) => {
         setPending(true);
         try {
-          await notify.promise(setBenchmark({ overlay: nextOverlay, thresholds: nextThresholds, targetWeightG: nextTarget }), {
+          await notify.promise(
+            setBenchmark({ overlay: nextOverlay, thresholds: nextThresholds, targetWeightMinG: nextMin, targetWeightMaxG: nextMax }),
+            {
             loading: "Saving benchmark…",
             success: () => ({ title: "Benchmark saved", description: "Your growers' statuses now score against these bands." }),
             error: () => ({ title: "Couldn't save the benchmark", description: "Try again." }),
@@ -95,19 +100,22 @@ export function BenchmarkTuner({
 function TunerForm({
   overlay,
   thresholds,
-  targetWeightG,
+  targetWeightMinG,
+  targetWeightMaxG,
   pending,
   onCancel,
   onSave,
 }: {
   overlay: Overlay;
   thresholds: Thresholds;
-  targetWeightG: number | null;
+  targetWeightMinG: number | null;
+  targetWeightMaxG: number | null;
   pending: boolean;
   onCancel: () => void;
-  onSave: (overlay: Overlay, thresholds: Thresholds, targetWeightG: number | undefined) => void;
+  onSave: (overlay: Overlay, thresholds: Thresholds, min: number | undefined, max: number | undefined) => void;
 }) {
-  const [target, setTarget] = useState(targetWeightG != null ? String(targetWeightG) : "");
+  const [tMin, setTMin] = useState(targetWeightMinG != null ? String(targetWeightMinG) : "");
+  const [tMax, setTMax] = useState(targetWeightMaxG != null ? String(targetWeightMaxG) : "");
   const [mort, setMort] = useState(() => overlay.mortalityBand.map((b) => ({ day: b.day, v: String(b.maxCumPct) })));
   const [unif, setUnif] = useState(() => overlay.uniformityTarget.map((u) => ({ day: u.day, v: String(u.minPct) })));
   const [th, setTh] = useState(() => ({
@@ -150,8 +158,8 @@ function TunerForm({
       mortality: { amber: fromPct(th.mortAmber, DEFAULT_THRESHOLDS.mortality.amber), red: fromPct(th.mortRed, DEFAULT_THRESHOLDS.mortality.red) },
       uniformity: { green: fromPct(th.unifGreen, DEFAULT_THRESHOLDS.uniformity.green), amber: fromPct(th.unifAmber, DEFAULT_THRESHOLDS.uniformity.amber) },
     };
-    const nextTarget = target.trim() && Number(target) > 0 ? Math.round(Number(target)) : undefined;
-    onSave(nextOverlay, nextThresholds, nextTarget);
+    const asG = (s: string) => (s.trim() && Number(s) > 0 ? Math.round(Number(s)) : undefined);
+    onSave(nextOverlay, nextThresholds, asG(tMin), asG(tMax));
   }
 
   return (
@@ -165,23 +173,33 @@ function TunerForm({
         </div>
 
         <section>
-          <CardEyebrow>Target weight</CardEyebrow>
+          <CardEyebrow>Target weight range</CardEyebrow>
           <p className="mt-1 text-label text-muted">
-            The market weight cycles are grown to. Sets each new cycle&apos;s expected collection date from its placement date.
+            The default market-weight range (grams) that pre-fills each cycle you schedule. Default 1,600–1,700 g.
           </p>
-          <label className="mt-3 flex items-center justify-between gap-3">
+          <div className="mt-3 flex items-center justify-between gap-3">
             <span className="text-body text-slate">Target live weight</span>
             <span className="inline-flex items-center gap-1.5">
               <input
-                value={target}
+                value={tMin}
                 inputMode="numeric"
-                placeholder="e.g. 2000"
-                onChange={(e) => setTarget(e.target.value.replace(/[^0-9]/g, ""))}
-                className="h-11 w-28 rounded-[var(--radius-control)] border border-border bg-surface px-3 text-right font-mono text-body text-ink outline-none focus-visible:border-brand-500"
+                placeholder="1600"
+                aria-label="Minimum target weight (g)"
+                onChange={(e) => setTMin(e.target.value.replace(/[^0-9]/g, ""))}
+                className="h-11 w-24 rounded-[var(--radius-control)] border border-border bg-surface px-3 text-right font-mono text-body text-ink outline-none focus-visible:border-brand-500"
+              />
+              <span className="text-label text-muted">–</span>
+              <input
+                value={tMax}
+                inputMode="numeric"
+                placeholder="1700"
+                aria-label="Maximum target weight (g)"
+                onChange={(e) => setTMax(e.target.value.replace(/[^0-9]/g, ""))}
+                className="h-11 w-24 rounded-[var(--radius-control)] border border-border bg-surface px-3 text-right font-mono text-body text-ink outline-none focus-visible:border-brand-500"
               />
               <span className="text-label text-muted">g</span>
             </span>
-          </label>
+          </div>
         </section>
 
         <div className="grid gap-6 sm:grid-cols-2">

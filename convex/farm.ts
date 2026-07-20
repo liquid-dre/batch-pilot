@@ -20,11 +20,10 @@ export const farmData = query({
     const site = await ctx.db.query("sites").withIndex("by_extId", (q) => q.eq("extId", siteId)).first();
     if (!site) return null;
 
-    const batch = await ctx.db
-      .query("batches")
-      .withIndex("by_site", (q) => q.eq("siteId", siteId))
-      .filter((q) => q.eq(q.field("closedAt"), undefined))
-      .first();
+    const todayIso = new Date().toISOString().slice(0, 10);
+    const batch = (await ctx.db.query("batches").withIndex("by_site", (q) => q.eq("siteId", siteId)).collect())
+      .filter((b) => !b.closedAt && (!b.placementDate || b.placementDate <= todayIso))
+      .sort((a, b) => (b.placementDate ?? "").localeCompare(a.placementDate ?? ""))[0] ?? null;
     if (!batch) return { role, farmName: site.name, today: new Date().toISOString().slice(0, 10), cycle: null, houses: [] };
 
     const placements = (

@@ -107,7 +107,7 @@ export function BenchmarkConvex() {
 
       {/* Tuning form — contractor edits the bands + thresholds their growers score against. */}
       {bench !== undefined && bench !== null && (
-        <BenchmarkTuner overlay={overlay} thresholds={thresholds} targetWeightG={bench.targetWeightG} isDefault={bench.isDefault} />
+        <BenchmarkTuner overlay={overlay} thresholds={thresholds} targetWeightMinG={bench.targetWeightMinG} targetWeightMaxG={bench.targetWeightMaxG} isDefault={bench.isDefault} />
       )}
     </div>
   );

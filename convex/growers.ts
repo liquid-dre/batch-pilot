@@ -46,13 +46,12 @@ interface PlacementData {
   dayCount: number;
 }
 
-/** Load a farm's active batch + every placement's daily/weight rows. */
+/** Load a farm's ongoing batch + every placement's daily/weight rows. */
 async function loadFarm(ctx: any, siteId: string) {
-  const batch = await ctx.db
-    .query("batches")
-    .withIndex("by_site", (q: any) => q.eq("siteId", siteId))
-    .filter((q: any) => q.eq(q.field("closedAt"), undefined))
-    .first();
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const batch = (await ctx.db.query("batches").withIndex("by_site", (q: any) => q.eq("siteId", siteId)).collect())
+    .filter((b: any) => !b.closedAt && (!b.placementDate || b.placementDate <= todayIso))
+    .sort((a: any, b: any) => (b.placementDate ?? "").localeCompare(a.placementDate ?? ""))[0] ?? null;
   if (!batch) return null;
   const rawPlacements = await ctx.db
     .query("placements")

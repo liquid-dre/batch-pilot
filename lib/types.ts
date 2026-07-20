@@ -116,8 +116,15 @@ export interface Batch {
   contractorId: ID;
   cycleNo: number;
   breed: Breed;
-  /** Contractor's target collection date (a stored target, not computed). */
+  /** Contractor-set START date. The cycle is ongoing once today ≥ this, upcoming before. */
+  placementDate?: ISODate;
+  /** Contractor's target collection (END) date — a stored plan, not computed. */
   expectedCollectionDate: ISODate;
+  /** Contractor's target market-weight range (grams) for the cycle. */
+  targetWeightMinG?: number;
+  targetWeightMaxG?: number;
+  /** Total birds the contractor scheduled for the cycle. */
+  totalBirds?: number;
   /** Free-of-charge allowance, e.g. 1 (%) — excluded from chargeable count. */
   focPct: number;
   contractId: ID;
