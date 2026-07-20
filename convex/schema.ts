@@ -51,7 +51,15 @@ export default defineSchema({
   contractors: defineTable({
     extId: v.string(),
     name: v.string(),
-    brandTheme: v.optional(v.object({ brand700: v.string(), brand500: v.string() })),
+    // White-label brand. The top-level pair is the LIGHT-mode brand; `dark` is an
+    // optional override applied only in dark mode (falls back to light when unset).
+    brandTheme: v.optional(
+      v.object({
+        brand700: v.string(),
+        brand500: v.string(),
+        dark: v.optional(v.object({ brand700: v.string(), brand500: v.string() })),
+      }),
+    ),
   }).index("by_extId", ["extId"]),
 
   contracts: defineTable({
@@ -88,7 +96,15 @@ export default defineSchema({
     contractorId: v.string(),
     cycleNo: v.number(),
     breed: v.string(),
+    // Contractor-owned cycle plan. `placementDate` is the START date (the cycle
+    // is *ongoing* once today ≥ it, *upcoming* before it); `expectedCollectionDate`
+    // is the END date; the target weight is a min–max range. Optional so the
+    // demo seed (which predates the range) still validates.
+    placementDate: v.optional(v.string()),
     expectedCollectionDate: v.string(),
+    targetWeightMinG: v.optional(v.number()),
+    targetWeightMaxG: v.optional(v.number()),
+    totalBirds: v.optional(v.number()),
     focPct: v.number(),
     contractId: v.string(),
     // Set when the contractor closes the cycle; an absent value = active. The
@@ -96,7 +112,8 @@ export default defineSchema({
     closedAt: v.optional(v.string()),
   })
     .index("by_extId", ["extId"])
-    .index("by_site", ["siteId"]),
+    .index("by_site", ["siteId"])
+    .index("by_contractor", ["contractorId"]),
 
   plannedBatches: defineTable({
     extId: v.string(),
@@ -284,11 +301,11 @@ export default defineSchema({
   benchmarkSets: defineTable({
     contractorId: v.string(),
     breed: v.optional(v.string()),
-    // The market/target weight a cycle is grown to. Drives the auto-derived
-    // expected collection date at cycle start (placement date + the day the
-    // breed curve reaches this weight). Optional — absent → the grower enters
-    // the collection date manually.
-    targetWeightG: v.optional(v.number()),
+    // The contractor's DEFAULT market-weight range (grams) that pre-fills each
+    // scheduled cycle. Optional — absent → the schedule form falls back to the
+    // 1.6–1.7 kg default.
+    targetWeightMinG: v.optional(v.number()),
+    targetWeightMaxG: v.optional(v.number()),
     overlay: v.object({
       mortalityBand: v.array(v.object({ day: v.number(), maxCumPct: v.number() })),
       uniformityTarget: v.array(v.object({ day: v.number(), minPct: v.number() })),

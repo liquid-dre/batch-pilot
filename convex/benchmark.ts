@@ -49,6 +49,10 @@ const DEFAULT_THRESHOLDS = {
   uniformity: { green: 0.97, amber: 0.9 },
 };
 
+// The default market-weight range (grams) that pre-fills each scheduled cycle.
+const DEFAULT_TARGET_MIN_G = 1600;
+const DEFAULT_TARGET_MAX_G = 1700;
+
 const bandArg = v.object({ day: v.number(), maxCumPct: v.number() });
 const uniformityArg = v.object({ day: v.number(), minPct: v.number() });
 const overlayArg = v.object({
@@ -95,13 +99,21 @@ export const myBenchmark = query({
       .first();
 
     if (!row) {
-      return { contractorId, overlay: DEFAULT_OVERLAY, thresholds: DEFAULT_THRESHOLDS, targetWeightG: null, isDefault: true };
+      return {
+        contractorId,
+        overlay: DEFAULT_OVERLAY,
+        thresholds: DEFAULT_THRESHOLDS,
+        targetWeightMinG: DEFAULT_TARGET_MIN_G,
+        targetWeightMaxG: DEFAULT_TARGET_MAX_G,
+        isDefault: true,
+      };
     }
     return {
       contractorId,
       overlay: row.overlay,
       thresholds: row.thresholds ?? DEFAULT_THRESHOLDS,
-      targetWeightG: row.targetWeightG ?? null,
+      targetWeightMinG: row.targetWeightMinG ?? DEFAULT_TARGET_MIN_G,
+      targetWeightMaxG: row.targetWeightMaxG ?? DEFAULT_TARGET_MAX_G,
       isDefault: false,
     };
   },
@@ -113,19 +125,25 @@ export const myBenchmark = query({
  * defaults). Idempotent per contractor — one row, overwritten on each save.
  */
 export const setBenchmark = mutation({
-  args: { overlay: overlayArg, thresholds: v.optional(thresholdsArg), targetWeightG: v.optional(v.number()) },
-  handler: async (ctx, { overlay, thresholds, targetWeightG }) => {
+  args: {
+    overlay: overlayArg,
+    thresholds: v.optional(thresholdsArg),
+    targetWeightMinG: v.optional(v.number()),
+    targetWeightMaxG: v.optional(v.number()),
+  },
+  handler: async (ctx, { overlay, thresholds, targetWeightMinG, targetWeightMaxG }) => {
     const { contractorId } = await requireContractor(ctx);
     const updatedAt = new Date().toISOString();
+    const fields = { overlay, thresholds, targetWeightMinG, targetWeightMaxG, updatedAt };
     const existing = await ctx.db
       .query("benchmarkSets")
       .withIndex("by_contractor", (q) => q.eq("contractorId", contractorId))
       .first();
     if (existing) {
-      await ctx.db.patch(existing._id, { overlay, thresholds, targetWeightG, updatedAt });
+      await ctx.db.patch(existing._id, fields);
       return { contractorId };
     }
-    await ctx.db.insert("benchmarkSets", { contractorId, overlay, thresholds, targetWeightG, updatedAt });
+    await ctx.db.insert("benchmarkSets", { contractorId, ...fields });
     return { contractorId };
   },
 });

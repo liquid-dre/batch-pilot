@@ -1,16 +1,16 @@
 import { getContractorGrowers } from "@/lib/data";
 import { ContractorOnly } from "@/components/shell/ContractorOnly";
 import { ContractorGrowersView } from "@/components/contractor/ContractorGrowersView";
-import { ContractorGrowersConvex } from "@/components/contractor/ContractorGrowersConvex";
+import { Onboarding } from "@/components/onboarding/Onboarding";
 
 export default async function GrowersPage() {
-  // Convex-connected: the ranked view reads the signed-in contractor's own farms
-  // (scoped by `growers.contractorGrowers`). No backend: the mock demo seam,
-  // gated by the demo role switcher — same convention as `app/app/page.tsx`.
+  // Convex-connected: Growers is the contractor's management screen — add farms,
+  // invite managers, schedule cycles (the ranked performance view is now the
+  // Overview at /app). No backend: the mock demo ranked view.
   if (process.env.NEXT_PUBLIC_CONVEX_URL) {
     return (
       <ContractorOnly>
-        <ContractorGrowersConvex />
+        <Onboarding />
       </ContractorOnly>
     );
   }

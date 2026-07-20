@@ -13,7 +13,11 @@ import { getAuthUserId } from "@convex-dev/auth/server";
  * this is a genuine super-user boundary, not a self-serve one.
  */
 
-const brandThemeArg = v.object({ brand700: v.string(), brand500: v.string() });
+const brandThemeArg = v.object({
+  brand700: v.string(),
+  brand500: v.string(),
+  dark: v.optional(v.object({ brand700: v.string(), brand500: v.string() })),
+});
 
 /** Throws unless the caller is a Platform Admin. */
 async function requirePlatformAdmin(ctx: any) {

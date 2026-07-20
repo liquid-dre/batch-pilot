@@ -111,7 +111,7 @@ export const myTeam = query({
       const invites = contractorId
         ? await ctx.db.query("invites").withIndex("by_contractor", (q) => q.eq("contractorId", contractorId)).collect()
         : [];
-      return { kind: "coAdmin" as const, members: invites.map((i) => ({ email: i.email, status: i.status })) };
+      return { kind: "coAdmin" as const, members: invites.map((i) => ({ email: i.email, status: i.status })), foremen: [] as { email: string; status: string }[] };
     }
 
     if (role === "supervisor" || role === "manager") {
@@ -119,10 +119,13 @@ export const myTeam = query({
       const invites = siteId
         ? await ctx.db.query("invites").withIndex("by_site", (q) => q.eq("siteId", siteId)).collect()
         : [];
-      const peers = invites.filter((i) => i.role === role).map((i) => ({ email: i.email, status: i.status }));
-      return { kind: role as "supervisor" | "manager", members: peers };
+      const map = (r: string) => invites.filter((i) => i.role === r).map((i) => ({ email: i.email, status: i.status }));
+      const peers = map(role);
+      // A manager also manages the farm's foremen (a down-invite, homed here).
+      const foremen = role === "manager" ? map("supervisor") : [];
+      return { kind: role as "supervisor" | "manager", members: peers, foremen };
     }
 
-    return { kind: "none" as const, members: [] };
+    return { kind: "none" as const, members: [], foremen: [] };
   },
 });

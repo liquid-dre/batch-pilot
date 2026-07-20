@@ -27,7 +27,7 @@ export function CycleInfo({ cycle }: { cycle: DashboardCycleInfo }) {
         </div>
         <dl className="grid grid-cols-2 gap-x-6 gap-y-3 border-t border-divider pt-4">
           <div>
-            <dt className="text-label text-muted">Placed</dt>
+            <dt className="text-label text-muted">Start date</dt>
             <dd className="mt-0.5 text-data text-[0.9375rem] tabular-nums text-ink">{shortDate(cycle.placementDate)}</dd>
           </div>
           <div>

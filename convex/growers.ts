@@ -37,6 +37,36 @@ async function contractorScope(ctx: any): Promise<{ contractorId: string; org: s
   return { contractorId: user.contractorId as string, org: (user.org as string) ?? "" };
 }
 
+/** The contractor's upcoming cycles (scheduled, start date in the future). */
+export const contractorUpcomingCycles = query({
+  args: {},
+  handler: async (ctx) => {
+    const scope = await contractorScope(ctx);
+    if (!scope) return null;
+    const today = new Date().toISOString().slice(0, 10);
+    const batches = (
+      await ctx.db.query("batches").withIndex("by_contractor", (q) => q.eq("contractorId", scope.contractorId)).collect()
+    ).filter((b) => !b.closedAt && (b.placementDate ?? "") > today);
+    const rows = [];
+    for (const b of batches) {
+      const site = await ctx.db.query("sites").withIndex("by_extId", (q) => q.eq("extId", b.siteId)).first();
+      rows.push({
+        siteId: b.siteId,
+        farmName: site?.name ?? b.siteId,
+        cycleNo: b.cycleNo,
+        breed: b.breed,
+        placementDate: (b.placementDate as string | undefined) ?? "",
+        expectedCollectionDate: b.expectedCollectionDate,
+        targetWeightMinG: b.targetWeightMinG ?? null,
+        targetWeightMaxG: b.targetWeightMaxG ?? null,
+        totalBirds: b.totalBirds ?? null,
+      });
+    }
+    rows.sort((a, b) => a.placementDate.localeCompare(b.placementDate));
+    return rows;
+  },
+});
+
 interface PlacementData {
   placedCount: number;
   entries: any[]; // dailyEntries, sorted by day asc
@@ -46,13 +76,12 @@ interface PlacementData {
   dayCount: number;
 }
 
-/** Load a farm's active batch + every placement's daily/weight rows. */
+/** Load a farm's ongoing batch + every placement's daily/weight rows. */
 async function loadFarm(ctx: any, siteId: string) {
-  const batch = await ctx.db
-    .query("batches")
-    .withIndex("by_site", (q: any) => q.eq("siteId", siteId))
-    .filter((q: any) => q.eq(q.field("closedAt"), undefined))
-    .first();
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const batch = (await ctx.db.query("batches").withIndex("by_site", (q: any) => q.eq("siteId", siteId)).collect())
+    .filter((b: any) => !b.closedAt && (!b.placementDate || b.placementDate <= todayIso))
+    .sort((a: any, b: any) => (b.placementDate ?? "").localeCompare(a.placementDate ?? ""))[0] ?? null;
   if (!batch) return null;
   const rawPlacements = await ctx.db
     .query("placements")
@@ -238,7 +267,27 @@ export const contractorGrowerDetail = query({
     const site = await ctx.db.query("sites").withIndex("by_extId", (q) => q.eq("extId", siteId)).first();
     if (!site || !(site.contractorIds ?? []).includes(scope.contractorId)) return null; // not yours
     const farm = await loadFarm(ctx, siteId);
-    if (!farm) return null;
+    if (!farm) {
+      // No ongoing cycle (e.g. just closed) — show the latest closed cycle's
+      // summary instead of a "not found" screen.
+      const closed = (
+        await ctx.db.query("historicalBatches").withIndex("by_site", (q) => q.eq("siteId", siteId)).collect()
+      ).sort((a, b) => b.cycleNo - a.cycleNo)[0];
+      if (!closed) return null;
+      return {
+        closed: true as const,
+        siteName: site.name,
+        farmCode: site.farmCode,
+        cycleNo: closed.cycleNo,
+        placementDate: closed.placementDate,
+        expectedCollectionDate: closed.expectedCollectionDate,
+        finalDay: closed.finalDay,
+        finalWeightG: closed.finalWeightG,
+        finalFcr: closed.finalFcr,
+        finalCumMortPct: closed.finalCumMortPct,
+        epef: closed.epef,
+      };
+    }
     const { batch, placements } = farm;
 
     let placed = 0;

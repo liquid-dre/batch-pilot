@@ -259,6 +259,55 @@ async function inviteSameRolePeers(
   return { invited };
 }
 
+/**
+ * The manager/foreman's cycles for their farm — upcoming + ongoing, read-only.
+ * Cycles are contractor-owned; this is the grower's window onto the plan (who
+ * set it up, the dates, the target weight range, delivery/collection nights).
+ */
+export const myCycles = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return null;
+    const user = await ctx.db.get(userId);
+    const role = (user?.role as string) ?? "";
+    if (!user || !user.siteId || (role !== "manager" && role !== "supervisor")) return null;
+    const siteId = user.siteId as string;
+    const today = new Date().toISOString().slice(0, 10);
+
+    const batches = (
+      await ctx.db.query("batches").withIndex("by_site", (q) => q.eq("siteId", siteId)).collect()
+    ).filter((b) => !b.closedAt);
+
+    const rows = [];
+    for (const b of batches) {
+      const contractor = b.contractorId
+        ? await ctx.db.query("contractors").withIndex("by_extId", (q) => q.eq("extId", b.contractorId)).first()
+        : null;
+      const placements = await ctx.db.query("placements").withIndex("by_batch", (q) => q.eq("batchId", b.extId)).collect();
+      const nights = (
+        await ctx.db.query("catchingEvents").withIndex("by_batch", (q) => q.eq("batchId", b.extId)).collect()
+      ).map((e) => e.night);
+      const start = (b.placementDate as string | undefined) ?? "";
+      rows.push({
+        cycleNo: b.cycleNo,
+        breed: b.breed,
+        status: start && start <= today ? ("ongoing" as const) : ("upcoming" as const),
+        placementDate: start,
+        expectedCollectionDate: b.expectedCollectionDate,
+        targetWeightMinG: b.targetWeightMinG ?? null,
+        targetWeightMaxG: b.targetWeightMaxG ?? null,
+        totalBirds: b.totalBirds ?? null,
+        placed: placements.reduce((s, p) => s + p.placedCount, 0),
+        contractorName: contractor?.name ?? "",
+        deliveryDates: nights,
+      });
+    }
+    rows.sort((a, b) => (a.placementDate || "z").localeCompare(b.placementDate || "z"));
+    return { farmName: (await ctx.db.query("sites").withIndex("by_extId", (q) => q.eq("extId", siteId)).first())?.name ?? "", cycles: rows };
+  },
+});
+
 /** The signed-in user's onboarding view, shaped by role. Reactive. */
 export const myWorkspace = query({
   args: {},
@@ -306,7 +355,22 @@ export const myWorkspace = query({
         : null;
       let supervisors: { email: string; status: string }[] = [];
       let houses: { id: string; name: string; capacity: number }[] = [];
-      let cycle: { cycleNo: number; breed: string; placementDate: string; expectedCollectionDate: string; placed: number; houseCount: number } | null = null;
+      let cycle:
+        | {
+            cycleNo: number;
+            breed: string;
+            status: "upcoming" | "ongoing";
+            placementDate: string;
+            expectedCollectionDate: string;
+            targetWeightMinG: number | null;
+            targetWeightMaxG: number | null;
+            totalBirds: number | null;
+            placed: number;
+            houseCount: number;
+            contractorName: string;
+            placements: { houseId: string; placedCount: number }[];
+          }
+        | null = null;
       if (site) {
         const invites = await ctx.db
           .query("invites")
@@ -322,36 +386,32 @@ export const myWorkspace = query({
           .filter((h): h is NonNullable<typeof h> => Boolean(h))
           .map((h) => ({ id: h.extId, name: h.name, capacity: h.capacity }));
 
-        const batch = await ctx.db
-          .query("batches")
-          .withIndex("by_site", (q) => q.eq("siteId", site.extId))
-          .filter((q) => q.eq(q.field("closedAt"), undefined))
-          .first();
+        const batch = await currentBatch(ctx, site.extId);
         if (batch) {
           const placements = await ctx.db
             .query("placements")
             .withIndex("by_batch", (q) => q.eq("batchId", batch.extId))
             .collect();
+          const today = new Date().toISOString().slice(0, 10);
+          const start = (batch.placementDate as string | undefined) ?? "";
+          const contractor = batch.contractorId
+            ? await ctx.db.query("contractors").withIndex("by_extId", (q) => q.eq("extId", batch.contractorId)).first()
+            : null;
           cycle = {
             cycleNo: batch.cycleNo,
             breed: batch.breed,
+            status: start && start <= today ? "ongoing" : "upcoming",
+            placementDate: start,
             expectedCollectionDate: batch.expectedCollectionDate,
-            placementDate: placements[0]?.placementDate ?? "",
+            targetWeightMinG: batch.targetWeightMinG ?? null,
+            targetWeightMaxG: batch.targetWeightMaxG ?? null,
+            totalBirds: batch.totalBirds ?? null,
             placed: placements.reduce((s, p) => s + p.placedCount, 0),
             houseCount: placements.length,
+            contractorName: contractor?.name ?? "",
+            placements: placements.map((p) => ({ houseId: p.houseId, placedCount: p.placedCount })),
           };
         }
-      }
-      // The contractor's target weight (if set) — lets the manager's cycle form
-      // derive the expected collection date from the placement date + breed curve.
-      let targetWeightG: number | null = null;
-      const contractorId = (site?.contractorIds ?? [])[0];
-      if (contractorId) {
-        const bench = await ctx.db
-          .query("benchmarkSets")
-          .withIndex("by_contractor", (q) => q.eq("contractorId", contractorId))
-          .first();
-        targetWeightG = bench?.targetWeightG ?? null;
       }
       return {
         role,
@@ -361,12 +421,11 @@ export const myWorkspace = query({
         supervisors,
         houses,
         cycle,
-        targetWeightG,
       };
     }
 
     // Invited but not yet matched to a farm.
-    return { role, name, email, farm: null, supervisors: [], targetWeightG: null };
+    return { role, name, email, farm: null, supervisors: [] };
   },
 });
 
@@ -451,54 +510,149 @@ export const setHouses = mutation({
 });
 
 /** Grower: start the farm's growing cycle (one active cycle per farm for now). */
-export const startCycle = mutation({
+/**
+ * The farm's current non-closed batch — the ongoing one if started, else the
+ * soonest upcoming. A batch with no start date (legacy/seed) counts as started.
+ */
+async function currentBatch(ctx: any, siteId: string) {
+  const open = (
+    await ctx.db.query("batches").withIndex("by_site", (q: any) => q.eq("siteId", siteId)).collect()
+  ).filter((b: any) => !b.closedAt);
+  if (open.length === 0) return null;
+  const today = new Date().toISOString().slice(0, 10);
+  const started = (b: any) => !b.placementDate || (b.placementDate as string) <= today;
+  const ongoing = open
+    .filter(started)
+    .sort((a: any, b: any) => (b.placementDate ?? "").localeCompare(a.placementDate ?? ""));
+  if (ongoing.length) return ongoing[0];
+  return open.sort((a: any, b: any) => (a.placementDate ?? "").localeCompare(b.placementDate ?? ""))[0];
+}
+
+/**
+ * Contractor: schedule a cycle for a farm they own (ROADMAP §9 — cycles are
+ * contractor-owned). Sets the plan — start + collection dates, target weight
+ * range, total birds — the manager then places birds against. The cycle is
+ * *upcoming* until its start date, then *ongoing*.
+ */
+export const scheduleCycle = mutation({
   args: {
+    siteId: v.string(),
     cycleNo: v.number(),
     breed: v.string(),
     placementDate: v.string(),
     expectedCollectionDate: v.string(),
-    houses: v.array(v.object({ houseId: v.string(), placedCount: v.number() })),
+    targetWeightMinG: v.optional(v.number()),
+    targetWeightMaxG: v.optional(v.number()),
+    totalBirds: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const { site, siteId } = await requireManager(ctx);
-    const contractorId = (site.contractorIds ?? [])[0] ?? "";
+    const { userId, site } = await requireOwnedFarm(ctx, args.siteId);
+    const contractorId = site.contractorIds?.[0] ?? "";
+    if (!args.placementDate || !args.expectedCollectionDate) throw new Error("Start and collection dates are required");
+    const clash = (
+      await ctx.db.query("batches").withIndex("by_site", (q) => q.eq("siteId", args.siteId)).collect()
+    ).find((b) => !b.closedAt && b.cycleNo === args.cycleNo);
+    if (clash) throw new Error(`Cycle ${args.cycleNo} is already scheduled on this farm`);
 
-    const existing = await ctx.db
-      .query("batches")
-      .withIndex("by_site", (q) => q.eq("siteId", siteId))
-      .filter((q) => q.eq(q.field("closedAt"), undefined))
-      .first();
-    if (existing) throw new Error("This farm already has an active cycle");
-    if (!args.placementDate || !args.expectedCollectionDate) throw new Error("Placing and kill dates are required");
-
-    const batchExtId = `${siteId}_b${args.cycleNo}`;
+    const batchExtId = `${args.siteId}_b${args.cycleNo}`;
     await ctx.db.insert("batches", {
       extId: batchExtId,
-      siteId,
-      contractorId,
+      siteId: args.siteId,
+      contractorId: contractorId || (userId as string),
       cycleNo: args.cycleNo,
       breed: args.breed || "Ross 308",
+      placementDate: args.placementDate,
       expectedCollectionDate: args.expectedCollectionDate,
+      targetWeightMinG: args.targetWeightMinG,
+      targetWeightMaxG: args.targetWeightMaxG,
+      totalBirds: args.totalBirds,
       focPct: 0,
       contractId: "",
     });
+    return { batchId: batchExtId };
+  },
+});
 
-    const today = new Date().toISOString().slice(0, 10);
-    const dayCount = Math.max(0, daysBetween(args.placementDate, today));
-    let n = 0;
-    for (const h of args.houses) {
-      if (!h.houseId || h.placedCount <= 0) continue;
-      n += 1;
-      await ctx.db.insert("placements", {
-        extId: `${batchExtId}_p${n}`,
-        batchId: batchExtId,
-        houseId: h.houseId,
-        placedCount: Math.round(h.placedCount),
-        placementDate: args.placementDate,
-        dayCount,
-      });
+/**
+ * Contractor: edit a scheduled/ongoing cycle's plan (dates, weight range, breed).
+ * Managers are read-only on these. Changing the start date re-syncs every
+ * placement's `placementDate` + `dayCount`.
+ */
+export const editCycle = mutation({
+  args: {
+    siteId: v.string(),
+    placementDate: v.optional(v.string()),
+    expectedCollectionDate: v.optional(v.string()),
+    targetWeightMinG: v.optional(v.number()),
+    targetWeightMaxG: v.optional(v.number()),
+    breed: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await requireOwnedFarm(ctx, args.siteId);
+    const batch = await currentBatch(ctx, args.siteId);
+    if (!batch) throw new Error("No cycle to edit on this farm");
+    const patch: Record<string, unknown> = {};
+    if (args.placementDate) patch.placementDate = args.placementDate;
+    if (args.expectedCollectionDate) patch.expectedCollectionDate = args.expectedCollectionDate;
+    if (args.targetWeightMinG !== undefined) patch.targetWeightMinG = args.targetWeightMinG;
+    if (args.targetWeightMaxG !== undefined) patch.targetWeightMaxG = args.targetWeightMaxG;
+    if (args.breed) patch.breed = args.breed;
+    await ctx.db.patch(batch._id, patch);
+
+    if (args.placementDate) {
+      const today = new Date().toISOString().slice(0, 10);
+      const dayCount = Math.max(0, daysBetween(args.placementDate, today));
+      const placements = await ctx.db
+        .query("placements")
+        .withIndex("by_batch", (q) => q.eq("batchId", batch.extId))
+        .collect();
+      for (const p of placements) await ctx.db.patch(p._id, { placementDate: args.placementDate, dayCount });
     }
-    return { batchId: batchExtId, placements: n };
+    return { batchId: batch.extId };
+  },
+});
+
+/**
+ * Manager: place birds into houses for the farm's current cycle. Can run before
+ * the start date (load-balancing in advance) — the cycle still becomes ongoing
+ * on the contractor's start date. Upserts one `placements` row per house.
+ */
+export const placeBirds = mutation({
+  args: { houses: v.array(v.object({ houseId: v.string(), placedCount: v.number() })) },
+  handler: async (ctx, { houses }) => {
+    const { siteId } = await requireManager(ctx);
+    const batch = await currentBatch(ctx, siteId);
+    if (!batch) throw new Error("No cycle scheduled yet — ask your contractor to schedule one");
+    const start = batch.placementDate ?? new Date().toISOString().slice(0, 10);
+    const today = new Date().toISOString().slice(0, 10);
+    const dayCount = Math.max(0, daysBetween(start, today));
+
+    const existing = await ctx.db
+      .query("placements")
+      .withIndex("by_batch", (q) => q.eq("batchId", batch.extId))
+      .collect();
+    const byHouse = new Map(existing.map((p) => [p.houseId, p]));
+    let n = existing.length;
+    for (const h of houses) {
+      if (!h.houseId) continue;
+      const count = Math.max(0, Math.round(h.placedCount));
+      const row = byHouse.get(h.houseId);
+      if (row) {
+        if (count <= 0) await ctx.db.delete(row._id);
+        else await ctx.db.patch(row._id, { placedCount: count, placementDate: start, dayCount });
+      } else if (count > 0) {
+        n += 1;
+        await ctx.db.insert("placements", {
+          extId: `${batch.extId}_p${n}`,
+          batchId: batch.extId,
+          houseId: h.houseId,
+          placedCount: count,
+          placementDate: start,
+          dayCount,
+        });
+      }
+    }
+    return { batchId: batch.extId };
   },
 });
 

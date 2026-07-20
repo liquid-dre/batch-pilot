@@ -7,6 +7,7 @@ import { cn } from "@/lib/cn";
 import { addDays } from "@/lib/format";
 import { ageAtWeight } from "@/lib/data/ross308";
 import { Button } from "@/components/ui/Button";
+import { notify } from "@/components/ui/notify";
 import { IconCheck, IconSend, IconPlus } from "@/components/icons";
 import { ReviewPanel } from "./FarmData";
 
@@ -110,6 +111,8 @@ function ContractorOnboarding({ workspace }: { workspace: any }) {
           Create farm &amp; invite
         </Button>
       </form>
+
+      {farms.length > 0 && <ScheduleCycleForm farms={farms} />}
       {/* Co-admins moved to /app/account (the account Team panel) — one home for peer invites. */}
     </Shell>
   );
@@ -173,6 +176,130 @@ function ContractorFarmCard({ farm }: { farm: any }) {
   );
 }
 
+/**
+ * Contractor: schedule a cycle for one of their farms (ROADMAP §9 — cycles are
+ * contractor-owned). Sets the plan the manager then places birds against: breed,
+ * start + collection dates, target weight range (pre-filled from the benchmark
+ * default), total birds. The Estimate button fills the collection date from the
+ * range midpoint via the breed curve.
+ */
+function ScheduleCycleForm({ farms }: { farms: any[] }) {
+  const bench = useQuery(api.benchmark.myBenchmark);
+  const scheduleCycle = useMutation(api.tenancy.scheduleCycle);
+  const [siteId, setSiteId] = useState(farms[0]?.id ?? "");
+  const [cycleNo, setCycleNo] = useState("1");
+  const [breed, setBreed] = useState("Ross 308");
+  const [start, setStart] = useState("");
+  const [end, setEnd] = useState("");
+  const [minG, setMinG] = useState("");
+  const [maxG, setMaxG] = useState("");
+  const [total, setTotal] = useState("");
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Pre-fill the weight range from the contractor's benchmark default once loaded.
+  const defMin = bench?.targetWeightMinG ?? 1600;
+  const defMax = bench?.targetWeightMaxG ?? 1700;
+  const minVal = minG === "" ? String(defMin) : minG;
+  const maxVal = maxG === "" ? String(defMax) : maxG;
+
+  function estimateEnd() {
+    if (!start) return;
+    const mid = (Number(minVal) + Number(maxVal)) / 2;
+    if (!(mid > 0)) return;
+    setEnd(addDays(start, Math.round(ageAtWeight(mid))));
+  }
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (!siteId) return setError("Pick a farm.");
+    if (!start || !end) return setError("Enter the start and collection dates.");
+    setPending(true);
+    try {
+      await notify.promise(
+        scheduleCycle({
+          siteId,
+          cycleNo: Number(cycleNo) || 1,
+          breed,
+          placementDate: start,
+          expectedCollectionDate: end,
+          targetWeightMinG: Number(minVal) || undefined,
+          targetWeightMaxG: Number(maxVal) || undefined,
+          totalBirds: Number(total) || undefined,
+        }),
+        {
+          loading: "Scheduling cycle…",
+          success: () => ({ title: "Cycle scheduled", description: "The manager can now place birds for it." }),
+          error: () => ({ title: "Couldn't schedule the cycle", description: "Check the cycle number isn't already used." }),
+        },
+      );
+      setStart("");
+      setEnd("");
+      setTotal("");
+    } catch {
+      /* toast shown */
+    } finally {
+      setPending(false);
+    }
+  }
+
+  const field = "h-11 rounded-[var(--radius-control)] border border-border bg-surface px-3 text-body text-ink outline-none focus-visible:border-brand-500";
+
+  return (
+    <form onSubmit={submit} className="mt-6 rounded-[var(--radius-card)] bg-surface p-5 shadow-card">
+      <h3 className="text-h3">Schedule a cycle</h3>
+      <p className="mt-1 text-label text-muted">Set the plan — the manager places the birds and captures against it.</p>
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <label className="flex flex-col gap-1.5">
+          <span className="text-label font-medium text-slate">Farm</span>
+          <select value={siteId} onChange={(e) => setSiteId(e.target.value)} className={field}>
+            {farms.map((f) => (
+              <option key={f.id} value={f.id}>{f.name}</option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-label font-medium text-slate">Cycle no.</span>
+          <input value={cycleNo} inputMode="numeric" onChange={(e) => setCycleNo(e.target.value.replace(/[^0-9]/g, ""))} className={`${field} font-mono`} />
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-label font-medium text-slate">Breed</span>
+          <input value={breed} onChange={(e) => setBreed(e.target.value)} className={field} />
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-label font-medium text-slate">Total birds</span>
+          <input value={total} inputMode="numeric" placeholder="e.g. 22000" onChange={(e) => setTotal(e.target.value.replace(/[^0-9]/g, ""))} className={`${field} font-mono`} />
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-label font-medium text-slate">Start date</span>
+          <input type="date" value={start} onChange={(e) => setStart(e.target.value)} className={field} />
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-label font-medium text-slate">Collection date</span>
+          <div className="flex gap-2">
+            <input type="date" value={end} onChange={(e) => setEnd(e.target.value)} className={`${field} flex-1`} />
+            <Button type="button" variant="secondary" size="sm" onClick={estimateEnd} className="shrink-0">Estimate</Button>
+          </div>
+        </label>
+      </div>
+      <div className="mt-3">
+        <span className="text-label font-medium text-slate">Target weight range (g)</span>
+        <div className="mt-1.5 flex items-center gap-2">
+          <input value={minVal} inputMode="numeric" aria-label="Min target weight" onChange={(e) => setMinG(e.target.value.replace(/[^0-9]/g, ""))} className={`${field} w-28 text-right font-mono`} />
+          <span className="text-label text-muted">–</span>
+          <input value={maxVal} inputMode="numeric" aria-label="Max target weight" onChange={(e) => setMaxG(e.target.value.replace(/[^0-9]/g, ""))} className={`${field} w-28 text-right font-mono`} />
+          <span className="text-label text-muted">g</span>
+        </div>
+      </div>
+      {error && <p role="alert" className="mt-3 text-label text-status-bad">{error}</p>}
+      <Button type="submit" size="lg" block loading={pending} affordance={IconCheck} className="mt-4">
+        Schedule cycle
+      </Button>
+    </form>
+  );
+}
+
 /* ------------------------------------------------------------- Supervisor -- */
 // The foreman captures the daily numbers — they don't set the farm up. Before a
 // cycle is running there's nothing for them to do but wait on the manager; once
@@ -199,71 +326,14 @@ function SupervisorOnboarding({ workspace }: { workspace: any }) {
 // cycle, and reviews/corrects captured numbers.
 
 function ManagerOnboarding({ workspace }: { workspace: any }) {
-  const inviteSupervisors = useMutation(api.tenancy.inviteSupervisors);
-  const [emails, setEmails] = useState("");
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
   if (!workspace.farm) return <PendingState email={workspace.email} />;
-
-  async function onInvite(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    const list = splitEmails(emails);
-    if (list.length === 0) {
-      setError("Enter at least one email.");
-      return;
-    }
-    setPending(true);
-    try {
-      await inviteSupervisors({ emails: list });
-      setEmails("");
-    } catch {
-      setError("Could not send the invites. Try again.");
-    } finally {
-      setPending(false);
-    }
-  }
-
-  const supervisors: any[] = workspace.supervisors ?? [];
-
+  // Cycles are contractor-scheduled; the manager sets up houses and places birds.
+  // Lead with the cycle/place-birds when one is scheduled, else house setup.
   return (
     <Shell title={workspace.farm.name} subtitle={`Manager · ${workspace.email}`}>
       <FarmCard farm={workspace.farm} />
-
-      <form onSubmit={onInvite} className="mt-6 rounded-[var(--radius-card)] bg-surface p-5 shadow-card">
-        <h3 className="text-h3">Invite your foreman(s)</h3>
-        <p className="mt-1 text-label text-muted">Foremen capture the daily numbers, weigh-ins and feed on the ground.</p>
-        <label className="mt-4 flex flex-col gap-1.5">
-          <span className="text-label font-medium text-slate">Foreman email(s)</span>
-          <textarea
-            value={emails}
-            onChange={(e) => setEmails(e.target.value)}
-            rows={2}
-            placeholder="foreman@example.com"
-            className="rounded-[var(--radius-control)] border border-border bg-surface p-3.5 text-body text-ink outline-none focus-visible:border-brand-500"
-          />
-        </label>
-        {error && <p role="alert" className="mt-3 text-label text-status-bad">{error}</p>}
-        <Button type="submit" size="lg" block affordance={IconSend} loading={pending} className="mt-4">
-          Send invite
-        </Button>
-
-        {supervisors.length > 0 && (
-          <ul className="mt-5 flex flex-col gap-1 border-t border-divider pt-4">
-            {supervisors.map((s) => (
-              <li key={s.email} className="flex items-center justify-between text-label">
-                <span className="text-ink">{s.email}</span>
-                <StatusChip status={s.status} />
-              </li>
-            ))}
-          </ul>
-        )}
-      </form>
-
-      <ReviewPanel />
       <FarmSetup workspace={workspace} />
-      <NextStepNote>Your full dashboard — projections, benchmark curve and alerts — appears here the moment your cycle is running.</NextStepNote>
+      <NextStepNote>Invite your foremen from Account → Team. Your full dashboard appears here once the cycle is running.</NextStepNote>
     </Shell>
   );
 }
@@ -275,10 +345,21 @@ function ManagerOnboarding({ workspace }: { workspace: any }) {
 function FarmSetup({ workspace }: { workspace: any }) {
   const houses: any[] = workspace.houses ?? [];
   const cycle = workspace.cycle ?? null;
+  // When a cycle is scheduled, the placement (place-birds) leads; otherwise the
+  // manager just has houses to set up while they wait for the contractor.
   return (
     <div className="mt-6 flex flex-col gap-6">
-      <HousesEditor initial={houses} />
-      <CycleSection houses={houses} cycle={cycle} targetWeightG={workspace.targetWeightG ?? null} />
+      {cycle ? (
+        <>
+          <CycleSection houses={houses} cycle={cycle} />
+          <HousesEditor initial={houses} />
+        </>
+      ) : (
+        <>
+          <HousesEditor initial={houses} />
+          <CycleSection houses={houses} cycle={cycle} />
+        </>
+      )}
     </div>
   );
 }
@@ -363,127 +444,95 @@ function HousesEditor({ initial }: { initial: any[] }) {
   );
 }
 
-function CycleSection({ houses, cycle, targetWeightG }: { houses: any[]; cycle: any; targetWeightG: number | null }) {
-  const startCycle = useMutation(api.tenancy.startCycle);
-  const [cycleNo, setCycleNo] = useState("1");
-  const [breed, setBreed] = useState("Ross 308");
-  const [placementDate, setPlacementDate] = useState("");
-  const [expectedCollectionDate, setExpectedCollectionDate] = useState("");
-  // Track whether the manager has hand-edited the collection date, so the
-  // auto-derived value only pre-fills until they take it over.
-  const [collectionTouched, setCollectionTouched] = useState(false);
-  const [counts, setCounts] = useState<Record<string, string>>({});
+/**
+ * The manager's cycle view: the contractor's plan (read-only) + a place-birds
+ * form. Cycles are contractor-owned; the manager only distributes the birds
+ * across houses (allowed in advance — the cycle still starts on the start date).
+ */
+function CycleSection({ houses, cycle }: { houses: any[]; cycle: any }) {
+  const placeBirds = useMutation(api.tenancy.placeBirds);
+  const seeded: Record<string, string> = {};
+  for (const p of (cycle?.placements ?? []) as { houseId: string; placedCount: number }[]) {
+    seeded[p.houseId] = String(p.placedCount);
+  }
+  const [counts, setCounts] = useState<Record<string, string>>(seeded);
   const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  /** The expected collection date implied by a placement date + contractor target. */
-  function derivedCollection(placement: string): string {
-    if (!placement || !targetWeightG) return "";
-    return addDays(placement, Math.round(ageAtWeight(targetWeightG)));
-  }
-
-  function onPlacementChange(v: string) {
-    setPlacementDate(v);
-    // Pre-fill (or refresh) the collection date from the target until the manager
-    // overrides it themselves.
-    if (!collectionTouched) setExpectedCollectionDate(derivedCollection(v));
-  }
-
-  if (cycle) {
+  if (!cycle) {
     return (
-      <div className="rounded-[var(--radius-card)] bg-surface p-5 shadow-card">
-        <h3 className="text-h3">Cycle {cycle.cycleNo}</h3>
-        <dl className="mt-3 grid grid-cols-2 gap-y-1.5 text-label">
-          <dt className="text-muted">Breed</dt><dd className="text-right font-mono text-ink">{cycle.breed}</dd>
-          <dt className="text-muted">Placed</dt><dd className="text-right font-mono text-ink">{cycle.placed.toLocaleString()}</dd>
-          <dt className="text-muted">Houses</dt><dd className="text-right font-mono text-ink">{cycle.houseCount}</dd>
-          <dt className="text-muted">Placement date</dt><dd className="text-right font-mono text-ink">{cycle.placementDate}</dd>
-          <dt className="text-muted">Expected collection</dt><dd className="text-right font-mono text-ink">{cycle.expectedCollectionDate}</dd>
-        </dl>
-      </div>
+      <EmptyHint>
+        No cycle scheduled yet. Your contractor schedules cycles (dates + target weight); you&apos;ll see it here to place
+        birds and set up.
+      </EmptyHint>
     );
   }
 
-  if (!houses.length) {
-    return <EmptyHint>Add and save your houses first, then start a cycle.</EmptyHint>;
-  }
+  const range =
+    cycle.targetWeightMinG && cycle.targetWeightMaxG
+      ? `${(cycle.targetWeightMinG / 1000).toFixed(2)}–${(cycle.targetWeightMaxG / 1000).toFixed(2)} kg`
+      : "—";
 
-  async function start(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    if (!placementDate || !expectedCollectionDate) {
-      setError("Enter the placement and collection dates.");
-      return;
-    }
+  async function save() {
     setPending(true);
     try {
-      await startCycle({
-        cycleNo: Number(cycleNo) || 1,
-        breed,
-        placementDate,
-        expectedCollectionDate,
-        houses: houses.map((h) => ({ houseId: h.id, placedCount: Number(counts[h.id]) || 0 })),
-      });
+      await notify.promise(
+        placeBirds({ houses: houses.map((h) => ({ houseId: h.id, placedCount: Number(counts[h.id]) || 0 })) }),
+        {
+          loading: "Saving placement…",
+          success: () => ({ title: "Birds placed", description: "Counts saved for this cycle." }),
+          error: () => ({ title: "Couldn't save the placement", description: "Try again." }),
+        },
+      );
     } catch {
-      setError("Could not start the cycle. Try again.");
+      /* toast shown */
     } finally {
       setPending(false);
     }
   }
 
   return (
-    <form onSubmit={start} className="rounded-[var(--radius-card)] bg-surface p-5 shadow-card">
-      <h3 className="text-h3">Start a cycle</h3>
-      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <label className="flex flex-col gap-1.5">
-          <span className="text-label font-medium text-slate">Cycle no.</span>
-          <input value={cycleNo} onChange={(e) => setCycleNo(e.target.value.replace(/[^0-9]/g, ""))} inputMode="numeric" className="h-11 rounded-[var(--radius-control)] border border-border bg-surface px-3 font-mono text-body text-ink outline-none focus-visible:border-brand-500" />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className="text-label font-medium text-slate">Breed</span>
-          <input value={breed} onChange={(e) => setBreed(e.target.value)} className="h-11 rounded-[var(--radius-control)] border border-border bg-surface px-3 text-body text-ink outline-none focus-visible:border-brand-500" />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className="text-label font-medium text-slate">Placement date</span>
-          <input type="date" value={placementDate} onChange={(e) => onPlacementChange(e.target.value)} className="h-11 rounded-[var(--radius-control)] border border-border bg-surface px-3 text-body text-ink outline-none focus-visible:border-brand-500" />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className="text-label font-medium text-slate">Expected collection date</span>
-          <input
-            type="date"
-            value={expectedCollectionDate}
-            onChange={(e) => { setCollectionTouched(true); setExpectedCollectionDate(e.target.value); }}
-            className="h-11 rounded-[var(--radius-control)] border border-border bg-surface px-3 text-body text-ink outline-none focus-visible:border-brand-500"
-          />
-          <span className="text-[0.8125rem] text-muted">
-            {targetWeightG
-              ? `Auto-filled from the ${targetWeightG.toLocaleString()} g target weight — adjust if collection shifts.`
-              : "No target weight set — enter the date, or ask your contractor to set a target weight to auto-fill it."}
-          </span>
-        </label>
+    <div className="rounded-[var(--radius-card)] bg-surface p-5 shadow-card">
+      <div className="flex items-baseline justify-between gap-2">
+        <h3 className="text-h3">Cycle {cycle.cycleNo}</h3>
+        <StatusChip status={cycle.status === "ongoing" ? "accepted" : "pending"} />
       </div>
+      {/* Contractor-set plan — read-only for the manager. */}
+      <dl className="mt-3 grid grid-cols-2 gap-y-1.5 text-label">
+        <dt className="text-muted">Set up by</dt><dd className="text-right text-ink">{cycle.contractorName || "—"}</dd>
+        <dt className="text-muted">Breed</dt><dd className="text-right font-mono text-ink">{cycle.breed}</dd>
+        <dt className="text-muted">Start date</dt><dd className="text-right font-mono text-ink">{cycle.placementDate || "—"}</dd>
+        <dt className="text-muted">Collection date</dt><dd className="text-right font-mono text-ink">{cycle.expectedCollectionDate || "—"}</dd>
+        <dt className="text-muted">Target weight</dt><dd className="text-right font-mono text-ink">{range}</dd>
+        <dt className="text-muted">Total birds</dt><dd className="text-right font-mono text-ink">{cycle.totalBirds ? cycle.totalBirds.toLocaleString() : "—"}</dd>
+      </dl>
 
-      <p className="mt-4 mb-1.5 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-hint">Birds placed per house</p>
-      <div className="flex flex-col gap-2">
-        {houses.map((h) => (
-          <div key={h.id} className="flex items-center gap-2">
-            <span className="flex-1 text-label text-ink">{h.name}</span>
-            <input
-              value={counts[h.id] ?? ""}
-              onChange={(e) => setCounts({ ...counts, [h.id]: e.target.value.replace(/[^0-9]/g, "") })}
-              inputMode="numeric"
-              placeholder={`max ${h.capacity.toLocaleString()}`}
-              className="h-11 w-40 rounded-[var(--radius-control)] border border-border bg-surface px-3 text-right font-mono text-body text-ink outline-none focus-visible:border-brand-500"
-            />
+      {!houses.length ? (
+        <p className="mt-4 text-label text-muted">Add and save your houses first, then place the birds across them.</p>
+      ) : (
+        <>
+          <p className="mt-5 mb-1.5 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-hint">
+            Birds placed per house {cycle.status === "upcoming" ? "(you can load-balance in advance)" : ""}
+          </p>
+          <div className="flex flex-col gap-2">
+            {houses.map((h) => (
+              <div key={h.id} className="flex items-center gap-2">
+                <span className="flex-1 text-label text-ink">{h.name}</span>
+                <input
+                  value={counts[h.id] ?? ""}
+                  onChange={(e) => setCounts({ ...counts, [h.id]: e.target.value.replace(/[^0-9]/g, "") })}
+                  inputMode="numeric"
+                  placeholder={`max ${h.capacity.toLocaleString()}`}
+                  className="h-11 w-40 rounded-[var(--radius-control)] border border-border bg-surface px-3 text-right font-mono text-body text-ink outline-none focus-visible:border-brand-500"
+                />
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
-
-      {error && <p role="alert" className="mt-3 text-label text-status-bad">{error}</p>}
-      <Button type="submit" size="lg" block affordance={IconCheck} loading={pending} className="mt-4">
-        Start cycle
-      </Button>
-    </form>
+          <Button type="button" size="lg" block affordance={IconCheck} loading={pending} onClick={save} className="mt-4">
+            Place birds
+          </Button>
+        </>
+      )}
+    </div>
   );
 }
 

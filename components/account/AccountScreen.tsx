@@ -244,26 +244,59 @@ function TeamPanel() {
   const inviteOrgAdmins = useMutation(api.tenancy.inviteOrgAdmins);
   const inviteCoSupervisors = useMutation(api.tenancy.inviteCoSupervisors);
   const inviteCoManagers = useMutation(api.tenancy.inviteCoManagers);
+  const inviteSupervisors = useMutation(api.tenancy.inviteSupervisors);
+
+  if (team === undefined || team === null || team.kind === "none") return null;
+  const copy = TEAM_COPY[team.kind];
+  const peerInvite =
+    team.kind === "coAdmin" ? inviteOrgAdmins : team.kind === "supervisor" ? inviteCoSupervisors : inviteCoManagers;
+
+  return (
+    <>
+      <InviteSection
+        title={copy.title}
+        blurb={copy.blurb}
+        placeholder={copy.placeholder}
+        members={team.members}
+        onInvite={(emails) => peerInvite({ emails })}
+      />
+      {/* A manager also invites the farm's foremen from here (off the dashboard). */}
+      {team.kind === "manager" && (
+        <InviteSection
+          title="Foremen"
+          blurb="Foremen capture the daily numbers, weigh-ins and feed on the ground."
+          placeholder="foreman@example.com"
+          members={team.foremen ?? []}
+          onInvite={(emails) => inviteSupervisors({ emails })}
+        />
+      )}
+    </>
+  );
+}
+
+function InviteSection({
+  title,
+  blurb,
+  placeholder,
+  members,
+  onInvite,
+}: {
+  title: string;
+  blurb: string;
+  placeholder: string;
+  members: { email: string; status: string }[];
+  onInvite: (emails: string[]) => Promise<unknown>;
+}) {
   const [emails, setEmails] = useState("");
   const [pending, setPending] = useState(false);
-
-  if (team === undefined || team === null) return null;
-  if (team.kind === "none") return null;
-  const copy = TEAM_COPY[team.kind];
 
   async function invite(e: React.FormEvent) {
     e.preventDefault();
     const list = splitEmails(emails);
-    if (list.length === 0 || team === undefined || team === null || team.kind === "none") return;
-    const run =
-      team.kind === "coAdmin"
-        ? inviteOrgAdmins({ emails: list })
-        : team.kind === "supervisor"
-          ? inviteCoSupervisors({ emails: list })
-          : inviteCoManagers({ emails: list });
+    if (list.length === 0) return;
     setPending(true);
     try {
-      await notify.promise(run, {
+      await notify.promise(onInvite(list), {
         loading: "Sending invite…",
         success: () => ({ title: "Invite sent", description: "They join when they sign up with that email." }),
         error: () => ({ title: "Couldn’t send the invite", description: "Try again." }),
@@ -280,15 +313,15 @@ function TeamPanel() {
     <Card>
       <CardBody className="space-y-4 pt-5">
         <div>
-          <CardEyebrow>{copy.title}</CardEyebrow>
-          <p className="mt-1 text-label text-muted">{copy.blurb}</p>
+          <CardEyebrow>{title}</CardEyebrow>
+          <p className="mt-1 text-label text-muted">{blurb}</p>
         </div>
 
-        {team.members.length === 0 ? (
-          <p className="text-label text-muted">Just you so far.</p>
+        {members.length === 0 ? (
+          <p className="text-label text-muted">None yet.</p>
         ) : (
           <ul className="flex flex-col divide-y divide-divider">
-            {team.members.map((m) => (
+            {members.map((m) => (
               <li key={m.email} className="flex items-center justify-between py-2 text-label">
                 <span className="min-w-0 truncate text-ink">{m.email}</span>
                 <MemberChip status={m.status} />
@@ -301,7 +334,7 @@ function TeamPanel() {
           <input
             value={emails}
             onChange={(e) => setEmails(e.target.value)}
-            placeholder={copy.placeholder}
+            placeholder={placeholder}
             className="h-11 min-w-0 flex-1 rounded-[var(--radius-control)] border border-border bg-surface px-3 text-body text-ink outline-none focus-visible:border-brand-500"
           />
           <Button type="submit" size="sm" loading={pending} className="shrink-0">
