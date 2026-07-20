@@ -30,6 +30,12 @@ const TABLES = [
   "historicalBatches",
   "growerProfiles",
   "invites",
+  // User-generated overlays: cleared (never seeded) so a re-seed resets them and
+  // a stale row can't block a schema change. `seed()` only inserts the array
+  // tables from `seedData`, which don't include these — they end up empty and
+  // are re-created on demand (a contractor re-tunes; alerts re-dismiss).
+  "benchmarkSets",
+  "dismissedAlerts",
 ] as const;
 
 /** The app's business `id` is stored as the indexed `extId` column (schema). */
